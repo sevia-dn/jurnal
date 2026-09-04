@@ -16,10 +16,10 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         $this->call([
-            UserSeeder::class,          // Seeder untuk akun login (Admin, Guru, Piket, Sekretaris)
-            KelasSeeder::class,         // Seeder untuk data kelas
-            GuruSeeder::class,          // Seeder untuk data guru
-            JadwalPelajaranSeeder::class, // Seeder untuk jadwal (butuh relasi ke kelas & guru)
+            UserSeeder::class,          
+            KelasSeeder::class,         
+            GuruSeeder::class,          
+            JadwalPelajaranSeeder::class, 
             JurnalGuruSeeder::class,
         ]);
     }
