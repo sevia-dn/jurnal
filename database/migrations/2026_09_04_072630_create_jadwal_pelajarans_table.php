@@ -7,20 +7,21 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('jadwal_pelajaran', function (Blueprint $table) {
+        Schema::create('jadwal_pelajarans', function (Blueprint $table) {
             $table->id('id_jadwal');
-            $table->foreignId('id_guru')->constrained('gurus', 'id_guru')->onDelete('cascade');
+            $table->foreignId('id_user')->constrained('users')->onDelete('cascade');
             $table->foreignId('id_kelas')->constrained('kelas', 'id_kelas')->onDelete('cascade');
+            $table->foreignId('id_mapel')->nullable()->constrained('mapels')->onDelete('cascade');
             $table->enum('hari', ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu']);
             $table->integer('jam_ke');
             $table->time('jam_mulai');
             $table->time('jam_selesai');
-            $table->string('mapel', 50);
+            $table->string('mapel', 100);
         });
     }
 
     public function down(): void
     {
-        Schema::dropIfExists('jadwal_pelajaran');
+        Schema::dropIfExists('jadwal_pelajarans');
     }
 };
