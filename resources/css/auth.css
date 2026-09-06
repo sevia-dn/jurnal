@@ -1,0 +1,228 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+:root {
+    --jk-green: #155d50;
+    --jk-green-btn: #5fc29b;
+}
+
+html, body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    font-family: 'Inter', sans-serif; 
+}
+
+.split-row {
+    min-height: 100vh;
+}
+
+.container-fluid {
+    padding-left: 0;
+    padding-right: 0;
+}
+
+/* === Kiri: Brand Area === */
+.brand-area {
+    background: var(--jk-green);
+    color: #fff;
+    position: relative;
+    padding: 2rem;
+    overflow: hidden;
+}
+
+.brand-top {
+    position: absolute;
+    left: 3rem;
+    top: 3rem;
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+}
+
+.logo-box {
+    background: #68c79c;
+    color: #0b2b24;
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.logo-box i {
+    font-size: 1.05rem;
+}
+
+.brand-text {
+    font-weight: 700;
+    font-size: 1.25rem;
+    color: #fff;
+    letter-spacing: -0.02em;
+}
+
+.brand-content {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: flex-start;
+    height: 100%;
+    padding: 9rem 3rem 0 3rem;
+}
+
+.brand-title {
+    font-weight: 800;
+    font-size: 2.5rem;
+    letter-spacing: -0.01em;
+    margin-bottom: 1rem;
+}
+
+.brand-sub {
+    max-width: 38rem;
+    opacity: 0.9;
+    font-size: 1.05rem;
+    line-height: 1.6;
+}
+
+.brand-illustration {
+    position: absolute;
+    left: 0;
+    bottom: 7rem;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+}
+
+.brand-illustration img {
+    max-width: 950px;
+}
+
+/* === Kanan: Login Area === */
+.login-area {
+    background: #fff;
+    padding: 2rem 1.5rem;
+}
+
+.login-card {
+    max-width: 420px;
+    width: 100%;
+    border: none;
+    border-radius: 1rem;
+    box-shadow: 0 10px 40px rgba(19, 43, 40, 0.08);
+    padding: 2.5rem;
+}
+
+.login-card-logo {
+    display: none;
+}
+
+.login-title {
+    font-weight: 700;
+    color: #0b2b24;
+}
+
+.login-subtitle {
+    font-size: 0.95rem;
+}
+
+.login-card .form-label {
+    font-size: 0.9rem;
+}
+
+.input-icon-left, .input-icon-right {
+    position: relative;
+}
+
+.input-icon-left .start-icon, 
+.input-icon-right .start-icon {
+    position: absolute;
+    left: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #9ca3af;
+}
+
+.input-icon-right .end-icon {
+    position: absolute;
+    right: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #9ca3af;
+    cursor: pointer;
+}
+
+.form-control {
+    padding: 0.75rem 1rem;
+    border-radius: 0.5rem;
+    border: 1px solid #e5e7eb;
+}
+
+.form-control:focus {
+    border-color: var(--jk-green-btn);
+    box-shadow: 0 0 0 0.25rem rgba(95, 194, 155, 0.25);
+}
+
+.input-icon-left input { padding-left: 2.8rem; }
+.input-icon-right input { padding-left: 2.8rem; padding-right: 2.8rem; }
+
+.forgot-link {
+    font-size: 0.85rem;
+    color: #6c757d;
+    font-weight: 500;
+}
+
+.forgot-link:hover { 
+    color: var(--jk-green); 
+}
+
+.btn-signin {
+    background: var(--jk-green-btn);
+    color: #fff;
+    font-weight: 600;
+    padding: 0.75rem;
+    border-radius: 0.5rem;
+    transition: all 0.3s;
+}
+
+.btn-signin:hover {
+    background: var(--jk-green);
+    color: #fff;
+}
+
+.contact-admin-text {
+    font-size: 0.9rem;
+}
+
+.copyright-text {
+    color: #a0aab2 !important;
+    font-size: 0.8rem;
+}
+
+/* === Modal Area === */
+.modal-help-icon {
+    font-size: 3rem;
+}
+
+/* === Responsive (Mobile) === */
+@media (max-width: 767.98px) {
+    .brand-area {
+        display: none !important;
+    }
+
+    .login-area {
+        flex-direction: column;
+    }
+    
+    .login-card-logo {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .login-card-logo .brand-text-dark {
+        font-weight: 700;
+        font-size: 1.15rem;
+        color: var(--jk-green);
+    }
+}
