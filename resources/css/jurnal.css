@@ -1,0 +1,139 @@
+/* public/css/jurnal.css */
+:root {
+  --bg-app: #f2faf7;
+  --primary-teal: #0d6e59;
+  --primary-teal-hover: #095243;
+  --primary-mint: #a1e8cd;
+  --card-bg-light: #eaf7f2;
+  --card-bg-yellow: #f8f6dd;
+  --badge-math: #0f8b6d;
+  --badge-physics: #bca031;
+  --badge-class: #dbece5;
+  --text-dark: #0f3d32;
+  --text-muted: #5e7e75;
+}
+
+body {
+  background-color: var(--bg-app);
+  color: var(--text-dark);
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  margin: 0;
+  padding: 0;
+}
+
+/* Card custom background colors */
+.bg-mint-card {
+  background-color: #eaf6f2;
+}
+
+.bg-yellow-card {
+  background-color: #f7f6e6;
+}
+
+.text-teal-dark {
+  color: var(--primary-teal);
+}
+
+.bg-teal-dark {
+  background-color: var(--primary-teal);
+}
+
+.border-teal-dark {
+  border-color: var(--primary-teal);
+}
+
+/* Radio Status Attendance Buttons */
+.status-btn-radio input[type="radio"] {
+  display: none;
+}
+
+.status-btn-radio label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background-color: #e1ede8;
+  color: #4a6b60;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.status-btn-radio input[type="radio"]:checked + label.lbl-h {
+  background-color: #0d6e59;
+  color: #ffffff;
+}
+
+.status-btn-radio input[type="radio"]:checked + label.lbl-s {
+  background-color: #bca031;
+  color: #ffffff;
+}
+
+.status-btn-radio input[type="radio"]:checked + label.lbl-i {
+  background-color: #3182ce;
+  color: #ffffff;
+}
+
+.status-btn-radio input[type="radio"]:checked + label.lbl-d {
+  background-color: #805ad5;
+  color: #ffffff;
+}
+
+.status-btn-radio input[type="radio"]:checked + label.lbl-a {
+  background-color: #e53e3e;
+  color: #ffffff;
+}
+
+/* Bottom Navigation */
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 440px;
+  background-color: #f2faf7;
+  border-top: 1px solid #e1ede8;
+  z-index: 50;
+}
+
+/* Custom Radio Button Absensi Bulat */
+.status-radio input[type="radio"] {
+    display: none;
+}
+
+.status-radio label {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 9999px;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+    background-color: #eaf6f2;
+    color: #5e7e75;
+    transition: all 0.2s ease;
+}
+
+/* State Terpilih (Checked) */
+.status-radio input[value="H"]:checked + label {
+    background-color: #0d6e59;
+    color: #ffffff;
+}
+
+.status-radio input[value="S"]:checked + label {
+    background-color: #bca031;
+    color: #ffffff;
+}
+
+.status-radio input[value="I"]:checked + label,
+.status-radio input[value="D"]:checked + label,
+.status-radio input[value="A"]:checked + label {
+    background-color: #c53030;
+    color: #ffffff;
+}
