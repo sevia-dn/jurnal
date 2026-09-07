@@ -1,0 +1,345 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+
+:root {
+    --dark-green: #155d50;
+    --light-green: #5fc29b;
+    --panel-bg: #f8f9fa;
+    --sidebar-width: 260px;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+html, body {
+    height: 100%;
+}
+
+body {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    margin: 0;
+    background: var(--panel-bg);
+    color: #1f2933;
+    -webkit-font-smoothing: antialiased;
+}
+
+.app-layout {
+    min-height: 100vh;
+}
+
+/* === Sidebar === */
+.sidebar {
+    width: var(--sidebar-width);
+    background: var(--dark-green);
+    color: #fff;
+    position: fixed;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    overflow: hidden;
+}
+
+.sidebar .sidebar-inner {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.logo-wrap {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    padding: 18px 24px !important; /* Tambah padding agar lega */
+}
+
+.logo-icon {
+    width: 46px;
+    height: 46px;
+    border-radius: 8px;
+    background: rgba(95, 194, 155, 0.14);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--light-green);
+    font-size: 22px;
+}
+
+/* UPDATE: Ukuran font JurnalKita dibesarkan */
+.logo-text .brand {
+    font-weight: 700;
+    font-size: 20px; 
+    letter-spacing: 0.5px;
+}
+
+.logo-text .subtitle {
+    font-size: 11px;
+    opacity: 0.8;
+}
+
+.nav {
+    margin-top: 20px;
+    padding: 0 12px;
+}
+
+.nav-link {
+    color: rgba(255, 255, 255, 0.85);
+    padding: 12px 14px;
+    border-radius: 8px;
+    margin: 4px 0;
+    display: flex;
+    align-items: center;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 14px;
+    transition: all 0.2s ease;
+}
+
+.nav-link i {
+    font-size: 18px;
+    margin-right: 12px;
+}
+
+.nav-link:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: #fff;
+}
+
+.nav-link.active {
+    background: var(--light-green);
+    color: var(--dark-green);
+}
+
+.sidebar .mt-auto {
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    padding-top: 16px;
+}
+
+.btn-add {
+    background: var(--light-green);
+    color: #ffffff;
+    font-weight: 600;
+    border: none;
+    padding: 12px;
+    border-radius: 8px;
+}
+
+.btn-add:hover {
+    background: #4eb58d;
+    color: #fff;
+}
+
+/* UPDATE: Styling Link Bawah Sidebar (Warna dan tanpa garis) */
+.setting-link {
+    color: rgba(255, 255, 255, 0.8);
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 500;
+    transition: color 0.2s ease;
+}
+.setting-link:hover {
+    color: #fff;
+}
+
+.logout-link {
+    color: #ef4444; /* Merah sesuai gambar */
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 14px;
+    transition: color 0.2s ease;
+}
+.logout-link:hover {
+    color: #dc2626;
+}
+
+/* === Content Area === */
+.content-area {
+    margin-left: var(--sidebar-width);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* === Navbar === */
+.top-navbar {
+    background: #fff;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+    padding: 14px 24px;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.top-navbar .page-title {
+    font-weight: 700;
+    font-size: 18px;
+    color: #111827;
+}
+
+.notif-dot {
+    position: absolute;
+    right: -2px;
+    top: -2px;
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: #ef4444;
+    border: 2px solid #fff;
+}
+
+.top-navbar .vr {
+    width: 1px;
+    height: 28px;
+    background: rgba(0, 0, 0, 0.1);
+    margin-left: 12px;
+}
+
+/* === Main content === */
+main {
+    padding: 28px;
+}
+
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    margin-bottom: 24px;
+}
+
+.section-header .title {
+    font-size: 22px;
+    font-weight: 700;
+}
+
+.section-header .subtitle {
+    font-size: 14px;
+    color: #6b7280;
+    margin-top: 4px;
+}
+
+/* === Stat cards === */
+.stat-cards {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.card-stat {
+    background: #fff;
+    border-radius: 8px; /* UPDATE: Dikecilkan dari 10px ke 8px */
+    padding: 20px;
+    flex: 1;
+    box-shadow: 0 4px 12px rgba(16, 24, 40, 0.03);
+    border: 1px solid rgba(16, 24, 40, 0.04);
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.card-stat .icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 8px;
+    background: rgba(95, 194, 155, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--dark-green);
+    font-size: 20px;
+}
+
+.card-stat .label {
+    font-size: 12px;
+    color: #6b7280;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+}
+
+.card-stat .value {
+    font-size: 28px;
+    font-weight: 800;
+    margin-top: 4px;
+}
+
+/* === Table Panel === */
+.panel {
+    background: #fff;
+    padding: 20px;
+    border-radius: 8px; 
+    border: 1px solid rgba(16, 24, 40, 0.04);
+    box-shadow: 0 4px 12px rgba(16, 24, 40, 0.03);
+}
+
+.panel .panel-title {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.panel table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.panel th {
+    font-size: 13px;
+    color: #6b7280;
+    text-align: left;
+    padding: 16px;
+    /* Garis bawah header dibikin tipis banget */
+    border-bottom: 1px solid #f0f0f0; 
+}
+
+.panel td {
+    padding: 16px;
+    font-size: 14px;
+    /* Menghilangkan garis tebal, pakai garis super tipis nyaris tak terlihat */
+    border-bottom: 1px solid #f9f9f9; 
+    border-top: none;
+}
+
+/* EFEK TERANG - GELAP (Zebra Striping) */
+/* Baris Ganjil (Terang/Putih) */
+.panel tbody tr:nth-child(odd) td {
+    background-color: #ffffff;
+}
+
+/* Baris Genap (Agak Gelap/Abu-abu super tipis) */
+.panel tbody tr:nth-child(even) td {
+    background-color: #f8f9fa; /* Warna gelap tipisnya */
+}
+
+/* Hilangkan garis di baris paling bawah biar rapi */
+.panel tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.badge-selesai {
+    background: rgba(95, 194, 155, 0.15);
+    color: var(--dark-green);
+    padding: 6px 12px;
+    border-radius: 999px;
+    font-weight: 600;
+    font-size: 12px;
+}
+
+.badge-menunggu {
+    background: rgba(250, 204, 21, 0.15);
+    color: #92400e;
+    padding: 6px 12px;
+    border-radius: 999px;
+    font-weight: 600;
+    font-size: 12px;
+}
+
+.link-action {
+    color: var(--light-green);
+    font-weight: 600;
+    text-decoration: none;
+    font-size: 14px;
+}
+
+.link-action:hover {
+    text-decoration: underline;
+}

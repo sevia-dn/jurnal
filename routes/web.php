@@ -11,5 +11,5 @@ Route::get('/', function () {
 Route::view('/', 'auth.login');
 Route::view('/login', 'auth.login')->name('login');
 
-// Dummy Route ke Dashboard 
-Route::view('/dashboard', 'dashboard')->name('dashboard');
+// Dashboard (Admin)
+Route::view('/dashboard', 'dashboard.admin')->name('dashboard');
