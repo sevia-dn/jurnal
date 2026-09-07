@@ -13,3 +13,4 @@ Route::view('/login', 'auth.login')->name('login');
 
 // Dashboard (Admin)
 Route::view('/dashboard', 'dashboard.admin')->name('dashboard');
+Route::view('/dashboard/catatan-jurnal', 'dashboard.catatan-jurnal')->name('catatan-jurnal');
