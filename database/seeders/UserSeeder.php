@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Hash;
 
 class UserSeeder extends Seeder {
     public function run() {
+
         // Akun Guru PNS (Login pakai NIP)
         User::create([
             'name' => 'Bapak Guru PNS',
@@ -22,7 +23,7 @@ class UserSeeder extends Seeder {
             'name' => 'Ibu Guru Honorer',
             'username' => 'guru_honorer',
             'nip' => null,
-            'password' => Hash::make('password'),
+            'password' => Hash::make('password123'),
             'role' => 'guru',
         ]);
 
@@ -31,7 +32,7 @@ class UserSeeder extends Seeder {
             'name' => 'Petugas Guru Piket',
             'username' => 'piket',
             'nip' => '198501012010011002',
-            'password' => Hash::make('password'),
+            'password' => Hash::make('password123'),
             'role' => 'piket',
         ]);
 
@@ -46,11 +47,12 @@ class UserSeeder extends Seeder {
 
         // Akun Sekretaris Kelas
         User::create([
-            'name' => 'Sekretaris Kelas XI RPL',
-            'username' => 'sekretaris',
+            'name' => 'xirekayasaperangkatlunak2',
+            'username' => 'xirekayasaperangkatlunak2',
             'nip' => null,
-            'password' => Hash::make('password'),
-            'role' => 'sekretaris',
+            'password' => Hash::make('xirekayasa2'),
+            'role' => 'pengurus_kelas',
         ]);
     }
 }
+

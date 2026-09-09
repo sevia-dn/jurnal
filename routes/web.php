@@ -12,12 +12,14 @@ Route::middleware('guest')->group(function () {
 
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout')->middleware('auth');
 
-// --- HALAMAN TERPROTEKSI ---
+// --- HALAMAN TERPROTEKSI (harus login) ---
 Route::middleware('auth')->group(function () {
 
-    Route::view('/dashboard', 'dashboard.admin')->name('dashboard');
+    // Admin
+    Route::view('/dashboard', 'dashboard.admin.admin')->name('dashboard');
     Route::view('/dashboard/catatan-jurnal', 'dashboard.catatan-jurnal')->name('catatan-jurnal');
 
+    // Guru
     Route::get('/dashboard/guru', function () {
         $mapels = [
             ['kode' => 'MTK', 'nama' => 'Matematika'],
@@ -30,6 +32,7 @@ Route::middleware('auth')->group(function () {
         return view('dashboard.guru', compact('mapels', 'users'));
     })->name('dashboard.guru');
 
+    // Kelas & Jadwal
     Route::view('/dashboard/kelas', 'dashboard.kelas')->name('dashboard.kelas');
 
     Route::get('/dashboard/jadwal', function () {
@@ -46,14 +49,26 @@ Route::middleware('auth')->group(function () {
         return view('dashboard.jadwal', compact('mapels', 'gurus'));
     })->name('dashboard.jadwal');
 
-    Route::prefix('sekretaris')->group(function () {
-        Route::get('/jurnal', fn() => view('jurnal.index'))->name('sekretaris.jurnal.index');
-        Route::get('/jurnal/create', fn() => view('jurnal.create'))->name('sekretaris.jurnal.create');
-        Route::get('/notifikasi', fn() => view('notifikasi.index'))->name('sekretaris.notifikasi');
-        Route::get('/jadwal', fn() => view('jurnal.jadwal.index'))->name('sekretaris.jadwal');
+    // Pengurus Kelas (dulu "Sekretaris")
+    Route::prefix('pengurus-kelas')->group(function () {
+        Route::get('/jurnal', fn() => view('jurnal.index'))->name('pengurus-kelas.jurnal.index');
+        Route::get('/jurnal/create', fn() => view('jurnal.create'))->name('pengurus-kelas.jurnal.create');
+        Route::get('/notifikasi', fn() => view('notifikasi.index'))->name('pengurus-kelas.notifikasi');
+        Route::get('/jadwal', fn() => view('jurnal.jadwal.index'))->name('pengurus-kelas.jadwal');
     });
 
+    // Guru - Logbook
     Route::prefix('guru')->group(function () {
         Route::get('/logbook/create', fn() => view('guru.logbook.create'))->name('guru.logbook.create');
     });
+    // Route mapel
+    Route::get('/dashboard/mapel', function () {
+    $mapels = [
+        ['kode' => 'MAT-301', 'nama' => 'Matematika Lanjut', 'guru' => 'Budi Santoso, S.Pd'],
+        ['kode' => 'RPL-201', 'nama' => 'Pemrograman Web', 'guru' => 'Siti Aminah, M.Pd'],
+        ['kode' => 'BSD-101', 'nama' => 'Basis Data', 'guru' => 'Eko Prasetyo, S.Kom'],
+    ];
+
+    return view('dashboard.mapel', compact('mapels'));
+    })->name('dashboard.mapel');
 });

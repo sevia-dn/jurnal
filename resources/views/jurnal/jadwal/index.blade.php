@@ -5,7 +5,7 @@
 <div class="w-full max-w-xl md:max-w-3xl lg:max-w-4xl mx-auto bg-[#f4faf7] min-h-screen p-4 md:p-8 pb-20 font-sans text-gray-800">
 
     <!-- Tombol Kembali -->
-    <a href="{{ route('sekretaris.jurnal.index') }}" class="inline-flex items-center gap-1.5 text-xs md:text-sm font-bold text-[#0d6e59] mb-4 hover:underline">
+    <a href="{{ route('pengurus-kelas.jurnal.index') }}" class="inline-flex items-center gap-1.5 text-xs md:text-sm font-bold text-[#0d6e59] mb-4 hover:underline">
         <i class="bi bi-arrow-left"></i> Kembali ke Dashboard
     </a>
 
