@@ -1,16 +1,13 @@
-{{--
-    resources/views/mapel/index.blade.php
-    Halaman Master Data Mapel: form tambah + tabel daftar mapel
-    Catatan: $mapels dikirim dari route sebagai data dummy (collection of objects/array)
---}}
+{{-- resources/views/dashboard/mapel.blade.php --}}
 @extends('layouts.app')
 
 @section('content')
-<div class="max-w-6xl mx-auto px-4 py-8">
+<div class="p-6 sm:p-10 font-sans">
 
+    {{-- Header Halaman --}}
     <div class="mb-6">
         <h1 class="text-2xl font-bold text-emerald-800">Manajemen Mata Pelajaran</h1>
-        <p class="text-emerald-600 text-sm">Kelola daftar mata pelajaran yang diajarkan di sekolah.</p>
+        <p class="text-sm text-gray-500 mt-1">Kelola daftar mata pelajaran yang diajarkan di sekolah.</p>
     </div>
 
     {{-- ================= FORM TAMBAH MAPEL ================= --}}
@@ -38,7 +35,9 @@
                         class="border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-400">
                     <option value="">Pilih Guru</option>
                     @foreach($gurus ?? [] as $guru)
-                        <option value="{{ $guru->id }}">{{ $guru->nama }}</option>
+                        <option value="{{ is_array($guru) ? $guru['id'] : $guru->id }}">
+                            {{ is_array($guru) ? $guru['nama'] : $guru->nama }}
+                        </option>
                     @endforeach
                 </select>
             </div>
@@ -65,15 +64,15 @@
                 </tr>
             </thead>
             <tbody class="divide-y divide-gray-100 text-sm">
-                @forelse($mapels as $i => $mapel)
+                @forelse($mapels ?? [] as $i => $mapel)
                     <tr class="hover:bg-emerald-50/50">
                         <td class="px-4 py-3">{{ $i + 1 }}</td>
                         <td class="px-4 py-3 font-medium text-emerald-700">{{ $mapel['kode'] }}</td>
                         <td class="px-4 py-3">{{ $mapel['nama'] }}</td>
                         <td class="px-4 py-3">{{ $mapel['guru'] }}</td>
-                        <td class="px-4 py-3 text-right space-x-2">
-                            <a href="#" class="text-emerald-600 hover:underline text-sm">Edit</a>
-                            <a href="#" class="text-red-500 hover:underline text-sm">Hapus</a>
+                        <td class="p-4 text-center space-x-2">
+                            <button class="text-gray-400 hover:text-amber-600 transition" title="Edit"><svg class="w-5 h-5 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg></button>
+                            <button onclick="openModal('modalHapusSiswa')" class="text-gray-400 hover:text-red-600 transition" title="Hapus"><svg class="w-5 h-5 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button>
                         </td>
                     </tr>
                 @empty
