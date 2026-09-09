@@ -6,66 +6,46 @@ use Illuminate\Support\Facades\Route;
 Route::view('/', 'auth.login');
 Route::view('/login', 'auth.login')->name('login');
 
+// Route halaman Admin milikmu
 Route::view('/dashboard', 'dashboard.admin')->name('dashboard');
 Route::view('/dashboard/catatan-jurnal', 'dashboard.catatan-jurnal')->name('catatan-jurnal');
 
-// --- ROUTE PREVIEW KELAS & SISWA (RAGA) ---
-Route::get('/preview/kelas', function () {
-    return view('kelas.index');
-});
+// Route halaman Guru milik temanmu
+Route::get('/dashboard/guru', function () {
+    // Memberikan data dummy agar FE temanmu tidak error
+    $mapels = [
+        ['kode' => 'MTK', 'nama' => 'Matematika'],
+        ['kode' => 'RPL', 'nama' => 'Pemrograman Web'],
+    ];
+    $users = [
+        ['nip' => '198005122005011002', 'nama' => 'Budi Santoso, S.Pd', 'mapel' => 'Matematika', 'no_hp' => '081234567890'],
+        ['nip' => '198507232010012004', 'nama' => 'Siti Aminah, M.Pd', 'mapel' => 'Pemrograman Web', 'no_hp' => '082345678901'],
+    ];
+    
+    // Memanggil file yang sudah dipindah ke folder dashboard
+    return view('dashboard.guru', compact('mapels', 'users'));
+})->name('dashboard.guru');
 
-Route::get('/preview/kelas/create', function () {
-    return view('kelas.create');
-});
+// Route Kelas
+Route::view('/dashboard/kelas', 'dashboard.kelas')->name('dashboard.kelas');
 
-Route::post('/preview/kelas/store', function () {
-    return redirect('/preview/kelas');
-});
+// TAMBAHAN BARU: Route Jadwal/Mapel untuk file gabungan
+Route::get('/dashboard/jadwal', function () {
+    $mapels = [
+        ['kode' => 'MAT-301', 'nama' => 'Matematika Lanjut', 'guru' => 'Budi Santoso, S.Pd'],
+        ['kode' => 'RPL-201', 'nama' => 'Pemrograman Web', 'guru' => 'Siti Aminah, M.Pd'],
+        ['kode' => 'BSD-101', 'nama' => 'Basis Data', 'guru' => 'Eko Prasetyo, S.Kom'],
+    ];
 
-Route::get('/preview/kelas/edit', function () {
-    return view('kelas.edit');
-});
+    $gurus = [
+        ['id' => 1, 'nama' => 'Budi Santoso, S.Pd'],
+        ['id' => 2, 'nama' => 'Siti Aminah, M.Pd'],
+        ['id' => 3, 'nama' => 'Eko Prasetyo, S.Kom'],
+    ];
 
-Route::post('/preview/kelas/update', function () {
-    return redirect('/preview/kelas');
-});
+    return view('dashboard.jadwal', compact('mapels', 'gurus'));
+})->name('dashboard.jadwal');
 
-Route::get('/preview/kelas/delete', function () {
-    return view('kelas.delete');
-});
-
-Route::post('/preview/kelas/destroy', function () {
-    return redirect('/preview/kelas');
-});
-
-Route::get('/preview/kelas/siswa', function () {
-    return view('kelas.siswa');
-});
-
-Route::get('/preview/kelas/siswa/create', function () {
-    return view('kelas.siswa-create');
-});
-
-Route::post('/preview/kelas/siswa/store', function () {
-    return redirect('/preview/kelas/siswa');
-});
-
-Route::get('/preview/kelas/siswa/edit', function () {
-    return view('kelas.siswa-edit');
-});
-
-Route::post('/preview/kelas/siswa/update', function () {
-    return redirect('/preview/kelas/siswa');
-});
-
-Route::get('/preview/kelas/siswa/delete', function () {
-    return view('kelas.siswa-delete');
-});
-
-// Perbaikan sintaks yang error sebelumnya:
-Route::post('/preview/kelas/siswa/destroy', function () {
-    return redirect('/preview/kelas/siswa');
-});
 
 // --- ROUTE SEKRETARIS (LIA) ---
 Route::prefix('sekretaris')->group(function () {

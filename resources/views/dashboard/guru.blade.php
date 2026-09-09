@@ -1,17 +1,14 @@
-{{--
-    resources/views/user/index.blade.php
-    Halaman Master Data User/Guru: form tambah + tabel daftar user
-    Catatan: $users dikirim dari route sebagai data dummy
---}}
 @extends('layouts.app')
 
+@section('title', 'Manajemen Data Guru')
+
 @section('content')
-<div class="max-w-6xl mx-auto px-4 py-8">
+<div class="p-6 sm:p-10 font-sans">
 
     <div class="flex items-center justify-between mb-6">
         <div>
             <h1 class="text-2xl font-bold text-emerald-800">Manajemen Data Guru</h1>
-            <p class="text-emerald-600 text-sm">Kelola informasi staf pengajar sekolah Anda.</p>
+            <p class="text-sm text-gray-500 mt-1">Kelola informasi staf pengajar sekolah Anda.</p>
         </div>
         <input type="text" placeholder="Cari..."
                class="border border-gray-300 rounded-lg px-3 py-2 text-sm w-56 focus:outline-none focus:ring-2 focus:ring-emerald-400">
@@ -21,9 +18,9 @@
     <div class="bg-emerald-50 border border-emerald-100 rounded-xl p-6 mb-8">
         <h2 class="text-lg font-semibold text-emerald-800 mb-4">Tambah Guru Baru</h2>
 
+        <!-- ... (Biarkan form temanmu sama seperti aslinya) ... -->
         <form method="POST" action="#" class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
             @csrf
-
             <div class="flex flex-col">
                 <label class="text-sm font-medium text-gray-700 mb-1">NIP</label>
                 <input type="text" name="nip" placeholder="198005122005011002"
@@ -75,7 +72,7 @@
                 </tr>
             </thead>
             <tbody class="divide-y divide-gray-100 text-sm">
-                @forelse($users as $user)
+                @forelse($users ?? [] as $user)
                     <tr class="hover:bg-emerald-50/50">
                         <td class="px-4 py-3">{{ $user['nip'] }}</td>
                         <td class="px-4 py-3 flex items-center gap-2">
@@ -86,9 +83,9 @@
                         </td>
                         <td class="px-4 py-3">{{ $user['mapel'] }}</td>
                         <td class="px-4 py-3">{{ $user['no_hp'] }}</td>
-                        <td class="px-4 py-3 text-right space-x-2">
-                            <a href="#" class="text-emerald-600 hover:underline text-sm">Edit</a>
-                            <a href="#" class="text-red-500 hover:underline text-sm">Hapus</a>
+                        <td class="p-4 text-center space-x-2">
+                            <button class="text-gray-400 hover:text-amber-600 transition" title="Edit"><svg class="w-5 h-5 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg></button>
+                            <button onclick="openModal('modalHapusSiswa')" class="text-gray-400 hover:text-red-600 transition" title="Hapus"><svg class="w-5 h-5 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button>
                         </td>
                     </tr>
                 @empty
