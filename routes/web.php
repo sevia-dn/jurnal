@@ -7,8 +7,8 @@ Route::view('/', 'auth.login');
 Route::view('/login', 'auth.login')->name('login');
 
 // Route halaman Admin milikmu
-Route::view('/dashboard', 'dashboard.admin')->name('dashboard');
-Route::view('/dashboard/catatan-jurnal', 'dashboard.catatan-jurnal')->name('catatan-jurnal');
+Route::view('/dashboard', 'dashboard.admin.admin')->name('dashboard');
+Route::view('/dashboard/catatan-jurnal', 'dashboard.admin.catatan-jurnal')->name('catatan-jurnal');
 
 // Route halaman Guru milik temanmu
 Route::get('/dashboard/guru', function () {
@@ -22,12 +22,12 @@ Route::get('/dashboard/guru', function () {
         ['nip' => '198507232010012004', 'nama' => 'Siti Aminah, M.Pd', 'mapel' => 'Pemrograman Web', 'no_hp' => '082345678901'],
     ];
     
-    // Memanggil file yang sudah dipindah ke folder dashboard
-    return view('dashboard.guru', compact('mapels', 'users'));
+    // Memanggil file dari dalam folder dashboard/admin
+    return view('dashboard.admin.guru', compact('mapels', 'users'));
 })->name('dashboard.guru');
 
 // Route Kelas
-Route::view('/dashboard/kelas', 'dashboard.kelas')->name('dashboard.kelas');
+Route::view('/dashboard/kelas', 'dashboard.admin.kelas')->name('dashboard.kelas');
 
 // TAMBAHAN BARU: Route Jadwal/Mapel untuk file gabungan
 Route::get('/dashboard/mapel', function () {
@@ -43,11 +43,12 @@ Route::get('/dashboard/mapel', function () {
         ['id' => 3, 'nama' => 'Eko Prasetyo, S.Kom'],
     ];
 
-    return view('dashboard.mapel', compact('mapels', 'gurus'));
+    // Memanggil file dari dalam folder dashboard/admin
+    return view('dashboard.admin.mapel', compact('mapels', 'gurus'));
 })->name('dashboard.mapel');
 
-Route::view('/dashboard/jadwal', 'dashboard.jadwal')->name('dashboard.jadwal');
-
+// Route Jadwal
+Route::view('/dashboard/admin/jadwal', 'dashboard.admin.jadwal')->name('dashboard.jadwal');
 
 
 // --- ROUTE SEKRETARIS (LIA) ---
