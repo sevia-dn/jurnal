@@ -30,7 +30,7 @@ Route::get('/dashboard/guru', function () {
 Route::view('/dashboard/kelas', 'dashboard.kelas')->name('dashboard.kelas');
 
 // TAMBAHAN BARU: Route Jadwal/Mapel untuk file gabungan
-Route::get('/dashboard/jadwal', function () {
+Route::get('/dashboard/mapel', function () {
     $mapels = [
         ['kode' => 'MAT-301', 'nama' => 'Matematika Lanjut', 'guru' => 'Budi Santoso, S.Pd'],
         ['kode' => 'RPL-201', 'nama' => 'Pemrograman Web', 'guru' => 'Siti Aminah, M.Pd'],
@@ -43,8 +43,11 @@ Route::get('/dashboard/jadwal', function () {
         ['id' => 3, 'nama' => 'Eko Prasetyo, S.Kom'],
     ];
 
-    return view('dashboard.jadwal', compact('mapels', 'gurus'));
-})->name('dashboard.jadwal');
+    return view('dashboard.mapel', compact('mapels', 'gurus'));
+})->name('dashboard.mapel');
+
+Route::view('/dashboard/jadwal', 'dashboard.jadwal')->name('dashboard.jadwal');
+
 
 
 // --- ROUTE SEKRETARIS (LIA) ---

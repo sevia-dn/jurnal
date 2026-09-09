@@ -33,7 +33,7 @@
     </a>
 
     <!-- TAMBAHAN BARU: Data Mapel / Jadwal -->
-    <a href="{{ route('dashboard.jadwal') }}" class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors !no-underline {{ request()->routeIs('dashboard.jadwal') ? 'bg-[#1BA886] !text-white' : '!text-[#8EBEB2] hover:bg-[#1BA886]/10 hover:!text-white' }}">
+    <a href="{{ route('dashboard.mapel') }}" class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors !no-underline {{ request()->routeIs('dashboard.mapel') ? 'bg-[#1BA886] !text-white' : '!text-[#8EBEB2] hover:bg-[#1BA886]/10 hover:!text-white' }}">
       <i class="bi bi-journal-bookmark text-lg"></i>
       <span>Mata Pelajaran</span>
     </a>
@@ -42,6 +42,12 @@
     <a href="{{ route('catatan-jurnal') }}" class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors !no-underline {{ request()->routeIs('catatan-jurnal*') ? 'bg-[#1BA886] !text-white' : '!text-[#8EBEB2] hover:bg-[#1BA886]/10 hover:!text-white' }}">
       <i class="bi bi-book text-lg"></i>
       <span>Catatan Jurnal</span>
+    </a>
+
+    <!-- Menu Jadwal Pelajaran -->
+    <a href="{{ route('dashboard.jadwal') }}" class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors !no-underline {{ request()->routeIs('dashboard.jadwal') ? 'bg-[#1BA886] !text-white' : '!text-[#8EBEB2] hover:bg-[#1BA886]/10 hover:!text-white' }}">
+      <i class="bi bi-calendar-week"></i>
+      <span>Jadwal Pelajaran</span>
     </a>
     
   </nav>
