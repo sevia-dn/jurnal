@@ -7,29 +7,46 @@ use Illuminate\Support\Facades\Auth;
 
 class AuthController extends Controller
 {
-    public function showLoginForm()
-    {
-        return view('auth.login');
-    }
+public function login(Request $request)
+{
+    $request->validate([
+        'identity' => 'required|string',
+        'password' => 'required|string',
+    ]);
 
-    public function login(Request $request)
-    {
-        $credentials = $request->validate([
-            'username' => 'required|min:8|max:255',
-            'password' => 'required|min:8',
-        ]);
+    $identity = $request->input('identity');
+    $password = $request->input('password');
 
-        if (Auth::attempt($credentials)) {
-            $request->session()->regenerate();
+    // Cari user berdasarkan nip ATAU username
+    $user = \App\Models\User::where('nip', $identity)
+                ->orWhere('username', $identity)
+                ->first();
 
-            // nanti redirect sesuai role di sini
-            return redirect()->intended('/dashboard');
+    if ($user && Auth::attempt(['id' => $user->id, 'password' => $password])) {
+        $request->session()->regenerate();
+
+        switch ($user->role) {
+            case 'admin':
+                return redirect()->route('dashboard');
+            case 'sekretaris':
+                return redirect()->route('sekretaris.jurnal.index');
+            case 'guru':
+                return redirect()->route('dashboard.guru');
+            case 'piket':
+            case 'guru_piket':
+                return redirect()->route('dashboard.jadwal');
+            case 'waka':
+                return redirect()->route('dashboard.kelas');
+            default:
+                Auth::logout();
+                return back()->withErrors(['identity' => 'Role pengguna tidak memiliki hak akses.']);
         }
-
-        return back()->withErrors([
-            'username' => 'Username atau password salah.',
-        ])->onlyInput('username');
     }
+
+    return back()->withErrors([
+        'identity' => 'NIP/Username atau Password salah!',
+    ])->onlyInput('identity');
+}
 
     public function logout(Request $request)
     {
