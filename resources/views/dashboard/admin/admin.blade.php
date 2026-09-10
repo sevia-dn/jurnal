@@ -2,8 +2,15 @@
 
 @section('title', 'Dashboard Admin')
 
+@section('sidebar')
+    @include('layouts.admin.sidebar')
+@endsection
+
+@section('navbar')
+    @include('layouts.admin.navbar')
+@endsection
+
 @section('content')
-  <!-- Wrapper utama ditambahkan padding (p-6 sm:p-10) agar konten tidak mepet sidebar -->
   <div class="p-6 sm:p-10 font-sans">
     
     <!-- Header Section -->

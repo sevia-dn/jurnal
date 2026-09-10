@@ -1,4 +1,4 @@
-<header class="bg-white h-16 border-b border-gray-100 flex items-center px-6 w-full">
+<header class="sticky top-0 z-50 bg-white h-16 border-b border-gray-100 flex items-center px-6 w-full">
   <div class="w-full flex justify-between items-center">
     
     <div class="text-xl font-bold text-gray-800">Admin</div>
