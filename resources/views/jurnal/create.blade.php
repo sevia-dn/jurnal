@@ -9,7 +9,7 @@
         </div>
         <h1 class="text-xl font-bold text-[#0d6e59]">JurnalKita</h1>
     </div>
-    <a href="{{ route('sekretaris.notifikasi') }}" class="text-[#0d6e59] text-xl p-1 relative">
+    <a href="{{ route('pengurus-kelas.notifikasi') }}" class="text-[#0d6e59] text-xl p-1 relative">
         <i class="bi bi-bell"></i>
         <span class="absolute top-1 right-1 bg-red-500 w-2 h-2 rounded-full"></span>
     </a>

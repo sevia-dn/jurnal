@@ -86,7 +86,13 @@
                 <h2 class="text-2xl font-bold text-jk-dark mb-1">Sign In</h2>
                 <p class="text-slate-500 text-sm mb-6">Selamat Datang.</p>
 
-                <form action="{{ route('dashboard') }}" method="GET">
+               <form action="{{ route('login') }}" method="POST">
+                    @csrf
+                    @if ($errors->any())
+                        <div class="mb-4 p-3 bg-red-100 border border-red-300 text-red-700 text-xs rounded-lg">
+                            {{ $errors->first() }}
+                        </div>
+                    @endif
                     
                     <!-- Input Username -->
                     <div class="mb-4">
@@ -95,6 +101,8 @@
                             <i class="bi bi-person absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-base pointer-events-none"></i>
                             <input 
                                 type="text" 
+                                name="identity"
+                                value="{{ old('identity') }}"
                                 class="w-full pl-10 pr-4 py-2.5 text-sm rounded-lg border border-slate-200 focus:outline-none focus:border-jk-btn focus:ring-2 focus:ring-jk-btn/25 transition placeholder:text-slate-400" 
                                 placeholder="nip or username"
                                 required
@@ -110,6 +118,7 @@
                             <input 
                                 id="passwordField" 
                                 type="password" 
+                                name="password"
                                 class="w-full pl-10 pr-10 py-2.5 text-sm rounded-lg border border-slate-200 focus:outline-none focus:border-jk-btn focus:ring-2 focus:ring-jk-btn/25 transition placeholder:text-slate-400" 
                                 placeholder="............"
                                 required

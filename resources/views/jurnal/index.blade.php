@@ -13,7 +13,7 @@
 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
     
    <!-- Card 1: Kelas Hari Ini (Diubah jadi 10 Sesi & Bisa Diklik) -->
-    <a href="{{ route('sekretaris.jadwal') }}" class="bg-[#eaf6f2] p-5 rounded-2xl flex justify-between items-start border border-[#d6ebe3] shadow-sm hover:border-[#0d6e59] transition group">
+    <a href="{{ route('pengurus-kelas.jadwal') }}" class="bg-[#eaf6f2] p-5 rounded-2xl flex justify-between items-start border border-[#d6ebe3] shadow-sm hover:border-[#0d6e59] transition group">
         <div>
             <h3 class="font-bold text-[#0f3d32] text-sm md:text-base group-hover:text-[#0d6e59]">Kelas Hari Ini</h3>
             <p class="text-4xl md:text-5xl font-extrabold text-[#0d6e59] mt-6">10</p>
