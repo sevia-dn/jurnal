@@ -9,39 +9,48 @@ use Illuminate\Support\Facades\Hash;
 class UserSeeder extends Seeder {
     public function run() {
 
+        // Akun Admin
+        User::create([
+            'name' => 'Admin Sekolah',
+            'username' => 'admin1',
+            'nip' => null,
+            'password' => Hash::make('admin123'),
+            'role' => 'admin',
+        ]);
+
         // Akun Guru PNS (Login pakai NIP)
         User::create([
-            'name' => 'Bapak Guru PNS',
-            'username' => 'guru_pns',
+            'name' => 'Bada Maymunah S.Pd',
+            'username' => 'badamayumunah',
             'nip' => '198501012010011001',
-            'password' => Hash::make('password'),
+            'password' => Hash::make('bada123'),
             'role' => 'guru',
         ]);
 
         // Akun Guru Honorer (Login pakai Username)
         User::create([
-            'name' => 'Ibu Guru Honorer',
-            'username' => 'guru_honorer',
+            'name' => 'Anissa Ramadani S.Pd',
+            'username' => 'anissaramadani',
             'nip' => null,
-            'password' => Hash::make('password123'),
+            'password' => Hash::make('anissa123'),
             'role' => 'guru',
         ]);
 
         // Akun Guru Piket
         User::create([
-            'name' => 'Petugas Guru Piket',
-            'username' => 'piket',
+            'name' => 'Betti Sulisyowati S.Pd',
+            'username' => 'bettisulisyowati',
             'nip' => '198501012010011002',
-            'password' => Hash::make('password123'),
+            'password' => Hash::make('betii123'),
             'role' => 'piket',
         ]);
 
         // Akun Waka Kesiswaan
         User::create([
-            'name' => 'Waka Kesiswaan',
-            'username' => 'waka',
+            'name' => 'Fajar Siswanto S.Pd',
+            'username' => 'fajarsiswanto',
             'nip' => '198501012010011003',
-            'password' => Hash::make('password'),
+            'password' => Hash::make('fajar123'),
             'role' => 'waka',
         ]);
 
