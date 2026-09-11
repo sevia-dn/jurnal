@@ -78,12 +78,14 @@
     <!-- Garis Pemisah (Divider) -->
     <div class="h-px w-full bg-[#17826E] mb-3"></div>
     
-    
-    <!-- Keluar -->
-    <a href="{{ route('login') }}" class="flex items-center gap-3 px-4 py-2 text-sm font-medium !text-[#F05252] hover:!text-red-400 !no-underline transition-colors">
-      <i class="bi bi-box-arrow-right text-lg"></i>
-      <span>Keluar</span>
-    </a>
+<!-- Keluar -->
+    <form action="{{ route('logout') }}" method="POST" class="w-full m-0 p-0">
+        @csrf
+        <button type="submit" class="w-full flex items-center gap-3 px-4 py-2 text-sm font-medium !text-[#F05252] hover:!text-red-400 !no-underline transition-colors bg-transparent border-0 text-left cursor-pointer">
+            <i class="bi bi-box-arrow-right text-lg"></i>
+            <span>Keluar</span>
+        </button>
+    </form>
 
   </div>
   

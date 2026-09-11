@@ -22,11 +22,12 @@ Route::middleware('auth')->group(function () {
     // Proses Logout
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
-    // --- DASHBOARD ADMIN ---
+// --- DASHBOARD ADMIN ---
     Route::prefix('dashboard')->group(function () {
+        // Semua view di bawah ini sudah diarahkan kembali ke folder dashboard.admin.*
         Route::view('/', 'dashboard.admin.admin')->name('dashboard');
-        Route::view('/catatan-jurnal', 'dashboard.catatan-jurnal')->name('catatan-jurnal');
-        Route::view('/kelas', 'dashboard.kelas')->name('dashboard.kelas');
+        Route::view('/catatan-jurnal', 'dashboard.admin.catatan-jurnal')->name('catatan-jurnal');
+        Route::view('/kelas', 'dashboard.admin.kelas')->name('dashboard.kelas');
         Route::view('/siswa', 'dashboard.admin.siswa')->name('dashboard.siswa');
         Route::view('/tambah-akun', 'dashboard.admin.tambah-akun')->name('tambah-akun');
         Route::view('/piket', 'dashboard.piket.utama')->name('dashboard.piket');
@@ -42,7 +43,8 @@ Route::middleware('auth')->group(function () {
                 ['nip' => '198005122005011002', 'nama' => 'Budi Santoso, S.Pd', 'mapel' => 'Matematika', 'no_hp' => '081234567890'],
                 ['nip' => '198507232010012004', 'nama' => 'Siti Aminah, M.Pd', 'mapel' => 'Pemrograman Web', 'no_hp' => '082345678901'],
             ];
-            return view('dashboard.guru', compact('mapels', 'users'));
+            // DI SINI YANG DIUBAH: dari 'dashboard.guru' menjadi 'dashboard.admin.guru'
+            return view('dashboard.admin.guru', compact('mapels', 'users'));
         })->name('dashboard.guru');
 
         // Route Jadwal (dengan data dummy FE)
@@ -57,7 +59,8 @@ Route::middleware('auth')->group(function () {
                 ['id' => 2, 'nama' => 'Siti Aminah, M.Pd'],
                 ['id' => 3, 'nama' => 'Eko Prasetyo, S.Kom'],
             ];
-            return view('dashboard.jadwal', compact('mapels', 'gurus'));
+            // DI SINI YANG DIUBAH: dari 'dashboard.jadwal' menjadi 'dashboard.admin.jadwal'
+            return view('dashboard.admin.jadwal', compact('mapels', 'gurus'));
         })->name('dashboard.jadwal');
 
         // Route Mapel (dengan data dummy FE)
@@ -67,7 +70,8 @@ Route::middleware('auth')->group(function () {
                 ['kode' => 'RPL-201', 'nama' => 'Pemrograman Web', 'guru' => 'Siti Aminah, M.Pd'],
                 ['kode' => 'BSD-101', 'nama' => 'Basis Data', 'guru' => 'Eko Prasetyo, S.Kom'],
             ];
-            return view('dashboard.mapel', compact('mapels'));
+            // DI SINI YANG DIUBAH: dari 'dashboard.mapel' menjadi 'dashboard.admin.mapel'
+            return view('dashboard.admin.mapel', compact('mapels'));
         })->name('dashboard.mapel');
     });
 
