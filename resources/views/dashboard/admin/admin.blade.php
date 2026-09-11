@@ -16,7 +16,7 @@
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
       
       <!-- Card 1 -->
-      <a href="{{ route('dashboard.guru') }}" class="block group !no-underline">
+      <a href="{{ route('guru/logbook') }}" class="block group !no-underline">
         <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center gap-5 transition-all duration-300 group-hover:shadow-md group-hover:border-emerald-300 group-hover:-translate-y-1">
           <div class="w-14 h-14 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center text-2xl">
             <i class="bi bi-people"></i>

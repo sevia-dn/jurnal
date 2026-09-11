@@ -20,7 +20,7 @@ Route::middleware('auth')->group(function () {
     Route::view('/dashboard/catatan-jurnal', 'dashboard.catatan-jurnal')->name('catatan-jurnal');
 
     // Guru
-    Route::get('/dashboard/guru', function () {
+    Route::get('/guru/logbook', function () {
         $mapels = [
             ['kode' => 'MTK', 'nama' => 'Matematika'],
             ['kode' => 'RPL', 'nama' => 'Pemrograman Web'],
@@ -29,8 +29,8 @@ Route::middleware('auth')->group(function () {
             ['nip' => '198005122005011002', 'nama' => 'Budi Santoso, S.Pd', 'mapel' => 'Matematika', 'no_hp' => '081234567890'],
             ['nip' => '198507232010012004', 'nama' => 'Siti Aminah, M.Pd', 'mapel' => 'Pemrograman Web', 'no_hp' => '082345678901'],
         ];
-        return view('dashboard.guru', compact('mapels', 'users'));
-    })->name('dashboard.guru');
+        return view('guru/logbook', compact('mapels', 'users'));
+    })->name('guru/logbook');
 
     // Kelas & Jadwal
     Route::view('/dashboard/kelas', 'dashboard.kelas')->name('dashboard.kelas');

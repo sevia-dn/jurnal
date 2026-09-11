@@ -41,7 +41,7 @@ class AuthController extends Controller
                     return redirect()->route('pengurus-kelas.jurnal.index');
 
                 case 'guru':
-                    return redirect()->route('dashboard.guru');
+                    return redirect()->route('guru');
 
                 case 'piket':
                     return redirect()->route('dashboard.jadwal');

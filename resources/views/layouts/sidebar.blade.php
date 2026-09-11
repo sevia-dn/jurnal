@@ -21,7 +21,7 @@
     </a>
 
     <!-- Data Guru -->
-    <a href="{{ route('dashboard.guru') }}" class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors !no-underline {{ request()->routeIs('dashboard.guru') ? 'bg-[#1BA886] !text-white' : '!text-[#8EBEB2] hover:bg-[#1BA886]/10 hover:!text-white' }}">  
+    <a href="{{ route('guru.logbook') }}" class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors !no-underline {{ request()->routeIs('guru.logbook') ? 'bg-[#1BA886] !text-white' : '!text-[#8EBEB2] hover:bg-[#1BA886]/10 hover:!text-white' }}">  
       <i class="bi bi-person text-lg"></i>
       <span>Data Guru</span>
     </a>
