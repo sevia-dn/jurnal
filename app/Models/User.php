@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
-#[Fillable(['name', 'username', 'nip', 'password', 'role'])]
+#[Fillable(['name', 'username', 'nip', 'password', 'role', 'no_hp', 'mapel_id'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -28,5 +28,13 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
         ];
+    }
+
+    /**
+     * Relasi: satu user (guru) mengajar satu mapel.
+     */
+    public function mapel()
+    {
+        return $this->belongsTo(Mapel::class);
     }
 }

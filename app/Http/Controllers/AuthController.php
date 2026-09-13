@@ -41,13 +41,14 @@ class AuthController extends Controller
                     return redirect()->route('pengurus-kelas.jurnal.index');
 
                 case 'guru':
-                    return redirect()->route('guru');
+                    return redirect()->route('guru.logbook.create');
 
                 case 'piket':
                     return redirect()->route('dashboard.piket');
+                    return redirect()->route('jadwal.kelas');
 
                 case 'waka':
-                    return redirect()->route('dashboard.kelas');
+                    return redirect()->route('admin.kelas');
 
                 default:
                     Auth::logout();
