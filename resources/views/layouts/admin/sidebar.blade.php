@@ -58,7 +58,6 @@
       <span>Catatan Jurnal</span>
     </a>
 
-<<<<<<< Updated upstream:resources/views/layouts/admin/sidebar.blade.php
     <!-- Manajemen User -->
     <a href="{{ route('admin.manajemen-user') }}" class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors !no-underline {{ request()->routeIs('admin.manajemen-user') || request()->is('dashboard/admin/manajemen-user') ? 'bg-[#1BA886] !text-white' : '!text-[#8EBEB2] hover:bg-[#1BA886]/10 hover:!text-white' }}">
       <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -68,20 +67,17 @@
     </a>
 
     
-=======
     <!-- Menu Jadwal Pelajaran -->
     <a href="{{ route('admin.jadwal') }}" class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors !no-underline {{ request()->routeIs('admin.jadwal') ? 'bg-[#1BA886] !text-white' : '!text-[#8EBEB2] hover:bg-[#1BA886]/10 hover:!text-white' }}">
       <i class="bi bi-calendar-week"></i>
       <span>Jadwal Pelajaran</span>
     </a>
 
->>>>>>> Stashed changes:resources/views/layouts/sidebar.blade.php
   </nav>
 
 
   <!-- Footer Area -->
   <div class="mt-auto px-5 pb-8 pt-4 flex flex-col">
-<<<<<<< Updated upstream:resources/views/layouts/admin/sidebar.blade.php
        <!-- Tambah Akun (Admin) -->
     <a href="{{ route('tambah-akun') }}" class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors !no-underline {{ request()->routeIs('tambah-akun') ? 'bg-[#1BA886] !text-white' : '!text-[#8EBEB2] hover:bg-[#1BA886]/10 hover:!text-white' }}">
       <i class="bi bi-person-plus text-lg"></i>
@@ -102,7 +98,6 @@
   </div>
   
 </aside>
-=======
 
     <!-- Garis Pemisah (Divider) -->
     <div class="h-px w-full bg-[#17826E] mb-3"></div>
@@ -125,4 +120,3 @@
   </div>
 
 </aside>
->>>>>>> Stashed changes:resources/views/layouts/sidebar.blade.php

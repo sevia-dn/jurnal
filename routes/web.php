@@ -18,11 +18,11 @@ Route::middleware('guest')->group(function () {
 // Halaman terproteksi, wajib login dulu
 // ==========================================
 Route::middleware('auth')->group(function () {
-    
+
     // Proses Logout
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
-// --- DASHBOARD ADMIN ---
+    // --- DASHBOARD ADMIN ---
     Route::prefix('dashboard')->group(function () {
         // Semua view di bawah ini sudah diarahkan kembali ke folder dashboard.admin.*
         Route::view('/', 'dashboard.admin.admin')->name('dashboard');
@@ -33,22 +33,22 @@ Route::middleware('auth')->group(function () {
         Route::view('/piket', 'dashboard.piket.utama')->name('dashboard.piket');
         Route::view('/manajemen-user', 'dashboard.admin.manajemen-user')->name('admin.manajemen-user');
 
-    // Guru
-    Route::get('/guru/logbook', function () {
-        $mapels = [
-            ['kode' => 'MTK', 'nama' => 'Matematika'],
-            ['kode' => 'RPL', 'nama' => 'Pemrograman Web'],
-        ];
-        $users = [
-            ['nip' => '198005122005011002', 'nama' => 'Budi Santoso, S.Pd', 'mapel' => 'Matematika', 'no_hp' => '081234567890'],
-            ['nip' => '198507232010012004', 'nama' => 'Siti Aminah, M.Pd', 'mapel' => 'Pemrograman Web', 'no_hp' => '082345678901'],
-        ];
-        return view('guru/logbook', compact('mapels', 'users'));
-    })->name('guru/logbook');
+        // Guru
+        Route::get('/guru/logbook', function () {
+            $mapels = [
+                ['kode' => 'MTK', 'nama' => 'Matematika'],
+                ['kode' => 'RPL', 'nama' => 'Pemrograman Web'],
+            ];
+            $users = [
+                ['nip' => '198005122005011002', 'nama' => 'Budi Santoso, S.Pd', 'mapel' => 'Matematika', 'no_hp' => '081234567890'],
+                ['nip' => '198507232010012004', 'nama' => 'Siti Aminah, M.Pd', 'mapel' => 'Pemrograman Web', 'no_hp' => '082345678901'],
+            ];
+            return view('guru/logbook', compact('mapels', 'users'));
+        })->name('guru/logbook');
         Route::view('/piket/kehadiran', 'dashboard.piket.kehadiran')->name('piket.kehadiran');
         Route::view('/piket/dispensasi', 'dashboard.piket.dispensasi')->name('piket.dispensasi');
 
-Route::get('/piket/kehadiran-siswa', function () {
+        Route::get('/piket/kehadiran-siswa', function () {
             return view('dashboard.piket.kehadiran-siswa');
         })->name('piket.kehadiran-siswa');
         // Route Guru (dengan data dummy FE)
@@ -80,34 +80,34 @@ Route::get('/piket/kehadiran-siswa', function () {
             // DI SINI YANG DIUBAH: dari 'dashboard.jadwal' menjadi 'dashboard.admin.jadwal'
             return view('dashboard.admin.jadwal', compact('mapels', 'gurus'));
         })->name('dashboard.jadwal');
-    // Admin Dashboard
-    Route::view('/dashboard', 'dashboard.admin.admin')->name('dashboard');
-    // Catatan jurnal admin
-    Route::view('/dashboard/admin/catatan-jurnal', 'dashboard.admin.catatan-jurnal')->name('catatan-jurnal');
+        // Admin Dashboard
+        Route::view('/dashboard', 'dashboard.admin.admin')->name('dashboard');
+        // Catatan jurnal admin
+        Route::view('/dashboard/admin/catatan-jurnal', 'dashboard.admin.catatan-jurnal')->name('catatan-jurnal');
 
-    // Guru (dikelola Admin)
-    Route::get('/dashboard/admin/guru', [App\Http\Controllers\Admin\GuruController::class, 'index'])->name('admin.guru');
-    Route::post('/dashboard/admin/guru', [App\Http\Controllers\Admin\GuruController::class, 'store'])->name('admin.guru.store');
-    Route::delete('/dashboard/admin/guru/{user}', [App\Http\Controllers\Admin\GuruController::class, 'destroy'])->name('admin.guru.destroy');
-    Route::get('/dashboard/admin/guru/{user}/edit', [App\Http\Controllers\Admin\GuruController::class, 'edit'])->name('admin.guru.edit');
-    Route::put('/dashboard/admin/guru/{user}', [App\Http\Controllers\Admin\GuruController::class, 'update'])->name('admin.guru.update');
+        // Guru (dikelola Admin)
+        Route::get('/dashboard/admin/guru', [App\Http\Controllers\Admin\GuruController::class, 'index'])->name('admin.guru');
+        Route::post('/dashboard/admin/guru', [App\Http\Controllers\Admin\GuruController::class, 'store'])->name('admin.guru.store');
+        Route::delete('/dashboard/admin/guru/{user}', [App\Http\Controllers\Admin\GuruController::class, 'destroy'])->name('admin.guru.destroy');
+        Route::get('/dashboard/admin/guru/{user}/edit', [App\Http\Controllers\Admin\GuruController::class, 'edit'])->name('admin.guru.edit');
+        Route::put('/dashboard/admin/guru/{user}', [App\Http\Controllers\Admin\GuruController::class, 'update'])->name('admin.guru.update');
 
-    // Kelas & Jadwal (dikelola admin)
-    Route::view('/dashboard/admin/kelas', 'dashboard.admin.kelas')->name('admin.kelas');
+        // Kelas & Jadwal (dikelola admin)
+        Route::view('/dashboard/admin/kelas', 'dashboard.admin.kelas')->name('admin.kelas');
 
-    Route::get('/dashboard/admin/jadwal', function () {
-        $mapels = [
-            ['kode' => 'MAT-301', 'nama' => 'Matematika Lanjut', 'guru' => 'Budi Santoso, S.Pd'],
-            ['kode' => 'RPL-201', 'nama' => 'Pemrograman Web', 'guru' => 'Siti Aminah, M.Pd'],
-            ['kode' => 'BSD-101', 'nama' => 'Basis Data', 'guru' => 'Eko Prasetyo, S.Kom'],
-        ];
-        $gurus = [
-            ['id' => 1, 'nama' => 'Budi Santoso, S.Pd'],
-            ['id' => 2, 'nama' => 'Siti Aminah, M.Pd'],
-            ['id' => 3, 'nama' => 'Eko Prasetyo, S.Kom'],
-        ];
-        return view('dashboard.admin.jadwal', compact('mapels', 'gurus'));
-    })->name('admin.jadwal');
+        Route::get('/dashboard/admin/jadwal', function () {
+            $mapels = [
+                ['kode' => 'MAT-301', 'nama' => 'Matematika Lanjut', 'guru' => 'Budi Santoso, S.Pd'],
+                ['kode' => 'RPL-201', 'nama' => 'Pemrograman Web', 'guru' => 'Siti Aminah, M.Pd'],
+                ['kode' => 'BSD-101', 'nama' => 'Basis Data', 'guru' => 'Eko Prasetyo, S.Kom'],
+            ];
+            $gurus = [
+                ['id' => 1, 'nama' => 'Budi Santoso, S.Pd'],
+                ['id' => 2, 'nama' => 'Siti Aminah, M.Pd'],
+                ['id' => 3, 'nama' => 'Eko Prasetyo, S.Kom'],
+            ];
+            return view('dashboard.admin.jadwal', compact('mapels', 'gurus'));
+        })->name('admin.jadwal');
 
         // Route Mapel (dengan data dummy FE)
         Route::get('/mapel', function () {
@@ -133,7 +133,7 @@ Route::get('/piket/kehadiran-siswa', function () {
     Route::prefix('guru')->group(function () {
         Route::get('/logbook/create', fn() => view('guru.logbook.create'))->name('guru.logbook.create');
     });
-    
+
     // Route mapel (dikelola admin)
     Route::get('/dashboard/admin/mapel', function () {
         $mapels = [
@@ -144,5 +144,4 @@ Route::get('/piket/kehadiran-siswa', function () {
 
         return view('dashboard.admin.mapel', compact('mapels'));
     })->name('dashboard.mapel');
-    
 });
