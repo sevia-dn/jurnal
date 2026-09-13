@@ -20,9 +20,10 @@
     </script>
 </head>
 
-<body class="bg-slate-50 text-slate-800 font-sans antialiased flex h-screen overflow-hidden">
+<!-- PERBAIKAN 1: Ganti h-screen menjadi h-[100dvh] -->
+<body class="bg-slate-50 text-slate-800 font-sans antialiased flex h-[100dvh] overflow-hidden">
 
-    <aside class="w-64 h-full shrink-0 z-20">
+    <aside class="hidden md:block w-64 h-full shrink-0 z-20">
         @yield('sidebar')
     </aside>
 
@@ -32,7 +33,8 @@
             @yield('navbar')
         </header>
 
-        <main class="flex-1 overflow-y-auto">
+        <!-- PERBAIKAN 2: Tambahkan pb-20 md:pb-0 agar konten terbawah tidak tertutup navbar -->
+        <main class="flex-1 overflow-y-auto pb-20 md:pb-0 relative z-0">
             @yield('content')
         </main>
 
