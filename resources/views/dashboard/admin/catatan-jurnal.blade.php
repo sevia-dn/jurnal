@@ -1,6 +1,14 @@
 @extends('layouts.app')
 
-@section('title', 'Catatan Jurnal')
+@section('title', 'Dashboard Admin')
+
+@section('sidebar')
+    @include('layouts.admin.sidebar')
+@endsection
+
+@section('navbar')
+    @include('layouts.admin.navbar')
+@endsection
 
 @section('content')
 <div class="p-6 sm:p-10 font-sans">
