@@ -33,6 +33,12 @@ Route::middleware('auth')->group(function () {
         Route::view('/piket', 'dashboard.piket.utama')->name('dashboard.piket');
         Route::view('/manajemen-user', 'dashboard.admin.manajemen-user')->name('admin.manajemen-user');
 
+        Route::view('/piket/kehadiran', 'dashboard.piket.kehadiran')->name('piket.kehadiran');
+        Route::view('/piket/dispensasi', 'dashboard.piket.dispensasi')->name('piket.dispensasi');
+
+Route::get('/piket/kehadiran-siswa', function () {
+            return view('dashboard.piket.kehadiran-siswa');
+        })->name('piket.kehadiran-siswa');
         // Route Guru (dengan data dummy FE)
         Route::get('/guru', function () {
             $mapels = [
