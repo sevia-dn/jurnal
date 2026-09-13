@@ -29,8 +29,6 @@
     <!-- Data Kelas -->
     <a href="{{ route('dashboard.kelas') }}" class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors !no-underline {{ request()->routeIs('dashboard.kelas') ? 'bg-[#1BA886] !text-white' : '!text-[#8EBEB2] hover:bg-[#1BA886]/10 hover:!text-white' }}">
       <i class="bi bi-door-closed text-lg"></i>
-    <a href="{{ route('admin.kelas') }}" class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors !no-underline {{ request()->routeIs('admin.kelas') ? 'bg-[#1BA886] !text-white' : '!text-[#8EBEB2] hover:bg-[#1BA886]/10 hover:!text-white' }}">
-      <i class="bi bi-mortarboard text-lg"></i>
       <span>Data Kelas</span>
     </a>
 
@@ -44,12 +42,6 @@
     <a href="{{ route('dashboard.mapel') }}" class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors !no-underline {{ request()->routeIs('dashboard.mapel') ? 'bg-[#1BA886] !text-white' : '!text-[#8EBEB2] hover:bg-[#1BA886]/10 hover:!text-white' }}">
       <i class="bi bi-journal-bookmark text-lg"></i>
       <span>Mata Pelajaran</span>
-    </a>
-
-     <!-- Menu Jadwal Pelajaran -->
-    <a href="{{ route('dashboard.jadwal') }}" class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors !no-underline {{ request()->routeIs('dashboard.jadwal') ? 'bg-[#1BA886] !text-white' : '!text-[#8EBEB2] hover:bg-[#1BA886]/10 hover:!text-white' }}">
-      <i class="bi bi-calendar-week"></i>
-      <span>Jadwal Pelajaran</span>
     </a>
 
     <!-- Catatan Jurnal -->
@@ -93,28 +85,6 @@
             <i class="bi bi-box-arrow-right text-lg"></i>
             <span>Keluar</span>
         </button>
-    </form>
-
-  </div>
-  
-</aside>
-
-    <!-- Garis Pemisah (Divider) -->
-    <div class="h-px w-full bg-[#17826E] mb-3"></div>
-
-    <!-- Pengaturan -->
-    <a href="#" class="flex items-center gap-3 px-4 py-2 text-sm font-medium !text-[#8EBEB2] hover:!text-white !no-underline transition-colors">
-      <i class="bi bi-gear text-lg"></i>
-      <span>Pengaturan</span>
-    </a>
-
-    <!-- Keluar -->
-    <form method="POST" action="{{ route('logout') }}">
-      @csrf
-      <button type="submit" class="flex items-center gap-3 px-4 py-2 text-sm font-medium !text-[#F05252] hover:!text-red-400 !no-underline transition-colors w-full text-left bg-transparent border-0">
-        <i class="bi bi-box-arrow-right text-lg"></i>
-        <span>Keluar</span>
-      </button>
     </form>
 
   </div>

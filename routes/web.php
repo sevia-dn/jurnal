@@ -80,22 +80,21 @@ Route::middleware('auth')->group(function () {
             // DI SINI YANG DIUBAH: dari 'dashboard.jadwal' menjadi 'dashboard.admin.jadwal'
             return view('dashboard.admin.jadwal', compact('mapels', 'gurus'));
         })->name('dashboard.jadwal');
-        // Admin Dashboard
-        Route::view('/dashboard', 'dashboard.admin.admin')->name('dashboard');
+
         // Catatan jurnal admin
         Route::view('/dashboard/admin/catatan-jurnal', 'dashboard.admin.catatan-jurnal')->name('catatan-jurnal');
 
         // Guru (dikelola Admin)
-        Route::get('/dashboard/admin/guru', [App\Http\Controllers\Admin\GuruController::class, 'index'])->name('admin.guru');
-        Route::post('/dashboard/admin/guru', [App\Http\Controllers\Admin\GuruController::class, 'store'])->name('admin.guru.store');
-        Route::delete('/dashboard/admin/guru/{user}', [App\Http\Controllers\Admin\GuruController::class, 'destroy'])->name('admin.guru.destroy');
-        Route::get('/dashboard/admin/guru/{user}/edit', [App\Http\Controllers\Admin\GuruController::class, 'edit'])->name('admin.guru.edit');
-        Route::put('/dashboard/admin/guru/{user}', [App\Http\Controllers\Admin\GuruController::class, 'update'])->name('admin.guru.update');
+        Route::get('/admin/guru', [App\Http\Controllers\Admin\GuruController::class, 'index'])->name('admin.guru');
+        Route::post('/admin/guru', [App\Http\Controllers\Admin\GuruController::class, 'store'])->name('admin.guru.store');
+        Route::delete('/admin/guru/{user}', [App\Http\Controllers\Admin\GuruController::class, 'destroy'])->name('admin.guru.destroy');
+        Route::get('/admin/guru/{user}/edit', [App\Http\Controllers\Admin\GuruController::class, 'edit'])->name('admin.guru.edit');
+        Route::put('/admin/guru/{user}', [App\Http\Controllers\Admin\GuruController::class, 'update'])->name('admin.guru.update');
 
         // Kelas & Jadwal (dikelola admin)
-        Route::view('/dashboard/admin/kelas', 'dashboard.admin.kelas')->name('admin.kelas');
+        Route::view('/admin/kelas', 'dashboard.admin.kelas')->name('admin.kelas');
 
-        Route::get('/dashboard/admin/jadwal', function () {
+        Route::get('/admin/jadwal', function () {
             $mapels = [
                 ['kode' => 'MAT-301', 'nama' => 'Matematika Lanjut', 'guru' => 'Budi Santoso, S.Pd'],
                 ['kode' => 'RPL-201', 'nama' => 'Pemrograman Web', 'guru' => 'Siti Aminah, M.Pd'],
@@ -135,7 +134,7 @@ Route::middleware('auth')->group(function () {
     });
 
     // Route mapel (dikelola admin)
-    Route::get('/dashboard/admin/mapel', function () {
+    Route::get('/admin/mapel', function () {
         $mapels = [
             ['kode' => 'MAT-301', 'nama' => 'Matematika Lanjut', 'guru' => 'Budi Santoso, S.Pd'],
             ['kode' => 'RPL-201', 'nama' => 'Pemrograman Web', 'guru' => 'Siti Aminah, M.Pd'],
