@@ -35,11 +35,43 @@ class UserSeeder extends Seeder {
             'role' => 'piket',
         ]);
 
-        // Akun Waka Kesiswaan
+        // 5 Akun Waka (Kurikulum, Kesiswaan, Sarpras, Humas, Mutu)
+        User::create([
+            'name' => 'Waka Kurikulum',
+            'username' => 'waka_kurikulum',
+            'nip' => '198501012010011004',
+            'password' => Hash::make('password'),
+            'role' => 'waka',
+        ]);
+
         User::create([
             'name' => 'Waka Kesiswaan',
             'username' => 'waka',
             'nip' => '198501012010011003',
+            'password' => Hash::make('password'),
+            'role' => 'waka',
+        ]);
+
+        User::create([
+            'name' => 'Waka Sarana & Prasarana',
+            'username' => 'waka_sarpras',
+            'nip' => '198501012010011005',
+            'password' => Hash::make('password'),
+            'role' => 'waka',
+        ]);
+
+        User::create([
+            'name' => 'Waka Humas & Hubungan Industri',
+            'username' => 'waka_humas',
+            'nip' => '198501012010011006',
+            'password' => Hash::make('password'),
+            'role' => 'waka',
+        ]);
+
+        User::create([
+            'name' => 'Waka Manajemen Mutu & SDM',
+            'username' => 'waka_mutu',
+            'nip' => '198501012010011007',
             'password' => Hash::make('password'),
             'role' => 'waka',
         ]);
@@ -51,6 +83,15 @@ class UserSeeder extends Seeder {
             'nip' => null,
             'password' => Hash::make('password'),
             'role' => 'sekretaris',
+        ]);
+
+        // Akun Administrator
+        User::create([
+            'name' => 'Administrator',
+            'username' => 'admin',
+            'nip' => null,
+            'password' => Hash::make('password'),
+            'role' => 'admin',
         ]);
     }
 }

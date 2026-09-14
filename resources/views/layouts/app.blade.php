@@ -22,15 +22,19 @@
 
 <body class="bg-slate-50 text-slate-800 font-sans antialiased flex h-screen overflow-hidden">
 
+    @hasSection('sidebar')
     <aside class="w-64 h-full shrink-0 z-20">
         @yield('sidebar')
     </aside>
+    @endif
 
     <div class="flex-1 flex flex-col h-full w-full overflow-hidden relative">
         
+        @hasSection('navbar')
         <header class="shrink-0 w-full z-10 bg-white">
             @yield('navbar')
         </header>
+        @endif
 
         <main class="flex-1 overflow-y-auto">
             @yield('content')

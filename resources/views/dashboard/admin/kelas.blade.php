@@ -13,6 +13,31 @@
 @section('content')
 <div class="p-6 sm:p-10 font-sans">
 
+    @if(session('success'))
+        <div class="mb-6 flex items-center justify-between rounded-lg bg-emerald-50 border border-emerald-200 p-4 text-sm text-emerald-800">
+            <div class="flex items-center gap-2">
+                <svg class="w-5 h-5 text-emerald-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                </svg>
+                <span>{{ session('success') }}</span>
+            </div>
+            <button type="button" onclick="this.parentElement.remove()" class="text-emerald-500 hover:text-emerald-700">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+        </div>
+    @endif
+
+    @if($errors->any())
+        <div class="mb-6 rounded-lg bg-red-50 border border-red-200 p-4 text-sm text-red-800">
+            <div class="font-semibold mb-1">Terjadi kesalahan input:</div>
+            <ul class="list-disc list-inside space-y-1 text-red-700">
+                @foreach($errors->all() as $error)
+                    <li>{{ $error }}</li>
+                @endforeach
+            </ul>
+        </div>
+    @endif
+
     {{-- ================= HEADER UTAMA ================= --}}
     <div id="viewHeaderKelas" class="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
         <div>
@@ -34,67 +59,51 @@
                 <thead class="bg-gray-50 text-gray-700 border-b border-gray-200 text-sm">
                 <tr>
                     <th class="p-4 w-16 text-center">No</th>
-                        <th class="p-4">Nama Kelas</th>
-                        <th class="p-4">Nama Guru</th>
-                        <th class="p-4">Jumlah siswa</th>
-                        <th class="p-4 text-center w-24">Aksi</th>
+                    <th class="p-4">Nama Kelas</th>
+                    <th class="p-4">Nama Guru</th>
+                    <th class="p-4">Jumlah siswa</th>
+                    <th class="p-4 text-center w-24">Aksi</th>
                 </tr>
             </thead>
                 
                 <tbody class="divide-y divide-gray-100 text-sm text-gray-700">
-                    <!-- Baris Kelas 1 (Bisa di-klik untuk lihat siswa) -->
-                    <tr onclick="showStudents('XI RPL 1')" class="hover:bg-emerald-50/30 cursor-pointer transition">
-                        <td class="p-4 text-center">01</td>
-                        <td class="p-4 font-medium text-gray-900">XI RPL 1</td>
-                        <td class="p-4">Budi Santoso, S.Kom</td>
-                        <td class="p-4">32</td>
-                        <td class="p-4 text-center space-x-2">
-                            <!-- event.stopPropagation() mencegah klik baris memicu showStudents() saat tombol ditekan -->
-                            <button type="button" onclick="event.stopPropagation(); openEditModal('modalEditKelas', this)" data-edit-nama="XI RPL 1" data-edit-guru="Budi Santoso, S.Kom" data-edit-jumlah-siswa="32" class="text-gray-400 hover:text-amber-600 transition" title="Edit">
-                                <svg class="w-5 h-5 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path>
-                                </svg>
-                            </button>
-                            <button onclick="event.stopPropagation(); openModal('modalHapusKelas')" class="text-gray-400 hover:text-red-600 transition" title="Hapus">
-                                <svg class="w-5 h-5 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                                </svg>
-                            </button>
-                        </td>
-                    </tr>
-                    <!-- Baris Kelas 2 -->
-                    <tr onclick="showStudents('XI RPL 2')" class="hover:bg-emerald-50/30 cursor-pointer transition">
-                        <td class="p-4 text-center">02</td>
-                        <td class="p-4 font-medium text-gray-900">XI RPL 2</td>
-                        <td class="p-4">Siti Aminah, M.Pd</td>
-                        <td class="p-4">30</td>
-                        <td class="p-4 text-center space-x-2">
-                            <button type="button" onclick="event.stopPropagation(); openEditModal('modalEditKelas', this)" data-edit-nama="XI RPL 2" data-edit-guru="Siti Aminah, M.Pd" data-edit-jumlah-siswa="30" class="text-gray-400 hover:text-amber-600 transition" title="Edit">
-                                <svg class="w-5 h-5 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path>
-                                </svg>
-                            </button>
-                            <button onclick="event.stopPropagation(); openModal('modalHapusKelas')" class="text-gray-400 hover:text-red-600 transition">
-                                <svg class="w-5 h-5 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                                </svg>
-                            </button>
-                        </td>
-                    </tr>
+                    @forelse($kelasList as $index => $k)
+                        <tr onclick="showStudents('{{ addslashes($k->nama_kelas) }}', '{{ $k->id_kelas }}')" class="hover:bg-emerald-50/30 cursor-pointer transition">
+                            <td class="p-4 text-center">{{ str_pad($index + 1, 2, '0', STR_PAD_LEFT) }}</td>
+                            <td class="p-4 font-medium text-gray-900">{{ $k->nama_kelas }}</td>
+                            <td class="p-4">{{ $k->wali_kelas ?? '-' }}</td>
+                            <td class="p-4">{{ $k->jumlah_siswa ?? 0 }}</td>
+                            <td class="p-4 text-center space-x-2">
+                                <button type="button" onclick="event.stopPropagation(); openEditModal('modalEditKelas', this)" 
+                                        data-edit-id="{{ $k->id_kelas }}" 
+                                        data-edit-nama="{{ $k->nama_kelas }}" 
+                                        data-edit-guru="{{ $k->wali_kelas }}" 
+                                        data-edit-jumlah-siswa="{{ $k->jumlah_siswa }}" 
+                                        class="text-gray-400 hover:text-amber-600 transition" title="Edit">
+                                    <svg class="w-5 h-5 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path>
+                                    </svg>
+                                </button>
+                                <button type="button" onclick="event.stopPropagation(); openDeleteModal('modalHapusKelas', '{{ $k->id_kelas }}', '{{ addslashes($k->nama_kelas) }}')" 
+                                        class="text-gray-400 hover:text-red-600 transition" title="Hapus">
+                                    <svg class="w-5 h-5 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                    </svg>
+                                </button>
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="5" class="p-6 text-center text-gray-400">Belum ada data kelas aktif.</td>
+                        </tr>
+                    @endforelse
                 </tbody>
             </table>
         </div>
         
         <!-- Pagination Footer -->
         <div class="bg-gray-50 p-4 border-t border-gray-100 flex justify-between items-center text-sm text-gray-500">
-            <span>Menampilkan 1 hingga 2 dari 45 data</span>
-            <div class="flex space-x-1">
-                <button class="px-2 py-1 border border-gray-300 rounded text-gray-400 hover:bg-gray-100">&lt;</button>
-                <button class="px-3 py-1 bg-emerald-600 text-white rounded">1</button>
-                <button class="px-3 py-1 border border-gray-300 rounded hover:bg-gray-100">2</button>
-                <button class="px-3 py-1 border border-gray-300 rounded hover:bg-gray-100">3</button>
-                <button class="px-2 py-1 border border-gray-300 rounded text-gray-600 hover:bg-gray-100">&gt;</button>
-            </div>
+            <span>Menampilkan {{ count($kelasList) }} kelas</span>
         </div>
     </div>
 
@@ -122,7 +131,7 @@
                 Tambah Data Siswa Baru
             </h3>
             
-            <form action="#" method="POST" class="space-y-4">
+            <form action="{{ route('dashboard.siswa.store') }}" method="POST" class="space-y-4">
                 @csrf
                 
                 <!-- Grid 3 kolom untuk Nama, NIS, dan Kelas -->
@@ -130,25 +139,24 @@
                     
                     <!-- Input Nama -->
                     <div class="w-full">
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Nama Lengkap</label>
-                        <input type="text" name="nama_siswa" placeholder="Masukkan nama siswa..." class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm outline-none transition-all">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Nama Lengkap <span class="text-red-500">*</span></label>
+                        <input type="text" name="nama_siswa" required placeholder="Masukkan nama siswa..." class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm outline-none transition-all">
                     </div>
                     
                     <!-- Input NIS -->
                     <div class="w-full">
-                        <label class="block text-sm font-medium text-gray-700 mb-1">NIS</label>
-                        <input type="text" name="nis" placeholder="Cth: 10021" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm outline-none transition-all">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">NIS <span class="text-red-500">*</span></label>
+                        <input type="text" name="nis" required placeholder="Cth: 100021" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm outline-none transition-all">
                     </div>
                     
                     <!-- Select Kelas -->
                     <div class="w-full">
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Kelas</label>
-                        <select name="kelas_id" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm outline-none transition-all bg-white">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Kelas <span class="text-red-500">*</span></label>
+                        <select id="selectKelasTambahSiswa" name="kelas_id" required class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm outline-none transition-all bg-white">
                             <option value="" disabled selected>-- Pilih Kelas --</option>
-                            <option value="1">X RPL 1</option>
-                            <option value="2">XI RPL 1</option>
-                            <option value="3">XI RPL 2</option>
-                            <option value="4">XII RPL 1</option>
+                            @foreach($kelasList as $itemKelas)
+                                <option value="{{ $itemKelas->id_kelas }}">{{ $itemKelas->nama_kelas }}</option>
+                            @endforeach
                         </select>
                     </div>
 
@@ -172,7 +180,7 @@
                     <svg class="w-4 h-4 absolute left-3 top-2.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
                     </svg>
-                    <input type="text" placeholder="Cari siswa..." class="pl-9 pr-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none w-64 transition-all">
+                    <input type="text" id="cariSiswaKelasInput" onkeyup="filterSiswaKelas()" placeholder="Cari siswa (Nama / NIS)..." class="pl-9 pr-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none w-64 transition-all">
                 </div>
             </div>
             
@@ -187,24 +195,35 @@
                             <th class="p-4 text-center w-24">Aksi</th>
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-gray-100 text-sm">
-                        <tr class="hover:bg-gray-50/50 transition-colors">
-                            <td class="p-4 text-center text-gray-500">1</td>
-                            <td class="p-4 text-gray-900 font-medium">Ahmad Fauzi</td>
-                            <td class="p-4 text-gray-500">10021</td>
-                            <td class="p-4"><span class="px-2.5 py-1 bg-emerald-100 text-emerald-700 rounded-md font-medium text-xs">XI RPL 2</span></td>
-                            <td class="p-4 text-center space-x-2">
-                                <button type="button" onclick="openEditModal('modalEditSiswaDariKelas', this)" data-edit-nama="Ahmad Fauzi" data-edit-nis="10021" data-edit-kelas="XI RPL 2" class="text-gray-400 hover:text-amber-600 transition" title="Edit">
-                                    <svg class="w-5 h-5 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path>
-                                    </svg>
-                                </button>
-                                <button onclick="openModal('modalHapusSiswa')" class="text-gray-400 hover:text-red-600 transition" title="Hapus">
-                                    <svg class="w-5 h-5 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                                    </svg>
-                                </button>
-                            </td>
+                    <tbody id="tbodySiswaKelas" class="divide-y divide-gray-100 text-sm">
+                        @forelse($allActiveSiswas as $s)
+                            <tr class="row-siswa-item hover:bg-gray-50/50 transition-colors"
+                                data-kelas-id="{{ $s->kelas_id }}"
+                                data-nama="{{ strtolower($s->nama) }}"
+                                data-nis="{{ $s->nis }}">
+                                <td class="p-4 text-center text-gray-500 row-siswa-no"></td>
+                                <td class="p-4 text-gray-900 font-medium nama-siswa-text">{{ $s->nama }}</td>
+                                <td class="p-4 text-gray-500 nis-siswa-text">{{ $s->nis }}</td>
+                                <td class="p-4">
+                                    <span class="px-2.5 py-1 bg-emerald-100 text-emerald-700 rounded-md font-medium text-xs">{{ $s->kelas->nama_kelas ?? '-' }}</span>
+                                </td>
+                                <td class="p-4 text-center space-x-2">
+                                    <button type="button" onclick="openEditSiswaModal('{{ $s->id }}', '{{ addslashes($s->nama) }}', '{{ $s->nis }}', '{{ $s->kelas_id }}')" class="text-gray-400 hover:text-amber-600 transition" title="Edit">
+                                        <svg class="w-5 h-5 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path>
+                                        </svg>
+                                    </button>
+                                    <button type="button" onclick="openDeleteSiswaModal('{{ $s->id }}', '{{ addslashes($s->nama) }}')" class="text-gray-400 hover:text-red-600 transition" title="Hapus">
+                                        <svg class="w-5 h-5 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                        </svg>
+                                    </button>
+                                </td>
+                            </tr>
+                        @empty
+                        @endforelse
+                        <tr id="emptySiswaRow" class="hidden">
+                            <td colspan="5" class="p-6 text-center text-gray-400">Tidak ada data siswa yang cocok.</td>
                         </tr>
                     </tbody>
                 </table>
@@ -226,22 +245,23 @@
             </button>
         </div>
 
-        <form onsubmit="event.preventDefault(); closeEditModal('modalEditSiswaDariKelas');" class="space-y-4">
+        <form id="formEditSiswa" method="POST" action="" class="space-y-4">
+            @csrf
+            @method('PUT')
             <div>
-                <label for="editSiswaDariKelasNama" class="mb-1 block text-sm font-medium text-gray-700">Nama Lengkap</label>
-                <input id="editSiswaDariKelasNama" data-edit-field="nama" type="text" class="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm outline-none transition focus:border-emerald-600 focus:ring-2 focus:ring-emerald-400">
+                <label for="editSiswaNama" class="mb-1 block text-sm font-medium text-gray-700">Nama Lengkap <span class="text-red-500">*</span></label>
+                <input id="editSiswaNama" name="nama" type="text" required class="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm outline-none transition focus:border-emerald-600 focus:ring-2 focus:ring-emerald-400">
             </div>
             <div>
-                <label for="editSiswaDariKelasNis" class="mb-1 block text-sm font-medium text-gray-700">NIS</label>
-                <input id="editSiswaDariKelasNis" data-edit-field="nis" type="text" class="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm outline-none transition focus:border-emerald-600 focus:ring-2 focus:ring-emerald-400">
+                <label for="editSiswaNis" class="mb-1 block text-sm font-medium text-gray-700">NIS <span class="text-red-500">*</span></label>
+                <input id="editSiswaNis" name="nis" type="text" required class="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm outline-none transition focus:border-emerald-600 focus:ring-2 focus:ring-emerald-400">
             </div>
             <div>
-                <label for="editSiswaDariKelasKelas" class="mb-1 block text-sm font-medium text-gray-700">Kelas</label>
-                <select id="editSiswaDariKelasKelas" data-edit-field="kelas" class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-emerald-600 focus:ring-2 focus:ring-emerald-400">
-                    <option>X RPL 1</option>
-                    <option>XI RPL 1</option>
-                    <option>XI RPL 2</option>
-                    <option>XII RPL 1</option>
+                <label for="editSiswaKelasId" class="mb-1 block text-sm font-medium text-gray-700">Kelas <span class="text-red-500">*</span></label>
+                <select id="editSiswaKelasId" name="kelas_id" required class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-emerald-600 focus:ring-2 focus:ring-emerald-400">
+                    @foreach($kelasList as $itemKelas)
+                        <option value="{{ $itemKelas->id_kelas }}">{{ $itemKelas->nama_kelas }}</option>
+                    @endforeach
                 </select>
             </div>
             <div class="flex justify-end gap-3 border-t border-gray-100 pt-5">
@@ -264,18 +284,25 @@
             </button>
         </div>
 
-        <form onsubmit="event.preventDefault(); closeEditModal('modalEditKelas');" class="space-y-4">
+        <form id="formEditKelas" method="POST" action="" class="space-y-4">
+            @csrf
+            @method('PUT')
             <div>
-                <label for="editKelasNama" class="mb-1 block text-sm font-medium text-gray-700">Nama Kelas</label>
-                <input id="editKelasNama" data-edit-field="nama" type="text" placeholder="XI RPL 1" class="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm outline-none transition focus:border-emerald-600 focus:ring-2 focus:ring-emerald-400">
+                <label for="editKelasNama" class="mb-1 block text-sm font-medium text-gray-700">Nama Kelas <span class="text-red-500">*</span></label>
+                <input id="editKelasNama" name="nama_kelas" data-edit-field="nama" required type="text" placeholder="XI RPL 1" class="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm outline-none transition focus:border-emerald-600 focus:ring-2 focus:ring-emerald-400">
             </div>
             <div>
                 <label for="editKelasGuru" class="mb-1 block text-sm font-medium text-gray-700">Wali Kelas / Nama Guru</label>
-                <input id="editKelasGuru" data-edit-field="guru" type="text" class="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm outline-none transition focus:border-emerald-600 focus:ring-2 focus:ring-emerald-400">
+                <select id="editKelasGuru" name="nama_guru" data-edit-field="guru" class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-emerald-600 focus:ring-2 focus:ring-emerald-400">
+                    <option value="">-- Pilih Guru / Wali Kelas --</option>
+                    @foreach($gurus ?? [] as $g)
+                        <option value="{{ $g->name }}">{{ $g->name }} ({{ $g->nip ?? 'Guru' }})</option>
+                    @endforeach
+                </select>
             </div>
             <div>
                 <label for="editKelasJumlahSiswa" class="mb-1 block text-sm font-medium text-gray-700">Jumlah Siswa</label>
-                <input id="editKelasJumlahSiswa" data-edit-field="jumlahSiswa" type="number" min="0" class="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm outline-none transition focus:border-emerald-600 focus:ring-2 focus:ring-emerald-400">
+                <input id="editKelasJumlahSiswa" name="jumlah_siswa" data-edit-field="jumlahSiswa" type="number" min="0" class="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm outline-none transition focus:border-emerald-600 focus:ring-2 focus:ring-emerald-400">
             </div>
             <div class="flex justify-end gap-3 border-t border-gray-100 pt-5">
                 <button type="button" onclick="closeEditModal('modalEditKelas')" class="rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50">Batal</button>
@@ -298,19 +325,24 @@
             </button>
         </div>
         
-        <form action="#" method="POST" class="space-y-4">
+        <form action="{{ route('dashboard.kelas.store') }}" method="POST" class="space-y-4">
             @csrf
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Nama Kelas</label>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Nama Kelas <span class="text-red-500">*</span></label>
                 <input type="text" name="nama_kelas" placeholder="Cth: XI RPL 1" required class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm outline-none transition">
             </div>
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Nama Guru</label>
-                <input type="text" name="nama_guru" placeholder="Masukkan nama guru..." required class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm outline-none transition">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Nama Guru / Wali Kelas</label>
+                <select name="nama_guru" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm outline-none transition bg-white">
+                    <option value="">-- Pilih Guru / Wali Kelas --</option>
+                    @foreach($gurus ?? [] as $g)
+                        <option value="{{ $g->name }}">{{ $g->name }} ({{ $g->nip ?? 'Guru' }})</option>
+                    @endforeach
+                </select>
             </div>
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Jumlah Siswa</label>
-                <input type="number" name="jumlah_siswa" placeholder="Cth: 32" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm outline-none transition">
+                <input type="number" name="jumlah_siswa" min="0" placeholder="Cth: 32" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm outline-none transition">
             </div>
             <div class="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-100">
                 <button type="button" onclick="closeModal('modalTambahKelas')" class="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition text-sm font-medium">Batal</button>
@@ -323,23 +355,29 @@
 {{-- ================= MODAL HAPUS KELAS ================= --}}
 <div id="modalHapusKelas" class="fixed inset-0 z-50 hidden bg-gray-900/60 backdrop-blur-sm overflow-y-auto h-full w-full items-center justify-center transition-opacity">
     <div class="bg-white rounded-xl shadow-xl border border-gray-100 p-8 max-w-md w-full mx-4 text-center relative">
+        <button type="button" onclick="closeModal('modalHapusKelas')" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+        </button>
         <div class="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4">
             <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
             </svg>
         </div>
         <h1 class="text-xl font-bold text-gray-900 mb-2">Hapus Data Kelas?</h1>
-        <p class="text-sm text-gray-500 mb-6">Tindakan ini tidak dapat dibatalkan. Semua siswa yang ada di dalam kelas ini akan kehilangan referensi kelas.</p>
+        <p class="text-sm text-gray-500 mb-4">Apakah Anda yakin ingin mengeluarkan kelas <strong id="deleteKelasNama" class="text-gray-800"></strong> dari sistem? Status kelas akan dinonaktifkan.</p>
 
-        <form action="#" method="POST" class="text-left space-y-4">
+        <form id="formHapusKelas" action="" method="POST" class="text-left space-y-4">
             @csrf
+            @method('DELETE')
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Alasan Penghapusan <span class="text-red-500">*</span></label>
-                <textarea name="alasan" rows="3" required placeholder="Tuliskan alasan menghapus kelas ini..." class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 text-sm"></textarea>
+                <textarea id="deleteAlasanKelas" name="alasan" rows="3" required placeholder="Tuliskan alasan mengeluarkan/menonaktifkan kelas ini..." class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 text-sm"></textarea>
             </div>
-            <div class="flex justify-center gap-3 pt-4">
-                <button type="button" onclick="closeModal('modalHapusKelas')" class="px-5 py-2.5 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition text-sm font-medium">Batal</button>
-                <button type="submit" class="px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-lg transition shadow-sm text-sm font-medium">Ya, Hapus Kelas</button>
+            <div class="flex justify-center gap-3 pt-2">
+                <button type="button" onclick="closeModal('modalHapusKelas')" class="px-5 py-2.5 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition text-sm font-medium w-full">Batal</button>
+                <button type="submit" class="px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-lg transition shadow-sm text-sm font-medium w-full">Ya, Hapus Kelas</button>
             </div>
         </form>
     </div>
@@ -348,23 +386,29 @@
 {{-- ================= MODAL HAPUS SISWA ================= --}}
 <div id="modalHapusSiswa" class="fixed inset-0 z-50 hidden bg-gray-900/60 backdrop-blur-sm overflow-y-auto h-full w-full items-center justify-center transition-opacity">
     <div class="bg-white rounded-xl shadow-xl border border-gray-100 p-8 max-w-md w-full mx-4 text-center relative">
+        <button type="button" onclick="closeModal('modalHapusSiswa')" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+        </button>
         <div class="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4">
             <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
             </svg>
         </div>
         <h1 class="text-xl font-bold text-gray-900 mb-2">Hapus Data Siswa?</h1>
-        <p class="text-sm text-gray-500 mb-6">Apakah Anda yakin ingin mengeluarkan siswa ini dari sistem? Tindakan ini tidak dapat dibatalkan.</p>
+        <p class="text-sm text-gray-500 mb-6">Apakah Anda yakin ingin menghapus siswa <strong id="deleteSiswaNama" class="text-gray-800"></strong> dari kelas? Status siswa akan dinonaktifkan.</p>
 
-        <form action="#" method="POST" class="text-left space-y-4">
+        <form id="formHapusSiswa" action="" method="POST" class="text-left space-y-4">
             @csrf
+            @method('DELETE')
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Alasan Penghapusan Siswa <span class="text-red-500">*</span></label>
-                <textarea name="alasan" rows="3" required placeholder="Tuliskan alasan menghapus data siswa ini..." class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 text-sm"></textarea>
+                <textarea id="deleteAlasanSiswa" name="alasan" rows="3" required placeholder="Tuliskan alasan menghapus data siswa ini..." class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 text-sm"></textarea>
             </div>
             <div class="flex justify-center gap-3 pt-4">
-                <button type="button" onclick="closeModal('modalHapusSiswa')" class="px-5 py-2.5 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition text-sm font-medium">Batal</button>
-                <button type="submit" class="px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-lg transition shadow-sm text-sm font-medium">Ya, Hapus Siswa</button>
+                <button type="button" onclick="closeModal('modalHapusSiswa')" class="px-5 py-2.5 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition text-sm font-medium w-full">Batal</button>
+                <button type="submit" class="px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-lg transition shadow-sm text-sm font-medium w-full">Ya, Hapus Siswa</button>
             </div>
         </form>
     </div>
@@ -372,8 +416,12 @@
 
 {{-- ================= SCRIPT JAVASCRIPT ================= --}}
 <script>
+    let currentActiveKelasId = null;
+
     // FUNGSI UNTUK PINDAH VIEW (Dari Tabel Kelas ke Tabel Siswa)
-    function showStudents(className) {
+    function showStudents(className, classId) {
+        currentActiveKelasId = classId;
+
         // Sembunyikan Tabel Kelas dan Header Utama
         document.getElementById('viewKelas').classList.add('hidden');
         document.getElementById('viewHeaderKelas').classList.add('hidden');
@@ -384,23 +432,97 @@
         // Ubah Judul Kelas di View Siswa
         document.getElementById('namaKelasTitle').innerText = className;
         
-        // Isi input hidden form tambah siswa secara otomatis
-        document.getElementById('inputKelasHidden').value = className;
+        // Otomatis pilih kelas pada select di form tambah siswa
+        const selectKelas = document.getElementById('selectKelasTambahSiswa');
+        if (selectKelas && classId) {
+            selectKelas.value = classId;
+        }
+
+        // Reset input cari siswa
+        const inputCari = document.getElementById('cariSiswaKelasInput');
+        if (inputCari) {
+            inputCari.value = '';
+        }
+
+        // Filter dan tampilkan hanya siswa untuk kelas ini
+        filterSiswaKelas();
     }
 
     // FUNGSI UNTUK KEMBALI KE TABEL KELAS
     function hideStudents() {
+        currentActiveKelasId = null;
+
         // Tampilkan Tabel Kelas dan Header Utama
         document.getElementById('viewKelas').classList.remove('hidden');
         document.getElementById('viewHeaderKelas').classList.remove('hidden');
-        document.getElementById('viewHeaderKelas').classList.add('flex'); // Kembalikan display flex
+        document.getElementById('viewHeaderKelas').classList.add('flex');
         
         // Sembunyikan View Siswa
         document.getElementById('viewSiswa').classList.add('hidden');
     }
 
+    // FILTER SISWA INSTAN BERDASARKAN NAMA DAN NIS
+    function filterSiswaKelas() {
+        const query = (document.getElementById('cariSiswaKelasInput')?.value || '').toLowerCase().trim();
+        const rows = document.querySelectorAll('#tbodySiswaKelas .row-siswa-item');
+        const emptyRow = document.getElementById('emptySiswaRow');
+        let visibleCount = 0;
+
+        rows.forEach(row => {
+            const rowKelasId = row.dataset.kelasId;
+            const nama = row.dataset.nama || '';
+            const nis = row.dataset.nis || '';
+
+            const matchesClass = !currentActiveKelasId || String(rowKelasId) === String(currentActiveKelasId);
+            const matchesQuery = !query || nama.includes(query) || nis.includes(query);
+
+            if (matchesClass && matchesQuery) {
+                row.style.display = '';
+                visibleCount++;
+                const noCell = row.querySelector('.row-siswa-no');
+                if (noCell) {
+                    noCell.textContent = visibleCount;
+                }
+            } else {
+                row.style.display = 'none';
+            }
+        });
+
+        if (emptyRow) {
+            emptyRow.style.display = visibleCount === 0 ? '' : 'none';
+        }
+    }
+
+    function openEditSiswaModal(id, nama, nis, kelasId) {
+        const form = document.getElementById('formEditSiswa');
+        form.action = "{{ url('dashboard/siswa') }}/" + id;
+        document.getElementById('editSiswaNama').value = nama;
+        document.getElementById('editSiswaNis').value = nis;
+        const selectKelas = document.getElementById('editSiswaKelasId');
+        if (selectKelas) {
+            selectKelas.value = kelasId;
+        }
+
+        openModal('modalEditSiswaDariKelas');
+    }
+
+    function openDeleteSiswaModal(id, nama) {
+        const form = document.getElementById('formHapusSiswa');
+        form.action = "{{ url('dashboard/siswa') }}/" + id;
+        document.getElementById('deleteSiswaNama').textContent = nama;
+        const textarea = document.getElementById('deleteAlasanSiswa');
+        if (textarea) textarea.value = '';
+
+        openModal('modalHapusSiswa');
+    }
+
     function openEditModal(modalId, trigger) {
         const modal = document.getElementById(modalId);
+        if (modalId === 'modalEditKelas') {
+            const form = document.getElementById('formEditKelas');
+            const id = trigger.dataset.editId;
+            form.action = "{{ url('dashboard/kelas') }}/" + id;
+        }
 
         modal.querySelectorAll('[data-edit-field]').forEach((field) => {
             const fieldName = field.dataset.editField;
@@ -423,22 +545,46 @@
         document.body.style.overflow = 'auto';
     }
 
-    // FUNGSI UNTUK MODAL
-    function openModal(modalId) {
+    function openDeleteModal(modalId, id, name) {
         const modal = document.getElementById(modalId);
+        const form = document.getElementById('formHapusKelas');
+        form.action = "{{ url('dashboard/kelas') }}/" + id;
+        document.getElementById('deleteKelasNama').textContent = name;
+        const textarea = document.getElementById('deleteAlasanKelas');
+        if (textarea) textarea.value = '';
+
         modal.classList.remove('hidden');
         modal.classList.add('flex');
-        // Prevent scrolling on background
+        document.body.style.overflow = 'hidden';
+    }
+
+    // FUNGSI UNTUK MODAL UMUM
+    function openModal(modalId) {
+        const modal = document.getElementById(modalId);
+        if (!modal) return;
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
         document.body.style.overflow = 'hidden'; 
     }
 
     function closeModal(modalId) {
         const modal = document.getElementById(modalId);
+        if (!modal) return;
         modal.classList.add('hidden');
         modal.classList.remove('flex');
-        // Restore scrolling
         document.body.style.overflow = 'auto'; 
     }
+
+    // AUTO-OPEN JIKA SELESAI TAMBAH / EDIT / HAPUS SISWA ATAU PARAMETER KELAS_ID
+    document.addEventListener('DOMContentLoaded', function () {
+        @php
+            $targetKelasId = session('open_kelas_id', request('kelas_id'));
+            $targetKelas = $targetKelasId ? $kelasList->firstWhere('id_kelas', $targetKelasId) : null;
+        @endphp
+        @if($targetKelas)
+            showStudents('{{ addslashes($targetKelas->nama_kelas) }}', '{{ $targetKelas->id_kelas }}');
+        @endif
+    });
 </script>
 
 @endsection

@@ -71,7 +71,7 @@
   <!-- Footer Area -->
   <div class="mt-auto px-5 pb-8 pt-4 flex flex-col">
        <!-- Tambah Akun (Admin) -->
-    <a href="{{ route('tambah-akun') }}" class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors !no-underline {{ request()->routeIs('tambah-akun') ? 'bg-[#1BA886] !text-white' : '!text-[#8EBEB2] hover:bg-[#1BA886]/10 hover:!text-white' }}">
+    <a href="{{ route('admin.manajemen-user', ['tambah' => 1]) }}" class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors !no-underline {{ (request()->routeIs('admin.manajemen-user') && request('tambah')) ? 'bg-[#1BA886] !text-white' : '!text-[#8EBEB2] hover:bg-[#1BA886]/10 hover:!text-white' }}">
       <i class="bi bi-person-plus text-lg"></i>
       <span>Tambah Akun</span>
     </a>
