@@ -2,11 +2,8 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
-<<<<<<< HEAD
 use App\Http\Controllers\PiketController;
-=======
 use App\Http\Controllers\GuruController;
->>>>>>> dev
 
 // ==========================================
 // 1. AREA GUEST (Belum Login)
@@ -34,12 +31,9 @@ Route::middleware('auth')->group(function () {
         Route::view('/piket', 'dashboard.piket.utama')->name('dashboard.piket');
         Route::view('/manajemen-user', 'dashboard.admin.manajemen-user')->name('admin.manajemen-user');
 
-<<<<<<< HEAD
-=======
         Route::view('/piket/kehadiran', 'dashboard.piket.kehadiran')->name('piket.kehadiran');
         Route::view('/piket/dispensasi', 'dashboard.piket.dispensasi')->name('piket.dispensasi');
 
->>>>>>> dev
         Route::get('/piket/kehadiran-siswa', function () {
             return view('dashboard.piket.kehadiran-siswa');
         })->name('piket.kehadiran-siswa');
