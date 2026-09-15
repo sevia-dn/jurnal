@@ -97,5 +97,6 @@ Route::middleware('auth')->group(function () {
     Route::view('/kehadiran-siswa', 'dashboard.pengurus-kelas.kehadiran-siswa')->name('pengurus-kelas.kehadiran-siswa');
 });
 
-   Route::get('/guru-pengajar', [GuruController::class, 'index'])->name('guru');    Route::view('/guru-pengajar/beranda', 'dashboard.guru-pengajar.utama')->name('guru.utama');
+   Route::get('/guru-pengajar', [GuruController::class, 'index'])->name('guru');   
+    Route::view('/guru-pengajar/beranda', 'dashboard.guru-pengajar.utama')->name('guru.utama');
     Route::view('/guru-pengajar/riwayat', 'dashboard.guru-pengajar.riwayat')->name('guru.riwayat');});

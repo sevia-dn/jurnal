@@ -18,7 +18,7 @@ class PiketController extends Controller
             ->whereDate('tanggal', $tanggal)
             ->get();
 
-        return view('piket.kehadiran', compact('kehadirans', 'tanggal'));
+        return view('dashboard.piket.kehadiran', compact('kehadirans', 'tanggal'));
     }
 
     // Verifikasi kehadiran guru (dipanggil dari tombol "Verifikasi")
@@ -36,7 +36,7 @@ class PiketController extends Controller
     public function dispensasiForm()
     {
         $siswas = Siswa::orderBy('nama')->get();
-        return view('piket.dispensasi', compact('siswas'));
+        return view('dashboard.piket.dispensasi', compact('siswas'));
     }
 
     // Simpan Pengajuan Dispensasi
@@ -65,6 +65,6 @@ class PiketController extends Controller
             'bukti' => $buktiPath,
         ]);
 
-        return redirect()->route('piket.dispensasi.form')->with('success', 'Pengajuan dispensasi berhasil dikirim.');
+        return redirect()->route('dashboard.piket.dispensasi.form')->with('success', 'Pengajuan dispensasi berhasil dikirim.');
     }
 }

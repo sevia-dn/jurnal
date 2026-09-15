@@ -41,13 +41,10 @@ class AuthController extends Controller
                     return redirect()->route('pengurus-kelas.dashboard');
                 case 'guru':
                     return redirect()->route('guru');
-
                 case 'piket':
                     return redirect()->route('dashboard.piket');
-
                 case 'waka':
                     return redirect()->route('dashboard.kelas');
-
                 default:
                     Auth::logout();
                     return back()->withErrors(['identity' => 'Role pengguna tidak memiliki hak akses.']);

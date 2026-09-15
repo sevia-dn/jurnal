@@ -48,17 +48,23 @@
             </div>
         </div>
     </div>
+@php
+    $teachersData = $kehadirans->map(function ($k) {
+        return [
+            'id' => $k->id,
+            'name' => $k->guru->name,
+            'nip' => $k->guru->nip ?? '-',
+            'checkIn' => $k->jam_masuk ?? '—',
+            'status' => $k->status,
+            'verified' => $k->diverifikasi_at !== null,
+        ];
+    });
+@endphp
 
-    <script>
-    document.addEventListener('DOMContentLoaded', () => {
-    const teachers = @json($kehadirans->map(fn($k) => [
-        'id' => $k->id,
-        'name' => $k->guru->name,
-        'nip' => $k->guru->nip ?? '-',
-        'checkIn' => $k->jam_masuk ?? '—',
-        'status' => $k->status,
-        'verified' => $k->diverifikasi_at !== null,
-    ]));
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const teachers = {!! $teachersData->toJson() !!};
+
     // ... sisa kode JS tetap sama
             const search = document.getElementById('teacher-search');
             const filter = document.getElementById('attendance-filter');
