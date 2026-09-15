@@ -50,15 +50,16 @@
     </div>
 
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const teachers = [
-                { id: 1, name: 'Drs. Budi Santoso', nip: '19790510 200501 1 001', checkIn: '06:48 WIB', status: 'Hadir' },
-                { id: 2, name: 'Dra. Siti Aminah, M.Pd', nip: '19820418 200801 2 004', checkIn: '06:52 WIB', status: 'Hadir' },
-                { id: 3, name: 'Agus Setiawan, S.Si', nip: '19850622 201001 1 006', checkIn: '—', status: 'Sakit' },
-                { id: 4, name: 'Rina Melati, S.Pd', nip: '19870914 201201 2 009', checkIn: '06:55 WIB', status: 'Hadir' },
-                { id: 5, name: 'Maya Puspitasari, S.Pd', nip: '19900807 201401 2 012', checkIn: '—', status: 'Izin' },
-                { id: 6, name: 'Bambang Haryono, S.Pd', nip: '19811030 200601 1 003', checkIn: '—', status: 'Alfa' },
-            ];
+    document.addEventListener('DOMContentLoaded', () => {
+    const teachers = @json($kehadirans->map(fn($k) => [
+        'id' => $k->id,
+        'name' => $k->guru->name,
+        'nip' => $k->guru->nip ?? '-',
+        'checkIn' => $k->jam_masuk ?? '—',
+        'status' => $k->status,
+        'verified' => $k->diverifikasi_at !== null,
+    ]));
+    // ... sisa kode JS tetap sama
             const search = document.getElementById('teacher-search');
             const filter = document.getElementById('attendance-filter');
             const table = document.getElementById('attendance-table');

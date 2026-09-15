@@ -2,10 +2,10 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\PiketController;
 
 // ==========================================
 // 1. AREA GUEST (Belum Login)
-// Halaman yang bisa diakses orang sebelum masuk
 // ==========================================
 Route::middleware('guest')->group(function () {
     Route::get('/', [AuthController::class, 'showLoginForm']);
@@ -15,16 +15,13 @@ Route::middleware('guest')->group(function () {
 
 // ==========================================
 // 2. AREA AUTH (Sudah Login)
-// Halaman terproteksi, wajib login dulu
 // ==========================================
 Route::middleware('auth')->group(function () {
-    
-    // Proses Logout
+
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
-// --- DASHBOARD ADMIN ---
+    // --- DASHBOARD ADMIN ---
     Route::prefix('dashboard')->group(function () {
-        // Semua view di bawah ini sudah diarahkan kembali ke folder dashboard.admin.*
         Route::view('/', 'dashboard.admin.admin')->name('dashboard');
         Route::view('/catatan-jurnal', 'dashboard.admin.catatan-jurnal')->name('catatan-jurnal');
         Route::view('/kelas', 'dashboard.admin.kelas')->name('dashboard.kelas');
@@ -33,12 +30,20 @@ Route::middleware('auth')->group(function () {
         Route::view('/piket', 'dashboard.piket.utama')->name('dashboard.piket');
         Route::view('/manajemen-user', 'dashboard.admin.manajemen-user')->name('admin.manajemen-user');
 
-        Route::view('/piket/kehadiran', 'dashboard.piket.kehadiran')->name('piket.kehadiran');
-        Route::view('/piket/dispensasi', 'dashboard.piket.dispensasi')->name('piket.dispensasi');
-
-Route::get('/piket/kehadiran-siswa', function () {
+        Route::get('/piket/kehadiran-siswa', function () {
             return view('dashboard.piket.kehadiran-siswa');
         })->name('piket.kehadiran-siswa');
+
+        // --- Guru Piket: Kehadiran & Dispensasi (pakai Controller + data asli) ---
+        // NOTE: sebelumnya ada versi Route::view() statis untuk 2 halaman ini
+        // yang dobel nama route dan bikin error (variabel $kehadirans/$siswas
+        // tidak pernah dikirim). Sudah dihapus, disatukan di sini saja.
+        Route::get('/piket/kehadiran', [PiketController::class, 'kehadiran'])->name('piket.kehadiran');
+        Route::post('/piket/kehadiran/{kehadiran}/verifikasi', [PiketController::class, 'verifikasiKehadiran'])->name('piket.kehadiran.verifikasi');
+
+        Route::get('/piket/dispensasi', [PiketController::class, 'dispensasiForm'])->name('piket.dispensasi.form');
+        Route::post('/piket/dispensasi', [PiketController::class, 'dispensasiStore'])->name('piket.dispensasi.store');
+
         // Route Guru (dengan data dummy FE)
         Route::get('/guru', function () {
             $mapels = [
@@ -49,7 +54,6 @@ Route::get('/piket/kehadiran-siswa', function () {
                 ['nip' => '198005122005011002', 'nama' => 'Budi Santoso, S.Pd', 'mapel' => 'Matematika', 'no_hp' => '081234567890'],
                 ['nip' => '198507232010012004', 'nama' => 'Siti Aminah, M.Pd', 'mapel' => 'Pemrograman Web', 'no_hp' => '082345678901'],
             ];
-            // DI SINI YANG DIUBAH: dari 'dashboard.guru' menjadi 'dashboard.admin.guru'
             return view('dashboard.admin.guru', compact('mapels', 'users'));
         })->name('dashboard.guru');
 
@@ -65,7 +69,6 @@ Route::get('/piket/kehadiran-siswa', function () {
                 ['id' => 2, 'nama' => 'Siti Aminah, M.Pd'],
                 ['id' => 3, 'nama' => 'Eko Prasetyo, S.Kom'],
             ];
-            // DI SINI YANG DIUBAH: dari 'dashboard.jadwal' menjadi 'dashboard.admin.jadwal'
             return view('dashboard.admin.jadwal', compact('mapels', 'gurus'));
         })->name('dashboard.jadwal');
 
@@ -76,7 +79,6 @@ Route::get('/piket/kehadiran-siswa', function () {
                 ['kode' => 'RPL-201', 'nama' => 'Pemrograman Web', 'guru' => 'Siti Aminah, M.Pd'],
                 ['kode' => 'BSD-101', 'nama' => 'Basis Data', 'guru' => 'Eko Prasetyo, S.Kom'],
             ];
-            // DI SINI YANG DIUBAH: dari 'dashboard.mapel' menjadi 'dashboard.admin.mapel'
             return view('dashboard.admin.mapel', compact('mapels'));
         })->name('dashboard.mapel');
     });
@@ -91,6 +93,6 @@ Route::get('/piket/kehadiran-siswa', function () {
 
     // --- GURU ---
     Route::prefix('guru')->group(function () {
-        Route::get('/logbook/create', fn() => view('guru.logbook.create'))->name('guru.logbook.create');
+        Route::get('/logbook/create', fn() => view('guru.logbook.create'))->name('guru');
     });
 });
