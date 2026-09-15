@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\GuruController;
 
 // ==========================================
 // 1. AREA GUEST (Belum Login)
@@ -36,10 +37,11 @@ Route::middleware('auth')->group(function () {
         Route::view('/piket/kehadiran', 'dashboard.piket.kehadiran')->name('piket.kehadiran');
         Route::view('/piket/dispensasi', 'dashboard.piket.dispensasi')->name('piket.dispensasi');
 
-Route::get('/piket/kehadiran-siswa', function () {
+        Route::get('/piket/kehadiran-siswa', function () {
             return view('dashboard.piket.kehadiran-siswa');
         })->name('piket.kehadiran-siswa');
         // Route Guru (dengan data dummy FE)
+
         Route::get('/guru', function () {
             $mapels = [
                 ['kode' => 'MTK', 'nama' => 'Matematika'],
@@ -81,16 +83,14 @@ Route::get('/piket/kehadiran-siswa', function () {
         })->name('dashboard.mapel');
     });
 
-    // --- PENGURUS KELAS / SEKRETARIS ---
+// --- PENGURUS KELAS / SEKRETARIS ---
     Route::prefix('pengurus-kelas')->group(function () {
-        Route::get('/jurnal', fn() => view('jurnal.index'))->name('pengurus-kelas.jurnal.index');
-        Route::get('/jurnal/create', fn() => view('jurnal.create'))->name('pengurus-kelas.jurnal.create');
-        Route::get('/notifikasi', fn() => view('notifikasi.index'))->name('pengurus-kelas.notifikasi');
-        Route::get('/jadwal', fn() => view('jurnal.jadwal.index'))->name('pengurus-kelas.jadwal');
-    });
-
-    // --- GURU ---
-    Route::prefix('guru')->group(function () {
-        Route::get('/logbook/create', fn() => view('guru.logbook.create'))->name('guru.logbook.create');
-    });
+    Route::view('/dashboard', 'dashboard.pengurus-kelas.utama')->name('pengurus-kelas.dashboard');
+    Route::view('/jadwal', 'dashboard.pengurus-kelas.jadwal')->name('pengurus-kelas.jadwal');
+    Route::view('/jurnal-detail', 'dashboard.pengurus-kelas.jurnal-detail')->name('pengurus-kelas.jurnal-detail');
+    Route::view('/kehadiran-guru', 'dashboard.pengurus-kelas.kehadiran-guru')->name('pengurus-kelas.kehadiran-guru');
+    Route::view('/kehadiran-siswa', 'dashboard.pengurus-kelas.kehadiran-siswa')->name('pengurus-kelas.kehadiran-siswa');
 });
+
+   Route::get('/guru-pengajar', [GuruController::class, 'index'])->name('guru');    Route::view('/guru-pengajar/beranda', 'dashboard.guru-pengajar.utama')->name('guru.utama');
+    Route::view('/guru-pengajar/riwayat', 'dashboard.guru-pengajar.riwayat')->name('guru.riwayat');});
