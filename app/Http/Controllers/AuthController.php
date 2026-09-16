@@ -8,13 +8,17 @@ use Illuminate\Support\Facades\Auth;
 
 class AuthController extends Controller
 {
-    // Tampilkan halaman login
+    /**
+     * Tampilkan halaman login.
+     */
     public function showLoginForm()
     {
         return view('auth.login');
     }
 
-    // Proses login (bisa pakai NIP atau username)
+    /**
+     * Proses login (bisa menggunakan NIP atau username).
+     */
     public function login(Request $request)
     {
         $request->validate([
@@ -33,14 +37,16 @@ class AuthController extends Controller
         if ($user && Auth::attempt(['id' => $user->id, 'password' => $password])) {
             $request->session()->regenerate();
 
+            // Pengarahan halaman (redirect) berdasarkan role di database
             switch ($user->role) {
                 case 'admin':
-                    return redirect()->route('dashboard.admin');
+                    return redirect()->route('dashboard');
 
                 case 'pengurus_kelas':
                     return redirect()->route('pengurus-kelas.dashboard');
+
                 case 'guru':
-                    return redirect()->route('guru');
+                    return redirect()->route('guru.utama');
 
                 case 'piket':
                     return redirect()->route('dashboard.piket');
@@ -59,7 +65,9 @@ class AuthController extends Controller
         ])->onlyInput('identity');
     }
 
-    // Proses logout
+    /**
+     * Proses logout pengguna.
+     */
     public function logout(Request $request)
     {
         Auth::logout();

@@ -4,9 +4,15 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
+use App\Models\Absensi;
 
 class JurnalMengajarSeeder extends Seeder
 {
+
+    public function absensis()
+    {
+        return $this->hasMany(Absensi::class, 'id_jurnal', 'id_jurnal');
+    }
     public function run(): void
     {
         DB::table('jurnal_mengajars')->insert([
