@@ -16,7 +16,8 @@
             <header class="mb-7 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
                 <div><p class="mb-2 text-xs font-bold uppercase tracking-[0.16em] text-emerald-700">Monitoring presensi</p><h1 class="text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl">Rekap Kehadiran Guru</h1><p class="mt-2 text-sm text-slate-500">Lihat ringkasan kehadiran guru berdasarkan tanggal pilihan.</p></div>
                 <div class="flex flex-col gap-3 sm:flex-row">
-                    <label class="relative"><span class="sr-only">Pilih tanggal</span><i class="bi bi-calendar3 pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-emerald-700" aria-hidden="true"></i><input id="attendance-date" type="date" class="w-full rounded-xl border border-slate-300 bg-white py-2.5 pl-10 pr-3 text-sm font-semibold text-slate-700 shadow-sm outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"></label>
+                    <label class="relative"><span class="sr-only">Pilih tanggal</span><i class="bi bi-calendar3 pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-emerald-700" aria-hidden="true"></i>
+                        <input type="date" id="attendance-date" name="tanggal" value="{{ request('tanggal', date('Y-m-d')) }}" class="w-full rounded-xl border border-slate-300 bg-white py-2.5 pl-10 pr-3 text-sm font-semibold text-slate-700 shadow-sm outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"></label>
                     <button id="export-data" type="button" class="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-700 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-emerald-800 focus:outline-none focus:ring-4 focus:ring-emerald-200"><i class="bi bi-download" aria-hidden="true"></i> Export Data</button>
                 </div>
             </header>
@@ -62,46 +63,51 @@
 @endphp
 
 <script>
+
 document.addEventListener('DOMContentLoaded', () => {
+    const dateInput = document.getElementById('attendance-date');
+    dateInput.addEventListener('change', function () {
+        window.location.href = '{{ route("piket.kehadiran") }}?tanggal=' + this.value;
+    });
+
     const teachers = {!! $teachersData->toJson() !!};
 
-    // ... sisa kode JS tetap sama
-            const search = document.getElementById('teacher-search');
-            const filter = document.getElementById('attendance-filter');
-            const table = document.getElementById('attendance-table');
-            const empty = document.getElementById('attendance-empty');
-            const modal = document.getElementById('attendance-modal');
-            const panel = document.getElementById('attendance-modal-panel');
-            let activeId = null;
-            let trigger = null;
+    const search = document.getElementById('teacher-search');
+    const filter = document.getElementById('attendance-filter');
+    const table = document.getElementById('attendance-table');
+    const empty = document.getElementById('attendance-empty');
+    const modal = document.getElementById('attendance-modal');
+    const panel = document.getElementById('attendance-modal-panel');
+    let activeId = null;
+    let trigger = null;
 
-            const badge = (status) => ({ Hadir: 'bg-emerald-50 text-emerald-700', Izin: 'bg-amber-50 text-amber-700', Sakit: 'bg-amber-50 text-amber-700', Alfa: 'bg-red-50 text-red-700' }[status]);
-            function visibleTeachers() {
-                const query = search.value.trim().toLowerCase();
-                return teachers.filter((teacher) => (filter.value === 'Semua' || teacher.status === filter.value) && (!query || teacher.name.toLowerCase().includes(query) || teacher.nip.toLowerCase().includes(query)));
-            }
-            function render() {
-                const items = visibleTeachers();
-                table.innerHTML = items.map((teacher, index) => `<tr class="${index % 2 ? 'bg-slate-50/60' : 'bg-white'} transition hover:bg-emerald-50/50"><td class="px-6 py-4 font-bold text-slate-800">${teacher.name}</td><td class="px-6 py-4 font-mono text-xs text-slate-500">${teacher.nip}</td><td class="px-6 py-4 font-semibold text-slate-600">${teacher.checkIn}</td><td class="px-6 py-4"><span class="rounded-full px-3 py-1 text-xs font-bold ${badge(teacher.status)}">${teacher.status}</span></td><td class="px-6 py-4 text-right"><button type="button" data-detail-id="${teacher.id}" class="rounded-lg border border-emerald-200 px-3 py-2 text-xs font-bold text-emerald-700 transition hover:bg-emerald-50 focus:outline-none focus:ring-4 focus:ring-emerald-100">Detail</button></td></tr>`).join('');
-                empty.classList.toggle('hidden', items.length !== 0);
-                document.getElementById('attendance-summary').textContent = `Menampilkan ${items.length} dari ${teachers.length} guru.`;
-            }
-            function closeModal() { modal.classList.add('opacity-0'); panel.classList.add('translate-y-4', 'sm:scale-95'); modal.setAttribute('aria-hidden', 'true'); document.body.classList.remove('overflow-hidden'); window.setTimeout(() => modal.classList.add('hidden'), 200); trigger?.focus(); }
-            table.addEventListener('click', (event) => {
-                const button = event.target.closest('[data-detail-id]'); if (!button) return;
-                const teacher = teachers.find((item) => item.id === Number(button.dataset.detailId)); if (!teacher) return;
-                activeId = teacher.id; trigger = button;
-                document.getElementById('detail-name').textContent = teacher.name; document.getElementById('detail-nip').textContent = teacher.nip; document.getElementById('detail-time').textContent = teacher.checkIn; document.getElementById('detail-status').textContent = teacher.status;
-                modal.classList.remove('hidden'); modal.setAttribute('aria-hidden', 'false'); document.body.classList.add('overflow-hidden'); requestAnimationFrame(() => { modal.classList.remove('opacity-0'); panel.classList.remove('translate-y-4', 'sm:scale-95'); });
-            });
-            [search, filter].forEach((control) => control.addEventListener(control === search ? 'input' : 'change', render));
-            document.getElementById('clear-search').addEventListener('click', () => { search.value = ''; filter.value = 'Semua'; render(); });
-            document.querySelectorAll('[data-close-detail]').forEach((button) => button.addEventListener('click', closeModal));
-            modal.addEventListener('click', (event) => { if (event.target === modal) closeModal(); });
-            document.addEventListener('keydown', (event) => { if (event.key === 'Escape' && !modal.classList.contains('hidden')) closeModal(); });
-            document.getElementById('export-data').addEventListener('click', () => alert('Mockup frontend: data siap diekspor setelah integrasi backend.'));
-            document.getElementById('attendance-date').value = new Date().toISOString().slice(0, 10);
-            render();
-        });
-    </script>
+    const badge = (status) => ({ Hadir: 'bg-emerald-50 text-emerald-700', Izin: 'bg-amber-50 text-amber-700', Sakit: 'bg-amber-50 text-amber-700', Alfa: 'bg-red-50 text-red-700' }[status]);
+    function visibleTeachers() {
+        const query = search.value.trim().toLowerCase();
+        return teachers.filter((teacher) => (filter.value === 'Semua' || teacher.status === filter.value) && (!query || teacher.name.toLowerCase().includes(query) || teacher.nip.toLowerCase().includes(query)));
+    }
+    function render() {
+        const items = visibleTeachers();
+        table.innerHTML = items.map((teacher, index) => `<tr class="${index % 2 ? 'bg-slate-50/60' : 'bg-white'} transition hover:bg-emerald-50/50"><td class="px-6 py-4 font-bold text-slate-800">${teacher.name}</td><td class="px-6 py-4 font-mono text-xs text-slate-500">${teacher.nip}</td><td class="px-6 py-4 font-semibold text-slate-600">${teacher.checkIn}</td><td class="px-6 py-4"><span class="rounded-full px-3 py-1 text-xs font-bold ${badge(teacher.status)}">${teacher.status}</span></td><td class="px-6 py-4 text-right"><button type="button" data-detail-id="${teacher.id}" class="rounded-lg border border-emerald-200 px-3 py-2 text-xs font-bold text-emerald-700 transition hover:bg-emerald-50 focus:outline-none focus:ring-4 focus:ring-emerald-100">Detail</button></td></tr>`).join('');
+        empty.classList.toggle('hidden', items.length !== 0);
+        document.getElementById('attendance-summary').textContent = `Menampilkan ${items.length} dari ${teachers.length} guru.`;
+    }
+    function closeModal() { modal.classList.add('opacity-0'); panel.classList.add('translate-y-4', 'sm:scale-95'); modal.setAttribute('aria-hidden', 'true'); document.body.classList.remove('overflow-hidden'); window.setTimeout(() => modal.classList.add('hidden'), 200); trigger?.focus(); }
+    table.addEventListener('click', (event) => {
+        const button = event.target.closest('[data-detail-id]'); if (!button) return;
+        const teacher = teachers.find((item) => item.id === Number(button.dataset.detailId)); if (!teacher) return;
+        activeId = teacher.id; trigger = button;
+        document.getElementById('detail-name').textContent = teacher.name; document.getElementById('detail-nip').textContent = teacher.nip; document.getElementById('detail-time').textContent = teacher.checkIn; document.getElementById('detail-status').textContent = teacher.status;
+        modal.classList.remove('hidden'); modal.setAttribute('aria-hidden', 'false'); document.body.classList.add('overflow-hidden'); requestAnimationFrame(() => { modal.classList.remove('opacity-0'); panel.classList.remove('translate-y-4', 'sm:scale-95'); });
+    });
+    [search, filter].forEach((control) => control.addEventListener(control === search ? 'input' : 'change', render));
+    document.getElementById('clear-search').addEventListener('click', () => { search.value = ''; filter.value = 'Semua'; render(); });
+    document.querySelectorAll('[data-close-detail]').forEach((button) => button.addEventListener('click', closeModal));
+    modal.addEventListener('click', (event) => { if (event.target === modal) closeModal(); });
+    document.addEventListener('keydown', (event) => { if (event.key === 'Escape' && !modal.classList.contains('hidden')) closeModal(); });
+    document.getElementById('export-data').addEventListener('click', () => alert('Mockup frontend: data siap diekspor setelah integrasi backend.'));
+
+    render();
+});
+</script>
 @endsection
