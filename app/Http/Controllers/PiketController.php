@@ -65,6 +65,6 @@ class PiketController extends Controller
             'bukti' => $buktiPath,
         ]);
 
-        return redirect()->route('dashboard.piket.dispensasi.form')->with('success', 'Pengajuan dispensasi berhasil dikirim.');
+        return redirect()->route('piket.dispensasi.form')->with('success', 'Pengajuan dispensasi berhasil dikirim.');
     }
 }

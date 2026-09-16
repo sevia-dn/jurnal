@@ -16,8 +16,7 @@
             <header class="mb-7 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
                 <div><p class="mb-2 text-xs font-bold uppercase tracking-[0.16em] text-emerald-700">Monitoring presensi</p><h1 class="text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl">Rekap Kehadiran Guru</h1><p class="mt-2 text-sm text-slate-500">Lihat ringkasan kehadiran guru berdasarkan tanggal pilihan.</p></div>
                 <div class="flex flex-col gap-3 sm:flex-row">
-                    <label class="relative"><span class="sr-only">Pilih tanggal</span><i class="bi bi-calendar3 pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-emerald-700" aria-hidden="true"></i>
-                        <input type="date" id="attendance-date" name="tanggal" value="{{ request('tanggal', date('Y-m-d')) }}" class="w-full rounded-xl border border-slate-300 bg-white py-2.5 pl-10 pr-3 text-sm font-semibold text-slate-700 shadow-sm outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"></label>
+                    <label class="relative"><span class="sr-only">Pilih tanggal</span><i class="bi bi-calendar3 pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-emerald-700" aria-hidden="true"></i><input id="attendance-date" type="date" class="w-full rounded-xl border border-slate-300 bg-white py-2.5 pl-10 pr-3 text-sm font-semibold text-slate-700 shadow-sm outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"></label>
                     <button id="export-data" type="button" class="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-700 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-emerald-800 focus:outline-none focus:ring-4 focus:ring-emerald-200"><i class="bi bi-download" aria-hidden="true"></i> Export Data</button>
                 </div>
             </header>
@@ -49,6 +48,7 @@
             </div>
         </div>
     </div>
+
 @php
     $teachersData = $kehadirans->map(function ($k) {
         return [
@@ -105,8 +105,31 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('[data-close-detail]').forEach((button) => button.addEventListener('click', closeModal));
     modal.addEventListener('click', (event) => { if (event.target === modal) closeModal(); });
     document.addEventListener('keydown', (event) => { if (event.key === 'Escape' && !modal.classList.contains('hidden')) closeModal(); });
-    document.getElementById('export-data').addEventListener('click', () => alert('Mockup frontend: data siap diekspor setelah integrasi backend.'));
+    document.getElementById('export-data').addEventListener('click', () => {
+    const items = visibleTeachers(); // pakai data yang lagi kefilter, bukan semua
 
+    if (items.length === 0) {
+        alert('Tidak ada data untuk diekspor.');
+        return;
+    }
+
+    const header = ['Nama', 'NIP', 'Check-In', 'Status'];
+    const rows = items.map(t => [t.name, t.nip, t.checkIn, t.status]);
+
+    const csvContent = [header, ...rows]
+        .map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+        .join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `kehadiran-guru-${document.getElementById('attendance-date').value || 'hari-ini'}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+});
     render();
 });
 </script>
