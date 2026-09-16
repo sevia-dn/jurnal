@@ -33,21 +33,18 @@ class AuthController extends Controller
         if ($user && Auth::attempt(['id' => $user->id, 'password' => $password])) {
             $request->session()->regenerate();
 
+            // Jika ada intended URL (seperti link approval dari WA), prioritaskan ke intended URL
             switch ($user->role) {
                 case 'admin':
-                    return redirect()->route('dashboard');
-
+                    return redirect()->intended(route('dashboard'));
                 case 'pengurus_kelas':
-                    return redirect()->route('pengurus-kelas.dashboard');
+                    return redirect()->intended(route('pengurus-kelas.dashboard'));
                 case 'guru':
-                    return redirect()->route('guru');
                 case 'piket':
-                    return redirect()->route('dashboard.piket');
                 case 'waka':
-                    return redirect()->route('dashboard.kelas');
+                    return redirect()->intended(route('guru'));
                 default:
-                    Auth::logout();
-                    return back()->withErrors(['identity' => 'Role pengguna tidak memiliki hak akses.']);
+                    return redirect()->intended(route('login'));
             }
         }
 

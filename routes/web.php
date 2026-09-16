@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\PiketController;
 use App\Http\Controllers\GuruController;
+use App\Http\Controllers\DispensasiApprovalController;
 
 // ==========================================
 // 1. AREA GUEST (Belum Login)
@@ -20,6 +21,10 @@ Route::middleware('guest')->group(function () {
 Route::middleware('auth')->group(function () {
 
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+
+    // --- APPROVAL DISPENSASI (WAKA) ---
+    Route::get('/dispensasi/approval/{token}', [DispensasiApprovalController::class, 'show'])->name('dispensasi.approval');
+    Route::post('/dispensasi/approval/{dispensasi}', [DispensasiApprovalController::class, 'process'])->name('dispensasi.process');
 
     // --- DASHBOARD ADMIN ---
     Route::prefix('dashboard')->group(function () {
@@ -38,10 +43,7 @@ Route::middleware('auth')->group(function () {
             return view('dashboard.piket.kehadiran-siswa');
         })->name('piket.kehadiran-siswa');
 
-        // --- Guru Piket: Kehadiran & Dispensasi (pakai Controller + data asli) ---
-        // NOTE: sebelumnya ada versi Route::view() statis untuk 2 halaman ini
-        // yang dobel nama route dan bikin error (variabel $kehadirans/$siswas
-        // tidak pernah dikirim). Sudah dihapus, disatukan di sini saja.
+        // --- Guru Piket: Kehadiran & Dispensasi ---
         Route::get('/piket/kehadiran', [PiketController::class, 'kehadiran'])->name('piket.kehadiran');
         Route::post('/piket/kehadiran/{kehadiran}/verifikasi', [PiketController::class, 'verifikasiKehadiran'])->name('piket.kehadiran.verifikasi');
 
@@ -49,7 +51,6 @@ Route::middleware('auth')->group(function () {
         Route::post('/piket/dispensasi', [PiketController::class, 'dispensasiStore'])->name('piket.dispensasi.store');
 
         // Route Guru (dengan data dummy FE)
-
         Route::get('/guru', function () {
             $mapels = [
                 ['kode' => 'MTK', 'nama' => 'Matematika'],
@@ -88,15 +89,17 @@ Route::middleware('auth')->group(function () {
         })->name('dashboard.mapel');
     });
 
-// --- PENGURUS KELAS / SEKRETARIS ---
+    // --- PENGURUS KELAS / SEKRETARIS ---
     Route::prefix('pengurus-kelas')->group(function () {
-    Route::view('/dashboard', 'dashboard.pengurus-kelas.utama')->name('pengurus-kelas.dashboard');
-    Route::view('/jadwal', 'dashboard.pengurus-kelas.jadwal')->name('pengurus-kelas.jadwal');
-    Route::view('/jurnal-detail', 'dashboard.pengurus-kelas.jurnal-detail')->name('pengurus-kelas.jurnal-detail');
-    Route::view('/kehadiran-guru', 'dashboard.pengurus-kelas.kehadiran-guru')->name('pengurus-kelas.kehadiran-guru');
-    Route::view('/kehadiran-siswa', 'dashboard.pengurus-kelas.kehadiran-siswa')->name('pengurus-kelas.kehadiran-siswa');
-});
+        Route::view('/dashboard', 'dashboard.pengurus-kelas.utama')->name('pengurus-kelas.dashboard');
+        Route::view('/jadwal', 'dashboard.pengurus-kelas.jadwal')->name('pengurus-kelas.jadwal');
+        Route::view('/jurnal-detail', 'dashboard.pengurus-kelas.jurnal-detail')->name('pengurus-kelas.jurnal-detail');
+        Route::view('/kehadiran-guru', 'dashboard.pengurus-kelas.kehadiran-guru')->name('pengurus-kelas.kehadiran-guru');
+        Route::view('/kehadiran-siswa', 'dashboard.pengurus-kelas.kehadiran-siswa')->name('pengurus-kelas.kehadiran-siswa');
+    });
 
-   Route::get('/guru-pengajar', [GuruController::class, 'index'])->name('guru');   
-    Route::view('/guru-pengajar/beranda', 'dashboard.guru-pengajar.utama')->name('guru.utama');
-    Route::view('/guru-pengajar/riwayat', 'dashboard.guru-pengajar.riwayat')->name('guru.riwayat');});
+    // --- GURU PENGAJAR & WAKA ---
+    Route::get('/guru-pengajar', [GuruController::class, 'index'])->name('guru');
+    Route::get('/guru-pengajar/beranda', [GuruController::class, 'index'])->name('guru.utama');
+    Route::view('/guru-pengajar/riwayat', 'dashboard.guru-pengajar.riwayat')->name('guru.riwayat');
+});

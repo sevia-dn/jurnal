@@ -2,7 +2,6 @@
 
 namespace Database\Seeders;
 
-use App\Models\User;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
@@ -22,6 +21,7 @@ class DatabaseSeeder extends Seeder
             SiswaSeeder::class,          
             JadwalPelajaranSeeder::class, 
             JurnalMengajarSeeder::class,
+            JadwalPiketSeeder::class,    // Seeder jadwal piket shift 1 & 2
         ]);
     }
 }
