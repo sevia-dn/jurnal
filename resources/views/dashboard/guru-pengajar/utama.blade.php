@@ -36,6 +36,17 @@
         selectedJamKe: '{{ $activeJadwal->jam_mulai ?? 1 }}',
 
         teachers: @js($teachers ?? []),
+        liveClock: '{{ $currentFullTime ?? \Carbon\Carbon::now("Asia/Jakarta")->format("H:i:s") }}',
+
+        init() {
+            setInterval(() => {
+                const d = new Date();
+                const h = String(d.getHours()).padStart(2, '0');
+                const m = String(d.getMinutes()).padStart(2, '0');
+                const s = String(d.getSeconds()).padStart(2, '0');
+                this.liveClock = `${h}:${m}:${s}`;
+            }, 1000);
+        },
 
         updateNip() {
             let found = this.teachers.find(
@@ -177,8 +188,10 @@
                 <p class="text-xs font-bold uppercase tracking-wider text-slate-600">
                     Sesi Mengajar Hari {{ $hariIni }} ({{ $jadwals->count() }} Sesi Terdaftar)
                 </p>
-                <span class="text-xs text-slate-500 font-medium">
-                    Waktu Server: <strong class="text-slate-700">{{ $currentTime }} WIB</strong>
+                <span class="inline-flex items-center gap-1.5 rounded-lg bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-800 border border-emerald-200 shadow-xs">
+                    <span class="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <span>Waktu:</span>
+                    <strong x-text="liveClock + ' WIB'" class="font-mono text-emerald-950 font-bold"></strong>
                 </span>
             </div>
 
