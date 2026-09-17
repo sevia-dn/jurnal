@@ -41,14 +41,13 @@ class PiketController extends Controller
         return back()->with('success', 'Kehadiran berhasil diverifikasi.');
     }
 
-    // Halaman form Pengajuan Dispensasi
+    // Halaman form Pengajuan & Monitoring Dispensasi
     public function dispensasiForm()
     {
-        $siswas = Siswa::orderBy('nama')->get();
-        $dispensasis = Dispensasi::with(['siswa', 'pembuat', 'pemroses'])
+        $siswas = Siswa::with('kelas')->orderBy('nama')->get();
+        $dispensasis = Dispensasi::with(['siswa.kelas', 'pembuat', 'pemroses'])
             ->latest()
-            ->take(10)
-            ->get();
+            ->paginate(15);
 
         return view('dashboard.piket.dispensasi', compact('siswas', 'dispensasis'));
     }
@@ -65,7 +64,7 @@ class PiketController extends Controller
             'bukti' => 'nullable|file|mimes:png,jpg,jpeg,pdf|max:10240',
         ]);
 
-        $siswa = Siswa::findOrFail($request->siswa_id);
+        $siswa = Siswa::with('kelas')->findOrFail($request->siswa_id);
 
         $buktiPath = null;
         if ($request->hasFile('bukti')) {
@@ -88,9 +87,16 @@ class PiketController extends Controller
             'dibuat_oleh' => auth()->id(),
         ]);
 
+        $dispensasi->load(['siswa.kelas', 'pembuat']);
+
         // Trigger Notifikasi WhatsApp ke Waka
         $this->whatsAppService->sendDispensasiNotificationToWaka($dispensasi);
 
-        return redirect()->route('piket.dispensasi.form')->with('success', 'Pengajuan dispensasi berhasil dikirim dan notifikasi persetujuan telah terkirim ke Waka.');
+        $approvalUrl = route('dispensasi.approval', ['token' => $tokenApproval]);
+
+        return redirect()->route('piket.dispensasi.form')
+            ->with('success', "Pengajuan dispensasi untuk {$siswa->nama} berhasil dibuat.")
+            ->with('approval_url', $approvalUrl)
+            ->with('token_approval', $tokenApproval);
     }
 }

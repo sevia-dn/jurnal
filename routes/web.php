@@ -22,9 +22,10 @@ Route::middleware('auth')->group(function () {
 
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
-    // --- APPROVAL DISPENSASI (WAKA) ---
+    // --- APPROVAL DISPENSASI (WAKA) & CETAK ---
     Route::get('/dispensasi/approval/{token}', [DispensasiApprovalController::class, 'show'])->name('dispensasi.approval');
     Route::post('/dispensasi/approval/{dispensasi}', [DispensasiApprovalController::class, 'process'])->name('dispensasi.process');
+    Route::get('/dispensasi/{dispensasi}/cetak', [DispensasiApprovalController::class, 'cetakSurat'])->name('dispensasi.cetak');
 
     // --- DASHBOARD ADMIN ---
     Route::prefix('dashboard')->group(function () {
@@ -35,9 +36,6 @@ Route::middleware('auth')->group(function () {
         Route::view('/tambah-akun', 'dashboard.admin.tambah-akun')->name('tambah-akun');
         Route::view('/piket', 'dashboard.piket.utama')->name('dashboard.piket');
         Route::view('/manajemen-user', 'dashboard.admin.manajemen-user')->name('admin.manajemen-user');
-
-        Route::view('/piket/kehadiran', 'dashboard.piket.kehadiran')->name('piket.kehadiran');
-        Route::view('/piket/dispensasi', 'dashboard.piket.dispensasi')->name('piket.dispensasi');
 
         Route::get('/piket/kehadiran-siswa', function () {
             return view('dashboard.piket.kehadiran-siswa');

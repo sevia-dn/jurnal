@@ -43,7 +43,7 @@
         <div class="flex flex-wrap items-center justify-between border-b border-slate-100 pb-4 gap-2">
             <div>
                 <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Nama Siswa</p>
-                <h2 class="text-xl font-bold text-slate-900 mt-0.5">{{ $dispensasi->nama }}</h2>
+                <h2 class="text-xl font-bold text-slate-900 mt-0.5">{{ $dispensasi->nama }} <span class="text-sm font-semibold text-purple-700 font-sans">({{ $dispensasi->siswa?->kelas?->nama_kelas ?? 'Umum' }})</span></h2>
             </div>
             <div>
                 @if($dispensasi->status_waka === 'disetujui')
@@ -122,11 +122,18 @@
                 </div>
             </form>
         @else
-            <div class="pt-4 border-t border-slate-100 rounded-xl bg-slate-50 p-4 text-center">
+            <div class="pt-4 border-t border-slate-100 rounded-xl bg-slate-50 p-5 text-center">
                 <p class="text-xs text-slate-500 font-semibold uppercase">Status Keputusan Waka</p>
                 <p class="text-sm font-bold text-slate-800 mt-1">Dispensasi telah diproses oleh {{ $dispensasi->pemroses?->name ?? 'Waka' }} pada {{ $dispensasi->diproses_at ? $dispensasi->diproses_at->format('d/m/Y H:i') : '-' }}.</p>
                 @if($dispensasi->catatan_waka)
                     <p class="text-xs text-slate-600 mt-1 italic">"{{ $dispensasi->catatan_waka }}"</p>
+                @endif
+                @if($dispensasi->status_waka === 'disetujui')
+                    <div class="mt-4">
+                        <a href="{{ route('dispensasi.cetak', $dispensasi->id) }}" target="_blank" class="inline-flex items-center gap-2 rounded-xl bg-emerald-700 px-5 py-2.5 text-sm font-bold text-white shadow hover:bg-emerald-800 transition">
+                            <i class="bi bi-printer-fill"></i> Cetak Surat Dispensasi
+                        </a>
+                    </div>
                 @endif
             </div>
         @endif

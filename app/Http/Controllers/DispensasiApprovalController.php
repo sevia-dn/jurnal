@@ -13,7 +13,7 @@ class DispensasiApprovalController extends Controller
      */
     public function show($token)
     {
-        $dispensasi = Dispensasi::with(['siswa', 'pembuat'])
+        $dispensasi = Dispensasi::with(['siswa.kelas', 'pembuat', 'pemroses'])
             ->where('token_approval', $token)
             ->orWhere('id', $token)
             ->firstOrFail();
@@ -57,5 +57,15 @@ class DispensasiApprovalController extends Controller
         $statusText = $keputusan === 'disetujui' ? 'disetujui' : 'ditolak';
 
         return redirect()->route('guru')->with('success', "Dispensasi untuk {$dispensasi->nama} berhasil {$statusText}.");
+    }
+
+    /**
+     * Cetak Surat Dispensasi Resmi (Bisa diprint oleh Siswa / Piket / Waka)
+     */
+    public function cetakSurat(Dispensasi $dispensasi)
+    {
+        $dispensasi->load(['siswa.kelas', 'pembuat', 'pemroses']);
+
+        return view('dashboard.dispensasi.cetak', compact('dispensasi'));
     }
 }
