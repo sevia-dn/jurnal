@@ -74,6 +74,33 @@
                 </button>
             </section>
 
+            <!-- Quick Action: Dispensasi Siswa -->
+            <section class="mb-7 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <a href="{{ route('piket.dispensasi.form') }}"
+                   class="group flex items-center gap-4 rounded-2xl border border-emerald-200 bg-gradient-to-br from-emerald-50 to-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+                    <div class="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-emerald-600 text-white text-2xl shadow group-hover:bg-emerald-700 transition">
+                        <i class="bi bi-file-earmark-plus-fill"></i>
+                    </div>
+                    <div>
+                        <p class="font-extrabold text-slate-900 text-base">Dispensasi Siswa</p>
+                        <p class="text-xs text-slate-500 mt-0.5">Input pengajuan izin & pantau status persetujuan Waka</p>
+                    </div>
+                    <i class="bi bi-chevron-right ml-auto text-slate-300 group-hover:text-emerald-600 transition text-lg"></i>
+                </a>
+
+                <a href="{{ route('piket.kehadiran') }}"
+                   class="group flex items-center gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+                    <div class="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-amber-500 text-white text-2xl shadow group-hover:bg-amber-600 transition">
+                        <i class="bi bi-person-check-fill"></i>
+                    </div>
+                    <div>
+                        <p class="font-extrabold text-slate-900 text-base">Kehadiran Guru</p>
+                        <p class="text-xs text-slate-500 mt-0.5">Rekap dan verifikasi kehadiran guru hari ini</p>
+                    </div>
+                    <i class="bi bi-chevron-right ml-auto text-slate-300 group-hover:text-amber-600 transition text-lg"></i>
+                </a>
+            </section>
+
             <!-- Table Section -->
             <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm" aria-labelledby="journal-table-title">
                 <div class="flex flex-col gap-4 border-b border-slate-100 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-6">

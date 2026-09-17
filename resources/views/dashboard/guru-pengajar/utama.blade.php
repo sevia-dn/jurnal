@@ -124,8 +124,11 @@
                         <p class="mt-1 text-sm text-slate-500">Lakukan absen masuk sebelum memulai pembelajaran atau sesi piket.</p>
                     </div>
                 </div>
-                <span x-show="!hasCheckedIn" class="w-fit rounded-full bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-700">Belum absen</span>
-                <span x-cloak x-show="hasCheckedIn" class="w-fit rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700">Sudah absen</span>
+                @if(!$sudahAbsen)
+                    <span class="w-fit rounded-full bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-700">Belum absen</span>
+                @else
+                    <span class="w-fit rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700">Sudah absen</span>
+                @endif
             </div>
 
             <div class="mt-6 overflow-hidden rounded-xl border border-slate-200">
@@ -143,11 +146,20 @@
 
             <div class="mt-5 flex flex-col gap-3 rounded-xl bg-slate-50 p-4 sm:flex-row sm:items-center sm:justify-between">
                 <p class="flex items-start gap-2 text-xs leading-relaxed text-slate-500"><i class="bi bi-info-circle-fill mt-0.5 text-emerald-600" aria-hidden="true"></i><span>Data absensi masuk akan diteruskan ke monitoring Piket dan Admin.</span></p>
-                <button type="button" @click="showForm = true" x-show="!hasCheckedIn" class="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-3 text-sm font-medium text-white shadow-sm transition hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:ring-offset-2">
-                    <i class="bi bi-box-arrow-in-right" aria-hidden="true"></i>
-                    Absen Masuk / Lapor Kehadiran
-                </button>
-                <span x-cloak x-show="hasCheckedIn" class="inline-flex shrink-0 items-center gap-2 rounded-lg bg-emerald-100 px-4 py-3 text-sm font-semibold text-emerald-700"><i class="bi bi-check-circle-fill" aria-hidden="true"></i> Absen masuk tercatat</span>
+                @if(!$sudahAbsen)
+                    <form action="{{ route('guru.absen-masuk') }}" method="POST" class="m-0 p-0">
+                        @csrf
+                        <button type="submit" class="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-3 text-sm font-medium text-white shadow-sm transition hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:ring-offset-2 cursor-pointer">
+                            <i class="bi bi-box-arrow-in-right" aria-hidden="true"></i>
+                            Absen Masuk / Lapor Kehadiran
+                        </button>
+                    </form>
+                @else
+                    <span class="inline-flex shrink-0 items-center gap-2 rounded-lg bg-emerald-100 px-4 py-3 text-sm font-semibold text-emerald-700">
+                        <i class="bi bi-check-circle-fill" aria-hidden="true"></i>
+                        Absen masuk tercatat ({{ substr($kehadiranHariIni?->jam_masuk ?? now()->format('H:i:s'), 0, 5) }} WIB)
+                    </span>
+                @endif
             </div>
         </section>
 

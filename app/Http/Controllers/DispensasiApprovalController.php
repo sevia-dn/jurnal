@@ -54,9 +54,12 @@ class DispensasiApprovalController extends Controller
             'catatan_waka' => $request->catatan_waka,
         ]);
 
-        $statusText = $keputusan === 'disetujui' ? 'disetujui' : 'ditolak';
+        $statusText = $keputusan === 'disetujui' ? 'disetujui ✅' : 'ditolak ❌';
 
-        return redirect()->route('guru')->with('success', "Dispensasi untuk {$dispensasi->nama} berhasil {$statusText}.");
+        // Redirect kembali ke halaman approval yang sama agar bisa cetak surat
+        return redirect()->route('dispensasi.approval', ['token' => $dispensasi->token_approval ?? $dispensasi->id])
+            ->with('success', "Dispensasi untuk {$dispensasi->nama} berhasil {$statusText}.");
+
     }
 
     /**

@@ -30,16 +30,13 @@ class WhatsAppService
         $namaSiswa = $dispensasi->siswa?->nama ?? $dispensasi->nama;
         $kelasSiswa = $dispensasi->siswa?->kelas?->nama_kelas ?? '-';
         $pembuat = $dispensasi->pembuat?->name ?? 'Guru Piket';
-        $tanggalStr = $dispensasi->tanggal ? $dispensasi->tanggal->format('d-m-Y') : date('d-m-Y');
-        if ($dispensasi->tanggal_selesai && $dispensasi->tanggal?->format('Y-m-d') !== $dispensasi->tanggal_selesai->format('Y-m-d')) {
-            $tanggalStr .= ' s/d ' . $dispensasi->tanggal_selesai->format('d-m-Y');
-        }
+        $waktuStr = $dispensasi->deskripsi_waktu;
 
         $message = "🔔 *PERMINTAAN PERSETUJUAN DISPENSASI SISWA*\n\n"
             . "Nama Siswa: *{$namaSiswa}*\n"
             . "Kelas: *{$kelasSiswa}*\n"
             . "Jenis Dispensasi: {$dispensasi->jenis_dispensasi}\n"
-            . "Tanggal: {$tanggalStr}\n"
+            . "Waktu: {$waktuStr}\n"
             . "Alasan: {$dispensasi->alasan}\n"
             . "Diajukan Oleh: {$pembuat}\n\n"
             . "Mohon Waka dapat memberikan persetujuan melalui tautan berikut:\n"

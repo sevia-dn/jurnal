@@ -97,7 +97,7 @@
                             Pilih Siswa <span class="text-rose-500">*</span>
                         </label>
                         <select name="siswa_id" required
-                                class="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-4 focus:ring-emerald-100 focus:border-emerald-500 transition bg-white text-slate-800">
+                                class="w-full border {{ $errors->has('siswa_id') ? 'border-rose-400 bg-rose-50' : 'border-slate-300' }} rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-4 focus:ring-emerald-100 focus:border-emerald-500 transition bg-white text-slate-800">
                             <option value="">-- Cari Nama Siswa / Kelas --</option>
                             @foreach ($siswas as $siswa)
                                 <option value="{{ $siswa->id }}" {{ old('siswa_id') == $siswa->id ? 'selected' : '' }}>
@@ -105,6 +105,9 @@
                                 </option>
                             @endforeach
                         </select>
+                        @error('siswa_id')
+                            <p class="mt-1 text-xs text-rose-600 flex items-center gap-1"><i class="bi bi-exclamation-circle"></i> {{ $message }}</p>
+                        @enderror
                     </div>
 
                     <!-- Jenis Dispensasi -->
@@ -113,30 +116,106 @@
                             Jenis Dispensasi <span class="text-rose-500">*</span>
                         </label>
                         <select name="jenis_dispensasi" required
-                                class="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-4 focus:ring-emerald-100 focus:border-emerald-500 transition bg-white text-slate-800">
+                                class="w-full border {{ $errors->has('jenis_dispensasi') ? 'border-rose-400 bg-rose-50' : 'border-slate-300' }} rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-4 focus:ring-emerald-100 focus:border-emerald-500 transition bg-white text-slate-800">
                             <option value="">-- Pilih Jenis Dispensasi --</option>
                             <option value="Sakit" {{ old('jenis_dispensasi') == 'Sakit' ? 'selected' : '' }}>Sakit (Perlu Istirahat / Pulang)</option>
                             <option value="Izin Keluarga" {{ old('jenis_dispensasi') == 'Izin Keluarga' ? 'selected' : '' }}>Izin Keperluan Keluarga</option>
                             <option value="Tugas / Lomba Sekolah" {{ old('jenis_dispensasi') == 'Tugas / Lomba Sekolah' ? 'selected' : '' }}>Tugas / Lomba Mewakili Sekolah</option>
                             <option value="Lainnya" {{ old('jenis_dispensasi') == 'Lainnya' ? 'selected' : '' }}>Lainnya</option>
                         </select>
+                        @error('jenis_dispensasi')
+                            <p class="mt-1 text-xs text-rose-600 flex items-center gap-1"><i class="bi bi-exclamation-circle"></i> {{ $message }}</p>
+                        @enderror
                     </div>
 
-                    <!-- Tanggal Pelaksanaan -->
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div>
-                            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                                Tanggal Mulai <span class="text-rose-500">*</span>
-                            </label>
-                            <input type="date" name="tanggal_mulai" required value="{{ old('tanggal_mulai', date('Y-m-d')) }}"
-                                   class="w-full border border-slate-300 rounded-xl px-3.5 py-2 text-sm focus:outline-none focus:ring-4 focus:ring-emerald-100 focus:border-emerald-500 transition">
+                    <div x-data="{ modeWaktu: '{{ old('mode_waktu', 'sepanjang_hari') }}' }" class="space-y-4">
+                        <!-- Tanggal Pelaksanaan -->
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                                    Tanggal Mulai <span class="text-rose-500">*</span>
+                                </label>
+                                <input type="date" name="tanggal_mulai" required value="{{ old('tanggal_mulai', date('Y-m-d')) }}"
+                                       class="w-full border {{ $errors->has('tanggal_mulai') ? 'border-rose-400 bg-rose-50' : 'border-slate-300' }} rounded-xl px-3.5 py-2 text-sm focus:outline-none focus:ring-4 focus:ring-emerald-100 focus:border-emerald-500 transition">
+                                @error('tanggal_mulai')
+                                    <p class="mt-1 text-xs text-rose-600 flex items-center gap-1"><i class="bi bi-exclamation-circle"></i> {{ $message }}</p>
+                                @enderror
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                                    Tanggal Selesai <span class="text-rose-500">*</span>
+                                </label>
+                                <input type="date" name="tanggal_selesai" required value="{{ old('tanggal_selesai', date('Y-m-d')) }}"
+                                       class="w-full border {{ $errors->has('tanggal_selesai') ? 'border-rose-400 bg-rose-50' : 'border-slate-300' }} rounded-xl px-3.5 py-2 text-sm focus:outline-none focus:ring-4 focus:ring-emerald-100 focus:border-emerald-500 transition">
+                                @error('tanggal_selesai')
+                                    <p class="mt-1 text-xs text-rose-600 flex items-center gap-1"><i class="bi bi-exclamation-circle"></i> {{ $message }}</p>
+                                @enderror
+                            </div>
                         </div>
+
+                        <!-- Mode Waktu Dispensasi (Radio Toggle) -->
                         <div>
                             <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                                Tanggal Selesai <span class="text-rose-500">*</span>
+                                Rentang Waktu Dispensasi <span class="text-rose-500">*</span>
                             </label>
-                            <input type="date" name="tanggal_selesai" required value="{{ old('tanggal_selesai', date('Y-m-d')) }}"
-                                   class="w-full border border-slate-300 rounded-xl px-3.5 py-2 text-sm focus:outline-none focus:ring-4 focus:ring-emerald-100 focus:border-emerald-500 transition">
+                            <div class="grid grid-cols-2 gap-2">
+                                <label class="flex items-center gap-2 p-2.5 border rounded-xl cursor-pointer transition text-xs select-none"
+                                       :class="modeWaktu === 'sepanjang_hari' ? 'border-emerald-500 bg-emerald-50 text-emerald-900 font-bold' : 'border-slate-200 hover:bg-slate-50 text-slate-700'">
+                                    <input type="radio" name="mode_waktu" value="sepanjang_hari" x-model="modeWaktu" class="text-emerald-600 focus:ring-emerald-500">
+                                    <span>Sepanjang Hari</span>
+                                </label>
+                                <label class="flex items-center gap-2 p-2.5 border rounded-xl cursor-pointer transition text-xs select-none"
+                                       :class="modeWaktu === 'jam_tertentu' ? 'border-emerald-500 bg-emerald-50 text-emerald-900 font-bold' : 'border-slate-200 hover:bg-slate-50 text-slate-700'">
+                                    <input type="radio" name="mode_waktu" value="jam_tertentu" x-model="modeWaktu" class="text-emerald-600 focus:ring-emerald-500">
+                                    <span>Jam Tertentu</span>
+                                </label>
+                            </div>
+                            @error('mode_waktu')
+                                <p class="mt-1 text-xs text-rose-600 flex items-center gap-1"><i class="bi bi-exclamation-circle"></i> {{ $message }}</p>
+                            @enderror
+                        </div>
+
+                        <!-- Dropdown Jam (Ditampilkan jika Jam Tertentu dipilih) -->
+                        <div x-show="modeWaktu === 'jam_tertentu'" x-cloak class="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 bg-slate-50 rounded-xl border border-slate-200">
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                                    Dari Jam Ke- <span class="text-rose-500">*</span>
+                                </label>
+                                <select name="jam_ke_mulai" :required="modeWaktu === 'jam_tertentu'"
+                                        class="w-full border {{ $errors->has('jam_ke_mulai') ? 'border-rose-400 bg-rose-50' : 'border-slate-300' }} rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-4 focus:ring-emerald-100 focus:border-emerald-500 transition bg-white text-slate-800">
+                                    <option value="">-- Pilih Jam Mulai --</option>
+                                    @if(isset($daftarJam))
+                                        @foreach ($daftarJam as $jam)
+                                            <option value="{{ $jam->jam_ke }}" {{ old('jam_ke_mulai') == $jam->jam_ke ? 'selected' : '' }}>
+                                                Jam ke-{{ $jam->jam_ke }} ({{ substr($jam->jam_mulai, 0, 5) }} - {{ substr($jam->jam_selesai, 0, 5) }})
+                                            </option>
+                                        @endforeach
+                                    @endif
+                                </select>
+                                @error('jam_ke_mulai')
+                                    <p class="mt-1 text-xs text-rose-600 flex items-center gap-1"><i class="bi bi-exclamation-circle"></i> {{ $message }}</p>
+                                @enderror
+                            </div>
+
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                                    Sampai Jam Ke-
+                                </label>
+                                <select name="jam_ke_selesai"
+                                        class="w-full border {{ $errors->has('jam_ke_selesai') ? 'border-rose-400 bg-rose-50' : 'border-slate-300' }} rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-4 focus:ring-emerald-100 focus:border-emerald-500 transition bg-white text-slate-800">
+                                    <option value="">Sampai selesai / pulang</option>
+                                    @if(isset($daftarJam))
+                                        @foreach ($daftarJam as $jam)
+                                            <option value="{{ $jam->jam_ke }}" {{ old('jam_ke_selesai') == $jam->jam_ke ? 'selected' : '' }}>
+                                                Jam ke-{{ $jam->jam_ke }} ({{ substr($jam->jam_mulai, 0, 5) }} - {{ substr($jam->jam_selesai, 0, 5) }})
+                                            </option>
+                                        @endforeach
+                                    @endif
+                                </select>
+                                @error('jam_ke_selesai')
+                                    <p class="mt-1 text-xs text-rose-600 flex items-center gap-1"><i class="bi bi-exclamation-circle"></i> {{ $message }}</p>
+                                @enderror
+                            </div>
                         </div>
                     </div>
 
@@ -146,7 +225,10 @@
                             Alasan Lengkap <span class="text-rose-500">*</span>
                         </label>
                         <textarea name="alasan" rows="3" required placeholder="Tuliskan keterangan detail alasan izin..."
-                                  class="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-4 focus:ring-emerald-100 focus:border-emerald-500 transition">{{ old('alasan') }}</textarea>
+                                  class="w-full border {{ $errors->has('alasan') ? 'border-rose-400 bg-rose-50' : 'border-slate-300' }} rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-4 focus:ring-emerald-100 focus:border-emerald-500 transition">{{ old('alasan') }}</textarea>
+                        @error('alasan')
+                            <p class="mt-1 text-xs text-rose-600 flex items-center gap-1"><i class="bi bi-exclamation-circle"></i> {{ $message }}</p>
+                        @enderror
                     </div>
 
                     <!-- Bukti Dokumen -->
@@ -162,6 +244,9 @@
                                 <span class="text-[11px] text-slate-400 block mt-0.5">Format: PNG, JPG, PDF (Maks. 10MB)</span>
                             </label>
                         </div>
+                        @error('bukti')
+                            <p class="mt-1 text-xs text-rose-600 flex items-center gap-1"><i class="bi bi-exclamation-circle"></i> {{ $message }}</p>
+                        @enderror
                     </div>
 
                     <!-- Submit Button -->
@@ -172,6 +257,7 @@
                     </button>
                 </form>
             </div>
+
 
             <!-- RIGHT COLUMN: Tabel Monitoring & Riwayat (7 Cols) -->
             <div class="lg:col-span-7 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
@@ -196,7 +282,7 @@
                         <thead class="bg-slate-50 text-[11px] font-bold uppercase tracking-wider text-slate-500 border-b border-slate-100">
                             <tr>
                                 <th class="px-5 py-3.5">Siswa</th>
-                                <th class="px-4 py-3.5">Keperluan & Tanggal</th>
+                                <th class="px-4 py-3.5">Keperluan & Waktu</th>
                                 <th class="px-4 py-3.5">Status Waka</th>
                                 <th class="px-4 py-3.5 text-right">Aksi</th>
                             </tr>
@@ -211,20 +297,18 @@
                                         <div class="text-[11px] text-slate-400 font-mono">NIS: {{ $disp->siswa?->nis ?? '-' }}</div>
                                     </td>
 
-                                    <!-- Jenis & Tanggal -->
+                                    <!-- Jenis & Waktu (Deskripsi Manusiawi) -->
                                     <td class="px-4 py-4">
                                         <div class="font-semibold text-slate-800">{{ $disp->jenis_dispensasi }}</div>
-                                        <div class="text-xs text-slate-500 mt-0.5">
-                                            {{ $disp->tanggal ? $disp->tanggal->format('d M Y') : '-' }}
-                                            @if($disp->tanggal_selesai && $disp->tanggal?->format('Y-m-d') !== $disp->tanggal_selesai->format('Y-m-d'))
-                                                s/d {{ $disp->tanggal_selesai->format('d M Y') }}
-                                            @endif
+                                        <div class="text-xs font-semibold text-emerald-700 mt-1 flex items-center gap-1.5">
+                                            <i class="bi bi-clock text-[11px]"></i>
+                                            <span>{{ $disp->deskripsi_waktu }}</span>
                                         </div>
-                                        <div class="text-xs text-slate-400 mt-0.5 line-clamp-1 italic" title="{{ $disp->alasan }}">
+                                        <div class="text-xs text-slate-400 mt-1 line-clamp-1 italic" title="{{ $disp->alasan }}">
                                             "{{ $disp->alasan }}"
                                         </div>
                                         @if($disp->bukti)
-                                            <div class="mt-1">
+                                            <div class="mt-1.5">
                                                 <a href="{{ asset('storage/' . $disp->bukti) }}" target="_blank" class="inline-flex items-center gap-1 text-[11px] font-semibold text-indigo-600 hover:underline">
                                                     <i class="bi bi-paperclip"></i> Lihat Berkas
                                                 </a>

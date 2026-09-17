@@ -37,9 +37,8 @@ Route::middleware('auth')->group(function () {
         Route::view('/piket', 'dashboard.piket.utama')->name('dashboard.piket');
         Route::view('/manajemen-user', 'dashboard.admin.manajemen-user')->name('admin.manajemen-user');
 
-        Route::get('/piket/kehadiran-siswa', function () {
-            return view('dashboard.piket.kehadiran-siswa');
-        })->name('piket.kehadiran-siswa');
+        Route::get('/piket/kehadiran-siswa', [PiketController::class, 'kehadiranSiswa'])->name('piket.kehadiran-siswa');
+        Route::post('/piket/kehadiran-siswa', [PiketController::class, 'updateKehadiranSiswa'])->name('piket.kehadiran-siswa.update');
 
         // --- Guru Piket: Kehadiran & Dispensasi ---
         Route::get('/piket/kehadiran', [PiketController::class, 'kehadiran'])->name('piket.kehadiran');
@@ -99,5 +98,6 @@ Route::middleware('auth')->group(function () {
     // --- GURU PENGAJAR & WAKA ---
     Route::get('/guru-pengajar', [GuruController::class, 'index'])->name('guru');
     Route::get('/guru-pengajar/beranda', [GuruController::class, 'index'])->name('guru.utama');
+    Route::post('/guru-pengajar/absen-masuk', [GuruController::class, 'absenMasuk'])->name('guru.absen-masuk');
     Route::view('/guru-pengajar/riwayat', 'dashboard.guru-pengajar.riwayat')->name('guru.riwayat');
 });

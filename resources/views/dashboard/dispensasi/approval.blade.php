@@ -68,12 +68,9 @@
                 <p class="mt-1 font-bold text-slate-800 text-base">{{ $dispensasi->jenis_dispensasi }}</p>
             </div>
             <div class="rounded-xl bg-slate-50 p-4 border border-slate-100">
-                <p class="text-xs font-semibold text-slate-500 uppercase">Tanggal Pelaksanaan</p>
+                <p class="text-xs font-semibold text-slate-500 uppercase">Waktu & Durasi Dispensasi</p>
                 <p class="mt-1 font-bold text-slate-800 text-base">
-                    {{ $dispensasi->tanggal ? $dispensasi->tanggal->format('d M Y') : '-' }}
-                    @if($dispensasi->tanggal_selesai)
-                        s/d {{ $dispensasi->tanggal_selesai->format('d M Y') }}
-                    @endif
+                    {{ $dispensasi->deskripsi_waktu }}
                 </p>
             </div>
             <div class="sm:col-span-2 rounded-xl bg-slate-50 p-4 border border-slate-100">

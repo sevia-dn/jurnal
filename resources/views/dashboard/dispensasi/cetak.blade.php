@@ -90,12 +90,9 @@
                     <span class="col-span-8 font-semibold text-emerald-800 uppercase">: {{ ucwords(str_replace('_', ' ', $dispensasi->jenis_dispensasi)) }}</span>
                 </div>
                 <div class="grid grid-cols-12">
-                    <span class="col-span-4 font-semibold text-slate-700">Berlaku Tanggal</span>
+                    <span class="col-span-4 font-semibold text-slate-700">Waktu Dispensasi</span>
                     <span class="col-span-8 text-slate-900 font-semibold">: 
-                        {{ $dispensasi->tanggal ? $dispensasi->tanggal->format('d F Y') : date('d F Y') }}
-                        @if($dispensasi->tanggal_selesai && $dispensasi->tanggal?->format('Y-m-d') !== $dispensasi->tanggal_selesai->format('Y-m-d'))
-                            s/d {{ $dispensasi->tanggal_selesai->format('d F Y') }}
-                        @endif
+                        {{ $dispensasi->deskripsi_waktu }}
                     </span>
                 </div>
                 <div class="grid grid-cols-12">

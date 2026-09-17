@@ -18,31 +18,29 @@ class JadwalPiketSeeder extends Seeder
             return;
         }
 
-        $days = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+        $guruBada = $gurus->firstWhere('username', 'badamaymunah') ?? $gurus->first();
+        $guruAnissa = $gurus->firstWhere('username', 'anissaramadani') ?? $gurus->first();
+        $guruBetti = $gurus->firstWhere('username', 'bettisulisyowati') ?? $gurus->first();
+        $guruFajar = $gurus->firstWhere('username', 'fajarsiswanto') ?? $gurus->first();
 
-        foreach ($days as $day) {
-            // Shift 1: 07:00 - 11:00 (3 Guru per shift)
-            foreach ($gurus->take(3) as $guru) {
+        $jadwalHarian = [
+            'Senin'  => [$guruBada->id],
+            'Selasa' => [$guruAnissa->id],
+            'Rabu'   => [$guruBada->id, $guruAnissa->id],
+            'Kamis'  => [$guruBetti->id], // Hari ini: Khusus Bu Betti saja yang bertugas piket!
+            'Jumat'  => [$guruFajar->id],
+            'Sabtu'  => [$guruBetti->id],
+        ];
+
+        foreach ($jadwalHarian as $day => $userIds) {
+            foreach ($userIds as $userId) {
                 JadwalPiket::create([
-                    'user_id' => $guru->id,
+                    'user_id' => $userId,
                     'hari' => $day,
                     'bulan' => date('n'),
                     'tahun' => date('Y'),
                     'shift' => 1,
                     'jam_mulai' => '07:00:00',
-                    'jam_selesai' => '11:00:00',
-                ]);
-            }
-
-            // Shift 2: 11:00 - 15:00 (3 Guru per shift)
-            foreach ($gurus->skip(1)->take(3) as $guru) {
-                JadwalPiket::create([
-                    'user_id' => $guru->id,
-                    'hari' => $day,
-                    'bulan' => date('n'),
-                    'tahun' => date('Y'),
-                    'shift' => 2,
-                    'jam_mulai' => '11:00:00',
                     'jam_selesai' => '15:00:00',
                 ]);
             }
