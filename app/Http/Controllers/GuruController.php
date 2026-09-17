@@ -16,6 +16,52 @@ use Illuminate\Support\Facades\Auth;
 class GuruController extends Controller
 {
     /**
+     * Mengambil slot waktu (mulai & selesai) untuk jam pelajaran tertentu
+     * sesuai aturan jadwal KBM SMKN 1 Boyolangu:
+     * - Senin s.d. Kamis: 1 JP = 40 menit (sampai jam ke-10, pulang 15:00)
+     * - Jumat: 1 JP = 30 menit (Kelas XI sampai jam ke-12 pulang 15:00, Kelas X sampai jam ke-13 pulang 15:30)
+     */
+    public static function getJamSlot(string $hari, int $jamKe): array
+    {
+        $isJumat = in_array(strtolower(trim($hari)), ['jumat', 'jum\'at', 'friday']);
+
+        if (! $isJumat) {
+            $seninKamis = [
+                1 => ['start' => '07:00', 'end' => '07:40'],
+                2 => ['start' => '07:40', 'end' => '08:20'],
+                3 => ['start' => '08:20', 'end' => '09:00'],
+                4 => ['start' => '09:00', 'end' => '09:40'],
+                5 => ['start' => '10:00', 'end' => '10:40'],
+                6 => ['start' => '10:40', 'end' => '11:20'],
+                7 => ['start' => '11:20', 'end' => '12:00'],
+                8 => ['start' => '13:00', 'end' => '13:40'],
+                9 => ['start' => '13:40', 'end' => '14:20'],
+                10 => ['start' => '14:20', 'end' => '15:00'],
+            ];
+
+            return $seninKamis[$jamKe] ?? ['start' => '07:00', 'end' => '15:00'];
+        }
+
+        $jumat = [
+            1 => ['start' => '07:00', 'end' => '07:30'],
+            2 => ['start' => '07:30', 'end' => '08:00'],
+            3 => ['start' => '08:00', 'end' => '08:30'],
+            4 => ['start' => '08:30', 'end' => '09:00'],
+            5 => ['start' => '09:00', 'end' => '09:30'],
+            6 => ['start' => '09:50', 'end' => '10:20'],
+            7 => ['start' => '10:20', 'end' => '10:50'],
+            8 => ['start' => '10:50', 'end' => '11:20'],
+            9 => ['start' => '13:00', 'end' => '13:30'],
+            10 => ['start' => '13:30', 'end' => '14:00'],
+            11 => ['start' => '14:00', 'end' => '14:30'],
+            12 => ['start' => '14:30', 'end' => '15:00'],
+            13 => ['start' => '15:00', 'end' => '15:30'],
+        ];
+
+        return $jumat[$jamKe] ?? ['start' => '07:00', 'end' => '15:30'];
+    }
+
+    /**
      * Halaman utama guru (Dashboard pribadi guru)
      */
     public function beranda(Request $request)
@@ -27,9 +73,7 @@ class GuruController extends Controller
         $now = Carbon::now();
         $todayDate = $now->toDateString();
         $hariIni = $now->translatedFormat('l');
-
-        // Hari yang dipilih (default adalah hari saat guru login)
-        $selectedHari = $request->query('hari', $hariIni);
+        $currentTime = $now->format('H:i');
 
         // Absensi guru hari ini
         $attendance = TeacherAttendance::where('user_id', $user->id)
@@ -38,26 +82,46 @@ class GuruController extends Controller
 
         $hasCheckedIn = $attendance ? true : false;
 
-        // Cek apakah sudah mengisi jurnal hari ini
+        // Jadwal guru khusus HARI INI (hari saat login)
+        $jadwals = JadwalMengajar::with(['kelas', 'mapel'])
+            ->where('id_user', $user->id)
+            ->where('hari', $hariIni)
+            ->orderBy('jam_mulai')
+            ->get();
+
+        // Cek status waktu dan status pengisian jurnal per jadwal hari ini
+        foreach ($jadwals as $jadwal) {
+            $slotMulai = self::getJamSlot($hariIni, (int) $jadwal->jam_mulai);
+            $slotSelesai = self::getJamSlot($hariIni, (int) $jadwal->jam_selesai);
+
+            $jadwal->waktu_mulai = $slotMulai['start'];
+            $jadwal->waktu_selesai = $slotSelesai['end'];
+
+            // Cek apakah jurnal untuk sesi ini sudah diisi
+            $jadwal->is_filled = JurnalMengajar::where('id_user', $user->id)
+                ->where('id_kelas', $jadwal->id_kelas)
+                ->where('id_mapel', $jadwal->id_mapel)
+                ->where('tanggal', $todayDate)
+                ->where('jam_ke', $jadwal->jam_mulai)
+                ->exists();
+
+            // Batasan waktu: jika waktu sekarang sudah melebihi waktu selesai sesi mengajar
+            if ($currentTime > $jadwal->waktu_selesai) {
+                $jadwal->status_waktu = 'lewat'; // sudah kelewat jam mengajar
+            } elseif ($currentTime < $jadwal->waktu_mulai) {
+                $jadwal->status_waktu = 'belum_mulai';
+            } else {
+                $jadwal->status_waktu = 'berlangsung'; // sedang dalam jam mengajar
+            }
+        }
+
+        // Cek apakah ada minimal 1 jurnal yang sudah diisi hari ini
         $hasSubmittedJournal = JurnalMengajar::where('id_user', $user->id)
             ->where('tanggal', $todayDate)
             ->exists();
 
-        // Jadwal guru untuk hari yang dipilih (default hari login)
-        $jadwals = JadwalMengajar::with(['kelas', 'mapel'])
-            ->where('id_user', $user->id)
-            ->where('hari', $selectedHari)
-            ->orderBy('jam_mulai')
-            ->get();
-
-        // Ringkasan jumlah jam/sesi mengajar guru per hari
-        $jadwalCounts = JadwalMengajar::where('id_user', $user->id)
-            ->selectRaw('hari, count(*) as total')
-            ->groupBy('hari')
-            ->pluck('total', 'hari');
-
-        // Jadwal aktif pertama hari ini untuk auto-fill form logbook
-        $activeJadwal = $jadwals->first();
+        // Jadwal aktif pertama hari ini yang belum terlewat atau belum diisi untuk auto-fill
+        $activeJadwal = $jadwals->firstWhere('is_filled', false) ?? $jadwals->first();
 
         // Data pendukung form
         $teachers = User::where('role', 'guru')
@@ -70,7 +134,7 @@ class GuruController extends Controller
         $mapels = Mapel::orderBy('nama_mapel')
             ->get();
 
-        // Siswa dikirim ke view untuk filter otomatis per kelas
+        // Siswa dikirim ke view untuk daftar presensi di kelas terpilih
         $siswas = Siswa::with('kelas')
             ->orderBy('nama')
             ->get();
@@ -87,8 +151,8 @@ class GuruController extends Controller
             'mapels',
             'siswas',
             'hariIni',
-            'selectedHari',
-            'jadwalCounts'
+            'todayDate',
+            'currentTime'
         ));
     }
 
@@ -103,8 +167,12 @@ class GuruController extends Controller
             'teacher_id' => 'required|exists:users,id',
             'nip' => 'nullable|string',
             'status_kehadiran_guru' => 'required|in:Hadir,Tidak Hadir',
-            'reason' => 'nullable|string|max:500',
-            'proof_file' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
+            'reason' => 'required_if:status_kehadiran_guru,Tidak Hadir|nullable|string|max:500',
+            'proof_file' => 'nullable|file|mimes:jpeg,png,jpg,webp,pdf|max:5120',
+        ], [
+            'reason.required_if' => 'Alasan wajib diisi jika memilih status Tidak Hadir.',
+            'proof_file.mimes' => 'Format berkas bukti harus berupa gambar (JPG, PNG, WebP) atau dokumen PDF.',
+            'proof_file.max' => 'Ukuran berkas bukti maksimal 5 MB.',
         ]);
 
         $todayDate = Carbon::today()->toDateString();
@@ -138,7 +206,7 @@ class GuruController extends Controller
             ->route('guru.utama')
             ->with(
                 'success',
-                'Presensi/Absen masuk berhasil dicatat. Silakan lanjutkan mengisi jurnal pembelajaran.'
+                'Presensi/Absen berhasil dicatat. '.($request->status_kehadiran_guru === 'Hadir' ? 'Silakan lanjutkan mengisi jurnal pembelajaran.' : 'Laporan ketidakhadiran Anda telah disimpan.')
             );
     }
 }

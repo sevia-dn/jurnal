@@ -965,33 +965,66 @@ class JadwalMengajarSeeder extends Seeder
             foreach ($rows as [$namaKelas, $hari, $jamMulai, $jamSelesai, $namaMapel, $namaGuru]) {
                 $guruKey = $normal($namaGuru);
 
-                if (!isset($guru[$guruKey])) {
-                    $username = $guruKey ?: 'guru' . (count($guru) + 1);
-                    $baseUsername = $username;
-                    $suffix = 1;
-                    while (User::where('username', $username)->exists()) {
-                        $username = $baseUsername . $suffix++;
+                if (! isset($guru[$guruKey])) {
+                    // Cari guru yang sudah ada berdasarkan kemiripan nama
+                    $cleanTarget = strtolower(preg_replace('/[^a-z0-9]/', '', explode(',', $namaGuru)[0]));
+                    $matchedUser = null;
+                    foreach (User::where('role', 'guru')->get() as $u) {
+                        $cleanU = strtolower(preg_replace('/[^a-z0-9]/', '', explode(',', $u->name)[0]));
+                        if ($cleanTarget !== '' && ($cleanTarget === $cleanU || str_contains($cleanU, $cleanTarget) || str_contains($cleanTarget, $cleanU))) {
+                            $matchedUser = $u;
+                            break;
+                        }
                     }
 
-                    $newGuru = User::create([
-                        'name' => $namaGuru,
-                        'username' => $username,
-                        'nip' => null,
-                        'email' => $username . '@jurnalkita.local',
-                        'password' => Hash::make('guru123'),
-                        'role' => 'guru',
-                    ]);
+                    if ($matchedUser) {
+                        $guru[$guruKey] = $matchedUser->id;
+                    } else {
+                        $username = $guruKey ?: 'guru'.(count($guru) + 1);
+                        $baseUsername = $username;
+                        $suffix = 1;
+                        while (User::where('username', $username)->exists()) {
+                            $username = $baseUsername.$suffix++;
+                        }
 
-                    $guru[$guruKey] = $newGuru->id;
-                    $createdGuru[$namaGuru] = true;
+                        $email = $username.'@jurnalkita.local';
+                        $emailSuffix = 1;
+                        while (User::where('email', $email)->exists()) {
+                            $email = $username.($emailSuffix++).'@jurnalkita.local';
+                        }
+
+                        $newGuru = User::create([
+                            'name' => $namaGuru,
+                            'username' => $username,
+                            'nip' => null,
+                            'email' => $email,
+                            'password' => Hash::make('guru123'),
+                            'role' => 'guru',
+                        ]);
+
+                        $guru[$guruKey] = $newGuru->id;
+                        $createdGuru[$namaGuru] = true;
+                    }
                 }
 
-                if (!isset($kelas[$namaKelas])) {
+                if (! isset($kelas[$namaKelas])) {
                     throw new \RuntimeException("Kelas tidak ditemukan: {$namaKelas}");
                 }
 
-                if (!isset($mapel[$namaMapel])) {
+                if (! isset($mapel[$namaMapel])) {
                     throw new \RuntimeException("Mapel tidak ditemukan: {$namaMapel}");
+                }
+
+                // Normalisasi batas jam pelajaran sesuai jadwal KBM resmi:
+                // - Senin s.d. Kamis: jam ke-1 s.d. 10
+                // - Jumat Kelas XI: jam ke-1 s.d. 12
+                // - Jumat Kelas X: jam ke-1 s.d. 13
+                if (in_array($hari, ['Senin', 'Selasa', 'Rabu', 'Kamis']) && $jamSelesai > 10) {
+                    $jamSelesai = 10;
+                } elseif ($hari === 'Jumat' && str_starts_with($namaKelas, 'XI') && $jamSelesai > 12) {
+                    $jamSelesai = 12;
+                } elseif ($hari === 'Jumat' && $jamSelesai > 13) {
+                    $jamSelesai = 13;
                 }
 
                 JadwalMengajar::create([
@@ -1010,7 +1043,7 @@ class JadwalMengajarSeeder extends Seeder
 
             if ($createdGuru) {
                 $this->command->warn(
-                    "Guru baru yang dibuat: " . count($createdGuru) . " akun. Password awal: guru123"
+                    'Guru baru yang dibuat: '.count($createdGuru).' akun. Password awal: guru123'
                 );
             }
         });

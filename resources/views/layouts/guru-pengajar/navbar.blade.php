@@ -108,7 +108,9 @@
                     aria-label="Notifikasi persetujuan dan revisi logbook"
                     aria-expanded="openNotif">
                 <i class="bi bi-bell text-lg" aria-hidden="true"></i>
-                <span class="absolute right-1 top-1 h-2 w-2 rounded-full border border-white bg-rose-500"></span>
+                @if($notifBadgeCount > 0)
+                    <span class="absolute right-1 top-1 flex h-3.5 min-w-3.5 items-center justify-center rounded-full border border-white bg-rose-500 px-0.5 text-[8px] font-bold text-white">{{ $notifBadgeCount }}</span>
+                @endif
             </button>
 
             <div x-show="openNotif"

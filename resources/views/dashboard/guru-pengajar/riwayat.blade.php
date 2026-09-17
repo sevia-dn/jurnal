@@ -36,8 +36,8 @@
         <section class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
             <div>
                 <p class="text-sm font-semibold text-emerald-700">Arsip Pembelajaran</p>
-                <h1 class="mt-1 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">Riwayat &amp; Rekap</h1>
-                <p class="mt-2 text-sm text-slate-500">Riwayat logbook, dokumentasi, dan presensi siswa.</p>
+                <h1 class="mt-1 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">Riwayat &amp; Rekap Logbook</h1>
+                <p class="mt-2 text-sm text-slate-500">Riwayat jurnal mengajar, dokumentasi lampiran, dan presensi siswa yang telah diisi.</p>
             </div>
             <span class="w-fit rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700">Guru Pengajar</span>
         </section>
@@ -52,7 +52,17 @@
             </div>
         @endif
 
-        {{-- FORM PENCARIAN --}}
+        {{-- NOTIFIKASI ERROR --}}
+        @if(session('error'))
+            <div class="mt-4 rounded-xl border border-rose-200 bg-rose-50 p-4 text-rose-900 shadow-sm" role="alert">
+                <div class="flex items-center gap-3">
+                    <i class="bi bi-exclamation-triangle-fill text-lg text-rose-600"></i>
+                    <p class="text-sm font-semibold">{{ session('error') }}</p>
+                </div>
+            </div>
+        @endif
+
+        {{-- FORM PENCARIAN & FILTER --}}
         <section class="mt-6 rounded-2xl bg-white p-4 shadow-md sm:p-6">
             <form method="GET" action="{{ route('guru.riwayat') }}" class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_190px_190px_auto]">
 
@@ -111,9 +121,10 @@
         </section>
 
 
-        {{-- DAFTAR RIWAYAT --}}
-        <section class="mt-6 rounded-2xl bg-white p-3 shadow-md sm:p-4">
-            <div class="mb-5 flex items-center justify-end">
+        {{-- DAFTAR RIWAYAT LOGBOOK --}}
+        <section class="mt-6 rounded-2xl bg-white p-4 shadow-md sm:p-6">
+            <div class="mb-5 flex items-center justify-between border-b border-slate-100 pb-3">
+                <h2 class="text-base font-bold text-slate-800">Daftar Jurnal Pembelajaran</h2>
                 <span class="rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700">
                     Total {{ $riwayatJurnals->count() }} data
                 </span>
@@ -138,48 +149,53 @@
                         $tanggalLong = \Carbon\Carbon::parse($jurnal->tanggal)->translatedFormat('l, d F Y');
                     @endphp
 
-                    <article class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
+                    <article class="rounded-2xl bg-white p-5 shadow-xs ring-1 ring-slate-200 transition hover:ring-emerald-300">
                         <div class="grid gap-5 md:grid-cols-[minmax(0,1fr)_auto]">
                             <div>
                                 <div class="flex flex-wrap items-center gap-2">
-                                    <h2 class="text-lg font-bold text-slate-900">
+                                    <h3 class="text-base font-bold text-slate-900">
                                         {{ $jurnal->mapel->nama_mapel ?? '-' }}
-                                    </h2>
-                                    <span class="rounded-full bg-{{ $statusColor }}-100 px-2.5 py-1 text-[10px] font-bold text-{{ $statusColor }}-700">
+                                    </h3>
+                                    <span class="rounded-full bg-{{ $statusColor }}-100 px-2.5 py-0.5 text-[10px] font-bold text-{{ $statusColor }}-700">
                                         {{ $statusLabel }}
                                     </span>
                                 </div>
 
-                                <p class="mt-2 text-sm font-semibold text-slate-700">
+                                <p class="mt-1 text-sm font-semibold text-slate-700">
                                     Kelas {{ $jurnal->kelas->nama_kelas ?? '-' }}
                                     <span class="mx-1 text-slate-300">&bull;</span>
-                                    Jam ke-{{ $jurnal->jam_ke }}
+                                    Jam Pelajaran ke-{{ $jurnal->jam_ke }}
                                 </p>
 
-                                <p class="mt-1.5 text-sm leading-relaxed text-slate-500">
-                                    Materi: {{ $jurnal->materi }}
+                                <p class="mt-2 text-sm leading-relaxed text-slate-600">
+                                    <span class="font-medium text-slate-500">Materi:</span> {{ $jurnal->materi }}
                                 </p>
 
                                 <div class="mt-3 flex flex-wrap gap-2">
-                                    <span class="rounded-full bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-600">
+                                    <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
                                         <i class="bi bi-calendar3 mr-1"></i>{{ $tanggalFormatted }}
                                     </span>
-                                    <span class="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
+                                    <span class="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 border border-emerald-100">
                                         {{ $jurnal->jumlah_hadir ?? 0 }} Hadir
                                     </span>
                                     @if(($jurnal->jumlah_sakit ?? 0) > 0)
-                                        <span class="rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">
+                                        <span class="rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700 border border-amber-100">
                                             {{ $jurnal->jumlah_sakit }} Sakit
                                         </span>
                                     @endif
                                     @if(($jurnal->jumlah_izin ?? 0) > 0)
-                                        <span class="rounded-full bg-sky-50 px-3 py-1 text-xs font-semibold text-sky-700">
+                                        <span class="rounded-full bg-sky-50 px-3 py-1 text-xs font-semibold text-sky-700 border border-sky-100">
                                             {{ $jurnal->jumlah_izin }} Izin
                                         </span>
                                     @endif
                                     @if(($jurnal->jumlah_alpa ?? 0) > 0)
-                                        <span class="rounded-full bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-700">
+                                        <span class="rounded-full bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-700 border border-rose-100">
                                             {{ $jurnal->jumlah_alpa }} Alpa
+                                        </span>
+                                    @endif
+                                    @if($jurnal->lampiran)
+                                        <span class="rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-semibold text-indigo-700 border border-indigo-100">
+                                            <i class="bi bi-paperclip mr-0.5"></i>Ada Lampiran
                                         </span>
                                     @endif
                                 </div>
@@ -188,26 +204,26 @@
                             <div class="flex items-start justify-end">
                                 <button
                                     type="button"
-                                    @click="openDetail({
-                                        mapel: '{{ addslashes($jurnal->mapel->nama_mapel ?? '-') }}',
-                                        kelas: '{{ addslashes($jurnal->kelas->nama_kelas ?? '-') }}',
-                                        tanggal: '{{ $tanggalLong }}',
-                                        tanggalShort: '{{ $tanggalFormatted }}',
-                                        jamKe: '{{ $jurnal->jam_ke }}',
-                                        materi: '{{ addslashes($jurnal->materi) }}',
-                                        catatan: '{{ addslashes($jurnal->catatan ?? '') }}',
-                                        statusValidasi: '{{ $statusLabel }}',
-                                        statusColor: '{{ $statusColor }}',
-                                        catatanValidasi: '{{ addslashes($jurnal->catatan_validasi ?? '') }}',
-                                        divalidasiPada: '{{ $jurnal->divalidasi_pada ? \Carbon\Carbon::parse($jurnal->divalidasi_pada)->format(\'d/m/y\') : \'\' }}',
-                                        jumlahHadir: '{{ $jurnal->jumlah_hadir ?? 0 }}',
-                                        jumlahSakit: '{{ $jurnal->jumlah_sakit ?? 0 }}',
-                                        jumlahIzin: '{{ $jurnal->jumlah_izin ?? 0 }}',
-                                        jumlahAlpa: '{{ $jurnal->jumlah_alpa ?? 0 }}',
-                                        adaTugas: '{{ $jurnal->ada_tugas ? \'Ya\' : \'Tidak\' }}',
-                                        lampiran: '{{ $jurnal->lampiran ? asset(\'storage/\'.$jurnal->lampiran) : \'\' }}'
-                                    })"
-                                    class="inline-flex items-center gap-2 rounded-lg border border-emerald-200 px-3 py-2 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-50 focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:ring-offset-2"
+                                    @click="openDetail(@js([
+                                        'mapel' => $jurnal->mapel->nama_mapel ?? '-',
+                                        'kelas' => $jurnal->kelas->nama_kelas ?? '-',
+                                        'tanggal' => $tanggalLong,
+                                        'tanggalShort' => $tanggalFormatted,
+                                        'jamKe' => $jurnal->jam_ke,
+                                        'materi' => $jurnal->materi,
+                                        'catatan' => $jurnal->catatan ?? '',
+                                        'statusValidasi' => $statusLabel,
+                                        'statusColor' => $statusColor,
+                                        'catatanValidasi' => $jurnal->catatan_validasi ?? '',
+                                        'divalidasiPada' => $jurnal->divalidasi_pada ? \Carbon\Carbon::parse($jurnal->divalidasi_pada)->format('d/m/y') : '',
+                                        'jumlahHadir' => $jurnal->jumlah_hadir ?? 0,
+                                        'jumlahSakit' => $jurnal->jumlah_sakit ?? 0,
+                                        'jumlahIzin' => $jurnal->jumlah_izin ?? 0,
+                                        'jumlahAlpa' => $jurnal->jumlah_alpa ?? 0,
+                                        'adaTugas' => $jurnal->ada_tugas ? 'Ya' : 'Tidak',
+                                        'lampiran' => $jurnal->lampiran ? asset('storage/' . $jurnal->lampiran) : '',
+                                    ]))"
+                                    class="inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-white px-3 py-2 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-50 focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:ring-offset-2"
                                 >
                                     <i class="bi bi-eye" aria-hidden="true"></i>
                                     Lihat Detail
@@ -267,7 +283,10 @@
                 >
                     {{-- Header Modal --}}
                     <div class="flex shrink-0 items-center justify-between border-b border-slate-200 px-5 py-4">
-                        <h3 class="text-base font-bold text-slate-900">Detail Logbook Mengajar</h3>
+                        <div>
+                            <h3 class="text-base font-bold text-slate-900">Detail Logbook Mengajar</h3>
+                            <p class="text-xs text-slate-400 mt-0.5" x-text="detail.tanggal"></p>
+                        </div>
                         <button type="button" @click="openDetailModal = false"
                                 class="flex h-8 w-8 items-center justify-center rounded-full text-slate-500 transition hover:bg-slate-100"
                                 aria-label="Tutup">
@@ -282,7 +301,7 @@
                             {{-- Status & Tanggal --}}
                             <div class="flex items-center justify-between gap-3">
                                 <span
-                                    class="inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-semibold sm:text-xs"
+                                    class="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold"
                                     :class="{
                                         'bg-emerald-100 text-emerald-700': detail.statusColor === 'emerald',
                                         'bg-amber-100 text-amber-700': detail.statusColor === 'amber',
@@ -290,34 +309,32 @@
                                     }"
                                     x-text="detail.statusValidasi"
                                 ></span>
-                                <span class="text-[10px] font-medium text-slate-400 sm:text-xs" x-text="detail.tanggal"></span>
+                                <span class="text-xs font-bold text-slate-500">
+                                    Tanggal: <span x-text="detail.tanggalShort"></span>
+                                </span>
                             </div>
 
                             {{-- Info Grid --}}
-                            <div class="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
+                            <div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
                                 <div class="rounded-xl bg-slate-50 p-3">
-                                    <p class="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">Tanggal</p>
-                                    <p class="mt-2 text-sm font-bold text-slate-800" x-text="detail.tanggalShort"></p>
+                                    <p class="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Mata Pelajaran</p>
+                                    <p class="mt-1 text-sm font-bold text-slate-800" x-text="detail.mapel"></p>
                                 </div>
                                 <div class="rounded-xl bg-slate-50 p-3">
-                                    <p class="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">Mata Pelajaran</p>
-                                    <p class="mt-2 text-sm font-bold text-slate-800" x-text="detail.mapel"></p>
+                                    <p class="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Kelas</p>
+                                    <p class="mt-1 text-sm font-bold text-slate-800" x-text="detail.kelas"></p>
                                 </div>
                                 <div class="rounded-xl bg-slate-50 p-3">
-                                    <p class="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">Kelas</p>
-                                    <p class="mt-2 text-sm font-bold text-slate-800" x-text="detail.kelas"></p>
-                                </div>
-                                <div class="rounded-xl bg-slate-50 p-3">
-                                    <p class="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">Jam ke-</p>
-                                    <p class="mt-2 text-sm font-bold text-slate-800" x-text="detail.jamKe"></p>
+                                    <p class="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Jam Pelajaran</p>
+                                    <p class="mt-1 text-sm font-bold text-slate-800">Jam ke-<span x-text="detail.jamKe"></span></p>
                                 </div>
                             </div>
 
                             {{-- Materi --}}
                             <div>
                                 <p class="text-sm font-semibold text-slate-700">Materi / Pokok Pembahasan</p>
-                                <div class="mt-2 rounded-xl bg-slate-50 p-3 sm:p-4">
-                                    <p class="text-sm leading-relaxed text-slate-600" x-text="detail.materi"></p>
+                                <div class="mt-1.5 rounded-xl bg-slate-50 p-3.5 border border-slate-100">
+                                    <p class="text-sm leading-relaxed text-slate-700 whitespace-pre-line" x-text="detail.materi"></p>
                                 </div>
                             </div>
 
@@ -325,59 +342,59 @@
                             <template x-if="detail.catatan">
                                 <div>
                                     <p class="text-sm font-semibold text-slate-700">Catatan Khusus / Hambatan</p>
-                                    <div class="mt-2 rounded-xl border border-amber-100 bg-amber-50 p-3 sm:p-4">
-                                        <p class="text-sm leading-relaxed text-amber-800" x-text="detail.catatan"></p>
+                                    <div class="mt-1.5 rounded-xl border border-amber-100 bg-amber-50 p-3.5">
+                                        <p class="text-sm leading-relaxed text-amber-800 whitespace-pre-line" x-text="detail.catatan"></p>
                                     </div>
                                 </div>
                             </template>
 
                             {{-- Tugas --}}
-                            <div class="flex items-center gap-3 rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
-                                <i class="bi bi-clipboard-check text-slate-400"></i>
-                                <span class="text-sm text-slate-600">Ada Tugas:</span>
-                                <span class="text-sm font-bold text-slate-800" x-text="detail.adaTugas"></span>
+                            <div class="flex items-center gap-2 rounded-xl border border-slate-100 bg-slate-50 px-4 py-2.5 text-xs text-slate-600">
+                                <i class="bi bi-clipboard-check text-slate-500"></i>
+                                <span>Status Tugas Siswa:</span>
+                                <strong class="text-slate-800" x-text="detail.adaTugas === 'Ya' ? 'Ada Tugas Diberikan' : 'Tidak Ada Tugas'"></strong>
                             </div>
 
                             {{-- Rekap Kehadiran Siswa --}}
-                            <div class="rounded-xl border border-emerald-100 bg-emerald-50 p-3 sm:p-4">
-                                <p class="text-sm font-semibold text-slate-700">Rekap Kehadiran Siswa</p>
-                                <div class="mt-3 flex flex-wrap gap-2">
-                                    <span class="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700">
+                            <div class="rounded-xl border border-emerald-100 bg-emerald-50/70 p-4">
+                                <p class="text-xs font-bold uppercase tracking-wider text-emerald-800">Rekap Presensi Siswa</p>
+                                <div class="mt-2.5 flex flex-wrap gap-2">
+                                    <span class="rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-800">
                                         <span x-text="detail.jumlahHadir"></span> Hadir
                                     </span>
                                     <template x-if="parseInt(detail.jumlahSakit) > 0">
-                                        <span class="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-700">
+                                        <span class="rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-800">
                                             <span x-text="detail.jumlahSakit"></span> Sakit
                                         </span>
                                     </template>
                                     <template x-if="parseInt(detail.jumlahIzin) > 0">
-                                        <span class="rounded-full bg-sky-100 px-3 py-1 text-xs font-semibold text-sky-700">
+                                        <span class="rounded-full bg-sky-100 px-3 py-1 text-xs font-bold text-sky-800">
                                             <span x-text="detail.jumlahIzin"></span> Izin
                                         </span>
                                     </template>
                                     <template x-if="parseInt(detail.jumlahAlpa) > 0">
-                                        <span class="rounded-full bg-rose-100 px-3 py-1 text-xs font-semibold text-rose-700">
+                                        <span class="rounded-full bg-rose-100 px-3 py-1 text-xs font-bold text-rose-800">
                                             <span x-text="detail.jumlahAlpa"></span> Alpa
                                         </span>
                                     </template>
                                 </div>
                             </div>
 
-                            {{-- Validasi info --}}
+                            {{-- Validasi Info --}}
                             <template x-if="detail.statusColor === 'emerald' && detail.divalidasiPada">
-                                <div class="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs text-emerald-700">
-                                    <i class="bi bi-shield-check mr-1"></i>
-                                    Divalidasi pada: <span class="font-semibold" x-text="detail.divalidasiPada"></span>
+                                <div class="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs text-emerald-800">
+                                    <i class="bi bi-shield-check mr-1 text-emerald-600 font-bold"></i>
+                                    Divalidasi pada: <span class="font-bold" x-text="detail.divalidasiPada"></span>
                                     <template x-if="detail.catatanValidasi">
-                                        <p class="mt-1 text-emerald-600">Catatan: <span x-text="detail.catatanValidasi"></span></p>
+                                        <p class="mt-1 text-emerald-700">Catatan Pengurus Kelas: <span x-text="detail.catatanValidasi"></span></p>
                                     </template>
                                 </div>
                             </template>
 
                             <template x-if="detail.statusColor === 'rose' && detail.catatanValidasi">
-                                <div class="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs text-rose-700">
-                                    <i class="bi bi-exclamation-triangle mr-1"></i>
-                                    Alasan ditolak: <span class="font-semibold" x-text="detail.catatanValidasi"></span>
+                                <div class="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs text-rose-800">
+                                    <i class="bi bi-exclamation-triangle mr-1 text-rose-600 font-bold"></i>
+                                    Alasan ditolak: <span class="font-bold" x-text="detail.catatanValidasi"></span>
                                 </div>
                             </template>
 
@@ -387,21 +404,18 @@
                                 <template x-if="detail.lampiran">
                                     <div class="mt-2">
                                         <a :href="detail.lampiran" target="_blank" class="group block overflow-hidden rounded-xl border border-slate-200 bg-slate-50 hover:border-emerald-300">
-                                            <img :src="detail.lampiran" alt="Lampiran" class="h-48 w-full object-cover" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'">
-                                            <div style="display:none;" class="h-16 items-center justify-center gap-2 text-sm text-slate-500">
-                                                <i class="bi bi-file-earmark text-xl"></i>
-                                                <span>Lihat dokumen lampiran</span>
+                                            <img :src="detail.lampiran" alt="Lampiran" class="max-h-56 w-full object-cover" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'">
+                                            <div style="display:none;" class="h-20 items-center justify-center gap-2 text-sm font-semibold text-emerald-700">
+                                                <i class="bi bi-file-earmark-pdf text-2xl text-rose-500"></i>
+                                                <span>Buka Berkas Lampiran (PDF)</span>
                                             </div>
                                         </a>
-                                        <p class="mt-1 text-xs text-slate-400">Klik untuk membuka lampiran di tab baru.</p>
+                                        <p class="mt-1 text-xs text-slate-400">Klik untuk melihat berkas lampiran secara penuh.</p>
                                     </div>
                                 </template>
                                 <template x-if="!detail.lampiran">
-                                    <div class="mt-2 flex h-24 items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50">
-                                        <div class="flex flex-col items-center text-slate-400">
-                                            <i class="bi bi-image text-2xl"></i>
-                                            <span class="mt-1 text-xs">Tidak ada lampiran</span>
-                                        </div>
+                                    <div class="mt-2 flex h-20 items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50">
+                                        <span class="text-xs text-slate-400">Tidak ada lampiran berkas/foto</span>
                                     </div>
                                 </template>
                             </div>

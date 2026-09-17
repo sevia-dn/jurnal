@@ -16,13 +16,16 @@
     [x-cloak] {
         display: none !important;
     }
+    .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: rgba(16, 185, 129, 0.05); }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(16, 185, 129, 0.3); border-radius: 9999px; }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(16, 185, 129, 0.5); }
 </style>
 
 <div
     x-data="{
         hasCheckedIn: {{ $hasCheckedIn ? 'true' : 'false' }},
         hasSubmittedJournal: {{ $hasSubmittedJournal ? 'true' : 'false' }},
-        isWithinSchedule: true,
         showForm: false,
 
         selectedTeacherId: '{{ $user->id }}',
@@ -112,7 +115,7 @@
 
 
     {{-- ========================================================= --}}
-    {{-- SECTION 1 : KEHADIRAN GURU & JADWAL MENGAJAR --}}
+    {{-- SECTION 1 : KEHADIRAN GURU & JADWAL MENGAJAR HARI INI --}}
     {{-- ========================================================= --}}
 
     <section
@@ -126,146 +129,142 @@
             <div class="flex items-start gap-3">
 
                 <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-xl text-emerald-700">
-                    <i class="bi bi-person-check-fill"></i>
+                    <i class="bi bi-calendar-check-fill"></i>
                 </span>
 
                 <div>
                     <p class="text-sm font-semibold text-emerald-700">
-                        Presensi & Jadwal Mengajar Pribadi
+                        Presensi &amp; Jadwal Mengajar Hari Ini
                     </p>
 
                     <h2
                         id="lapor-kehadiran-guru"
                         class="mt-1 text-xl font-bold text-slate-900"
                     >
-                        Jadwal & Kehadiran Saya
+                        Jadwal Mengajar Hari Ini ({{ $hariIni }})
                     </h2>
 
                     <p class="mt-1 text-sm text-slate-500">
-                        Lakukan absen masuk setiap hari sebelum memulai kegiatan mengajar di kelas.
+                        Lakukan presensi terlebih dahulu sebelum memulai kegiatan belajar mengajar di kelas.
                     </p>
                 </div>
 
             </div>
 
-            <span
-                x-show="!hasCheckedIn"
-                class="w-fit rounded-full bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-700"
-            >
-                Belum absen hari ini
-            </span>
-
-            <span
-                x-cloak
-                x-show="hasCheckedIn"
-                class="w-fit rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700"
-            >
-                Sudah absen masuk
-            </span>
-
-        </div>
-
-        {{-- TAB FILTER HARI JADWAL --}}
-        <div class="mt-6 flex flex-wrap items-center gap-2 border-b border-slate-100 pb-3">
-            <span class="text-xs font-bold uppercase tracking-wider text-slate-500 mr-1">
-                Jadwal Hari:
-            </span>
-            @foreach(['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat'] as $hari)
-                @php
-                    $isHariIni = ($hari === $hariIni);
-                    $isSelected = ($hari === $selectedHari);
-                    $count = $jadwalCounts[$hari] ?? 0;
-                @endphp
-                <a
-                    href="{{ route('guru.utama', ['hari' => $hari]) }}"
-                    class="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition {{ $isSelected ? 'bg-emerald-600 text-white shadow-sm' : 'bg-slate-100 text-slate-700 hover:bg-slate-200' }}"
+            <div class="flex items-center gap-2">
+                <span
+                    x-show="!hasCheckedIn"
+                    class="w-fit rounded-full bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-700"
                 >
-                    <span>{{ $hari }}</span>
-                    @if($count > 0)
-                        <span class="rounded-full px-1.5 py-0.5 text-[10px] {{ $isSelected ? 'bg-emerald-800 text-white' : 'bg-slate-200 text-slate-700' }}">
-                            {{ $count }}
-                        </span>
-                    @endif
-                    @if($isHariIni)
-                        <span class="text-[10px] {{ $isSelected ? 'text-emerald-100 font-medium' : 'text-emerald-600 font-bold' }}">
-                            (Hari Ini)
-                        </span>
-                    @endif
-                </a>
-            @endforeach
+                    Belum presensi hari ini
+                </span>
+
+                <span
+                    x-cloak
+                    x-show="hasCheckedIn"
+                    class="w-fit rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700"
+                >
+                    Presensi tercatat ✓
+                </span>
+            </div>
+
         </div>
 
-        {{-- DAFTAR JADWAL MENGAJAR --}}
-        <div class="mt-4 divide-y divide-slate-100 rounded-xl border border-slate-100 bg-slate-50/50">
+        {{-- DAFTAR JADWAL MENGAJAR HARI INI --}}
+        <div class="mt-5 divide-y divide-slate-100 rounded-xl border border-slate-100 bg-slate-50/50 overflow-hidden">
 
-            <div class="bg-slate-100/70 px-4 py-2 flex items-center justify-between">
+            <div class="bg-slate-100/80 px-4 py-2.5 flex items-center justify-between">
                 <p class="text-xs font-bold uppercase tracking-wider text-slate-600">
-                    Jadwal Hari {{ $selectedHari }} ({{ $jadwals->count() }} Sesi Mengajar)
+                    Sesi Mengajar Hari {{ $hariIni }} ({{ $jadwals->count() }} Sesi Terdaftar)
                 </p>
-                @if($selectedHari !== $hariIni)
-                    <a href="{{ route('guru.utama') }}" class="text-xs font-semibold text-emerald-600 hover:underline">
-                        Kembali ke Hari Ini ({{ $hariIni }})
-                    </a>
-                @endif
+                <span class="text-xs text-slate-500 font-medium">
+                    Waktu Server: <strong class="text-slate-700">{{ $currentTime }} WIB</strong>
+                </span>
             </div>
 
             @forelse($jadwals ?? [] as $index => $jadwal)
+                @php
+                    $isFilled = $jadwal->is_filled;
+                    $statusWaktu = $jadwal->status_waktu;
+                @endphp
 
-                <div class="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+                <div class="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between transition hover:bg-slate-100/40">
 
-                    <div class="flex items-center gap-4">
+                    <div class="flex flex-wrap items-center gap-3 sm:gap-4">
 
-                        <span class="min-w-[85px] rounded-lg bg-emerald-50 px-2 py-1 text-center text-xs font-bold text-emerald-700">
-                            Jam ke-{{ $jadwal->jam_mulai }} - {{ $jadwal->jam_selesai }}
-                        </span>
+                        <div class="flex flex-col items-start">
+                            <span class="rounded-lg bg-emerald-100/80 px-2.5 py-1 text-xs font-bold text-emerald-800">
+                                Jam ke-{{ $jadwal->jam_mulai }} - {{ $jadwal->jam_selesai }}
+                            </span>
+                            <span class="mt-1 text-[11px] font-medium text-slate-500">
+                                {{ $jadwal->waktu_mulai }} - {{ $jadwal->waktu_selesai }}
+                            </span>
+                        </div>
 
                         <div>
-
-                            <h3 class="text-sm font-bold text-slate-800">
+                            <h3 class="text-sm font-bold text-slate-900">
                                 {{ $jadwal->kelas->nama_kelas ?? 'Kelas' }}
-                                —
+                                <span class="text-slate-400 font-normal">|</span>
                                 {{ $jadwal->mapel->nama_mapel ?? 'Mata Pelajaran' }}
                             </h3>
 
+                            <div class="mt-1 flex items-center gap-2">
+                                @if($isFilled)
+                                    <span class="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-0.5 text-[11px] font-bold text-emerald-700 border border-emerald-200">
+                                        <i class="bi bi-check-circle-fill"></i> Jurnal Terisi
+                                    </span>
+                                @elseif($statusWaktu === 'lewat')
+                                    <span class="inline-flex items-center gap-1 rounded-md bg-rose-50 px-2 py-0.5 text-[11px] font-semibold text-rose-700 border border-rose-200">
+                                        <i class="bi bi-clock-history"></i> Lewat Jam Mengajar
+                                    </span>
+                                @elseif($statusWaktu === 'berlangsung')
+                                    <span class="inline-flex items-center gap-1 rounded-md bg-emerald-500 px-2 py-0.5 text-[11px] font-bold text-white shadow-xs">
+                                        <span class="h-1.5 w-1.5 rounded-full bg-white animate-ping"></span> Sedang Berlangsung
+                                    </span>
+                                @else
+                                    <span class="inline-flex items-center gap-1 rounded-md bg-sky-50 px-2 py-0.5 text-[11px] font-semibold text-sky-700 border border-sky-200">
+                                        <i class="bi bi-hourglass-split"></i> Akan Datang
+                                    </span>
+                                @endif
+                            </div>
                         </div>
 
                     </div>
 
                     <div class="flex items-center gap-2">
-
-                        @if($selectedHari === $hariIni && $index === 0)
-
-                            <span class="rounded-md bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-700">
-                                Sesi Pertama
+                        @if($isFilled)
+                            <a
+                                href="{{ route('guru.riwayat') }}"
+                                class="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-50"
+                            >
+                                <i class="bi bi-eye"></i>
+                                <span>Lihat Catatan</span>
+                            </a>
+                        @elseif($statusWaktu === 'lewat')
+                            <span class="rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-400 cursor-not-allowed" title="Batas waktu jam mengajar sesi ini telah terlewat">
+                                <i class="bi bi-lock-fill mr-1"></i>Tenggat Lewat
                             </span>
-
                         @else
-
-                            <span class="text-xs font-medium text-slate-400">
-                                Sesi {{ $index + 1 }}
-                            </span>
-
+                            <button
+                                type="button"
+                                x-show="hasCheckedIn"
+                                @click="pilihJadwal('{{ $jadwal->id_kelas }}', '{{ $jadwal->id_mapel }}', '{{ $jadwal->jam_mulai }}')"
+                                class="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white shadow-sm transition hover:bg-emerald-700"
+                                title="Gunakan sesi jadwal ini untuk mengisi logbook"
+                            >
+                                <i class="bi bi-pencil-square"></i>
+                                <span>Isi Logbook</span>
+                            </button>
                         @endif
-
-                        <button
-                            type="button"
-                            x-show="hasCheckedIn"
-                            @click="pilihJadwal('{{ $jadwal->id_kelas }}', '{{ $jadwal->id_mapel }}', '{{ $jadwal->jam_mulai }}')"
-                            class="inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-white px-2.5 py-1 text-xs font-semibold text-emerald-700 shadow-sm transition hover:bg-emerald-50"
-                            title="Gunakan jadwal ini untuk isi logbook"
-                        >
-                            <i class="bi bi-pencil-square"></i>
-                            <span>Pilih Jadwal</span>
-                        </button>
-
                     </div>
 
                 </div>
 
             @empty
 
-                <div class="p-6 text-center text-sm text-slate-500">
-                    Tidak ada jadwal mengajar terdaftar untuk hari {{ $selectedHari }}.
+                <div class="p-8 text-center text-sm text-slate-500">
+                    <i class="bi bi-calendar-x text-3xl text-slate-300 block mb-2"></i>
+                    Tidak ada jadwal mengajar yang terdaftar untuk hari <strong>{{ $hariIni }}</strong>.
                 </div>
 
             @endforelse
@@ -274,35 +273,32 @@
 
 
         {{-- TOMBOL ABSEN --}}
-        <div class="mt-5 flex flex-col gap-3 rounded-xl bg-slate-50 p-4 sm:flex-row sm:items-center sm:justify-between">
+        <div class="mt-5 flex flex-col gap-3 rounded-xl bg-slate-50 p-4 sm:flex-row sm:items-center sm:justify-between border border-slate-100">
 
             <p class="flex items-start gap-2 text-xs leading-relaxed text-slate-500">
-
                 <i class="bi bi-info-circle-fill mt-0.5 text-emerald-600"></i>
-
                 <span>
-                    Data presensi masuk otomatis diteruskan ke sistem monitoring Guru Piket dan Waka Kurikulum.
+                    Data presensi otomatis diteruskan ke sistem monitoring Guru Piket dan Waka Kurikulum.
                 </span>
-
             </p>
 
             <button
                 type="button"
                 @click="showForm = true"
                 x-show="!hasCheckedIn"
-                class="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700"
+                class="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700"
             >
                 <i class="bi bi-box-arrow-in-right"></i>
-                Absen Masuk / Lapor Kehadiran
+                Lapor Presensi / Absen Masuk
             </button>
 
             <span
                 x-cloak
                 x-show="hasCheckedIn"
-                class="inline-flex shrink-0 items-center gap-2 rounded-lg bg-emerald-100 px-4 py-3 text-sm font-semibold text-emerald-700"
+                class="inline-flex shrink-0 items-center gap-2 rounded-lg bg-emerald-100 px-4 py-2 text-xs font-bold text-emerald-800"
             >
-                <i class="bi bi-check-circle-fill"></i>
-                Presensi Masuk Hari Ini Tercatat
+                <i class="bi bi-check-circle-fill text-emerald-600"></i>
+                Presensi Hari Ini: {{ $attendance->status ?? 'Tercatat' }}
             </span>
 
         </div>
@@ -333,7 +329,7 @@
                         this.cameraActive = true;
                         this.capturedPhoto = null;
                     } catch(e) {
-                        alert('Kamera tidak dapat diakses. Pastikan izin kamera diberikan.');
+                        alert('Kamera tidak dapat diakses. Pastikan izin kamera telah diberikan pada browser Anda.');
                     }
                 },
 
@@ -387,15 +383,15 @@
                     <div>
 
                         <p class="text-sm font-semibold text-emerald-700">
-                            Form Kehadiran
+                            Form Kehadiran Guru
                         </p>
 
                         <h3 class="mt-1 text-lg font-bold text-slate-900">
-                            Lapor Kehadiran Guru
+                            Lapor Presensi Kehadiran
                         </h3>
 
                         <p class="mt-1 text-sm text-slate-500">
-                            Lengkapi laporan kehadiran Anda sebelum mengisi jurnal/logbook mengajar.
+                            Pilih status kehadiran Anda hari ini dan sertakan bukti yang diperlukan.
                         </p>
 
                     </div>
@@ -403,7 +399,7 @@
                 </div>
 
                 <span class="w-fit rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700">
-                    Hari ini
+                    Hari ini ({{ $hariIni }})
                 </span>
 
             </div>
@@ -468,41 +464,41 @@
 
                 {{-- STATUS KEHADIRAN — Hadir / Tidak Hadir --}}
                 <div class="sm:col-span-2">
-                    <span class="text-sm font-semibold text-slate-700">Status Kehadiran</span>
-                    <div class="mt-3 flex gap-4">
-                        <label class="flex flex-1 cursor-pointer items-center gap-3 rounded-xl border-2 p-4 transition"
+                    <span class="text-sm font-semibold text-slate-700">Pilih Status Kehadiran</span>
+                    <div class="mt-3 grid gap-4 sm:grid-cols-2">
+                        <label class="flex cursor-pointer items-center gap-3 rounded-xl border-2 p-4 transition"
                                :class="statusAbsen === 'Hadir' ? 'border-emerald-500 bg-emerald-50' : 'border-slate-200 hover:border-slate-300'">
                             <input type="radio" name="status_kehadiran_guru" value="Hadir"
                                    x-model="statusAbsen" class="sr-only">
-                            <span class="flex h-9 w-9 items-center justify-center rounded-full"
+                            <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full"
                                   :class="statusAbsen === 'Hadir' ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-100 text-slate-400'">
                                 <i class="bi bi-check-circle-fill text-lg"></i>
                             </span>
                             <div>
                                 <p class="text-sm font-bold" :class="statusAbsen === 'Hadir' ? 'text-emerald-700' : 'text-slate-700'">Hadir</p>
-                                <p class="text-xs text-slate-400">Saya hadir mengajar hari ini</p>
+                                <p class="text-xs text-slate-400">Saya hadir mengajar di sekolah hari ini</p>
                             </div>
                         </label>
 
-                        <label class="flex flex-1 cursor-pointer items-center gap-3 rounded-xl border-2 p-4 transition"
+                        <label class="flex cursor-pointer items-center gap-3 rounded-xl border-2 p-4 transition"
                                :class="statusAbsen === 'Tidak Hadir' ? 'border-rose-500 bg-rose-50' : 'border-slate-200 hover:border-slate-300'">
                             <input type="radio" name="status_kehadiran_guru" value="Tidak Hadir"
                                    x-model="statusAbsen" class="sr-only">
-                            <span class="flex h-9 w-9 items-center justify-center rounded-full"
+                            <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full"
                                   :class="statusAbsen === 'Tidak Hadir' ? 'bg-rose-100 text-rose-600' : 'bg-slate-100 text-slate-400'">
                                 <i class="bi bi-x-circle-fill text-lg"></i>
                             </span>
                             <div>
                                 <p class="text-sm font-bold" :class="statusAbsen === 'Tidak Hadir' ? 'text-rose-700' : 'text-slate-700'">Tidak Hadir</p>
-                                <p class="text-xs text-slate-400">Saya tidak hadir hari ini</p>
+                                <p class="text-xs text-slate-400">Saya berhalangan hadir (Sakit / Izin / Tugas Luar)</p>
                             </div>
                         </label>
                     </div>
                 </div>
 
 
-                {{-- ALASAN (hanya jika Tidak Hadir) --}}
-                <div x-cloak x-show="statusAbsen === 'Tidak Hadir'" class="sm:col-span-2">
+                {{-- JIKA TIDAK HADIR: ALASAN + UNGGAH SURAT IZIN RESMI --}}
+                <div x-cloak x-show="statusAbsen === 'Tidak Hadir'" class="sm:col-span-2 space-y-4">
                     <label for="alasan-kehadiran" class="block">
                         <span class="text-sm font-semibold text-slate-700">
                             Alasan Tidak Hadir <span class="text-rose-500">*</span>
@@ -511,17 +507,30 @@
                             id="alasan-kehadiran"
                             name="reason"
                             rows="3"
-                            placeholder="Tuliskan alasan ketidakhadiran Anda secara detail..."
+                            placeholder="Tuliskan alasan ketidakhadiran Anda secara detail (misal: Sakit, Izin keperluan dinas luar, dll)..."
                             class="mt-2 w-full rounded-lg border border-slate-200 p-4 text-sm text-slate-700 focus:border-rose-400 focus:ring-2 focus:ring-rose-100"
                         ></textarea>
+                    </label>
+
+                    <label class="block">
+                        <span class="text-sm font-semibold text-slate-700">
+                            Unggah Surat Izin Resmi / Bukti Tidak Hadir (Surat Dokter / Tugas Luar / dsb)
+                        </span>
+                        <input
+                            type="file"
+                            name="proof_file"
+                            accept="image/*,application/pdf"
+                            class="mt-2 w-full text-sm text-slate-500 file:mr-4 file:rounded-lg file:border-0 file:bg-rose-50 file:px-4 file:py-2.5 file:text-sm file:font-semibold file:text-rose-700 hover:file:bg-rose-100"
+                        >
+                        <p class="mt-1 text-xs text-slate-400">Format file: JPG, PNG, PDF. Maksimal 5 MB.</p>
                     </label>
                 </div>
 
 
-                {{-- FOTO LIVE KAMERA (wajib jika Hadir) --}}
+                {{-- JIKA HADIR: FOTO LIVE KAMERA --}}
                 <div x-cloak x-show="statusAbsen === 'Hadir'" class="sm:col-span-2">
                     <span class="block text-sm font-semibold text-slate-700">
-                        Foto Kehadiran (Live Kamera) <span class="text-rose-500">*</span>
+                        Foto Kehadiran (Live Kamera)
                     </span>
                     <p class="mt-0.5 text-xs text-slate-400">Ambil foto langsung melalui kamera sebagai bukti kehadiran Anda di sekolah.</p>
 
@@ -619,17 +628,10 @@
                 </h2>
 
                 <p class="text-sm text-slate-500">
-                    Catat materi yang diajarkan dan rekap kehadiran siswa hari ini.
+                    Catat materi yang diajarkan dan rekap presensi kehadiran siswa hari ini.
                 </p>
 
             </div>
-
-            @if($hasSubmittedJournal)
-                <span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-800">
-                    <i class="bi bi-check2-all"></i>
-                    Jurnal Hari Ini Sudah Terkirim
-                </span>
-            @endif
 
         </div>
 
@@ -645,7 +647,7 @@
                             Presensi Masuk Diperlukan
                         </h3>
                         <p class="mt-1 text-sm leading-relaxed text-amber-700">
-                            Anda <strong>WAJIB melakukan absen/presensi masuk</strong> terlebih dahulu hari ini sebelum dapat membuka form atau mengisi Jurnal Pembelajaran.
+                            Anda <strong>WAJIB melakukan absen/presensi masuk</strong> terlebih dahulu hari ini sebelum dapat mengisi dan menyimpan Jurnal Pembelajaran.
                         </p>
                         <div class="mt-4">
                             <button
@@ -654,7 +656,7 @@
                                 class="inline-flex items-center gap-2 rounded-xl bg-amber-600 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-amber-700"
                             >
                                 <i class="bi bi-box-arrow-in-right"></i>
-                                Isi Absen Masuk Sekarang
+                                Isi Presensi Sekarang
                             </button>
                         </div>
                     </div>
@@ -662,391 +664,350 @@
             </div>
         @endif
 
-        {{-- NOTIFIKASI SUDAH SUBMIT JURNAL HARI INI --}}
-        @if($hasSubmittedJournal)
 
-            <div class="mt-4 rounded-2xl border border-emerald-100 bg-emerald-50/60 p-6 text-center">
+        {{-- FORM LOGBOOK --}}
+        <form
+            x-cloak
+            x-show="hasCheckedIn"
+            action="{{ route('guru.jurnal.store') }}"
+            method="POST"
+            enctype="multipart/form-data"
+            class="mt-4 space-y-6"
+        >
 
-                <div class="flex flex-col items-center justify-center gap-2">
+            @csrf
 
-                    <span class="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 text-2xl text-emerald-600">
-                        <i class="bi bi-check2-circle"></i>
-                    </span>
+            {{-- DATA JURNAL --}}
+            <div class="rounded-2xl bg-white p-5 shadow-md sm:p-6">
 
+                <div class="border-b border-slate-100 pb-4 mb-5">
                     <h3 class="text-base font-bold text-slate-800">
-                        Jurnal Hari Ini Telah Diisi
+                        Data Kelas & Mata Pelajaran
                     </h3>
-
-                    <p class="max-w-md text-xs text-slate-500">
-                        Anda telah berhasil mengirimkan laporan jurnal pembelajaran hari ini. Silakan kunjungi menu 
-                        <a href="{{ route('guru.riwayat') }}" class="font-semibold text-emerald-600 underline">Riwayat Jurnal</a> 
-                        untuk melihat catatan Anda.
+                    <p class="text-xs text-slate-500 mt-0.5">
+                        Pilih kelas, mata pelajaran, dan jam ke sesuai sesi pembelajaran yang sedang berlangsung.
                     </p>
+                </div>
+
+                <div class="grid gap-5 sm:grid-cols-2">
+
+                    {{-- NAMA GURU (AUTO-FILLED) --}}
+                    <label class="block">
+                        <span class="text-sm font-semibold text-slate-700">
+                            Nama Guru Pengajar
+                        </span>
+                        <input
+                            type="text"
+                            value="{{ $user->name }}"
+                            readonly
+                            class="mt-2 w-full cursor-not-allowed rounded-lg border border-slate-200 bg-slate-100 px-4 py-3 text-sm font-semibold text-slate-700 outline-none"
+                        >
+                    </label>
+
+                    {{-- NIP GURU (AUTO-FILLED) --}}
+                    <label class="block">
+                        <span class="text-sm font-semibold text-slate-700">
+                            NIP / Username
+                        </span>
+                        <input
+                            type="text"
+                            value="{{ $user->nip ?? $user->username ?? '-' }}"
+                            readonly
+                            class="mt-2 w-full cursor-not-allowed rounded-lg border border-slate-200 bg-slate-100 px-4 py-3 text-sm font-semibold text-slate-700 outline-none"
+                        >
+                    </label>
+
+                    {{-- MAPEL --}}
+                    <label class="block">
+                        <span class="text-sm font-semibold text-slate-700">
+                            Mata Pelajaran <span class="text-rose-500">*</span>
+                        </span>
+                        <select
+                            name="id_mapel"
+                            x-model="selectedMapel"
+                            required
+                            class="mt-2 w-full rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100"
+                        >
+                            <option value="">
+                                -- Pilih Mata Pelajaran --
+                            </option>
+                            @foreach($mapels as $mapel)
+                                <option value="{{ $mapel->id }}">
+                                    {{ $mapel->nama_mapel ?? $mapel->nama ?? $mapel->kode }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </label>
+
+                    {{-- KELAS --}}
+                    <label class="block">
+                        <span class="text-sm font-semibold text-slate-700">
+                            Kelas <span class="text-rose-500">*</span>
+                        </span>
+                        <select
+                            name="id_kelas"
+                            x-model="selectedKelas"
+                            required
+                            class="mt-2 w-full rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100"
+                        >
+                            <option value="">
+                                -- Pilih Kelas --
+                            </option>
+                            @foreach($kelases as $kelas)
+                                <option value="{{ $kelas->id_kelas }}">
+                                    {{ $kelas->nama_kelas }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </label>
+
+                    {{-- JAM KE --}}
+                    <label class="block">
+                        <span class="text-sm font-semibold text-slate-700">
+                            Jam Pelajaran Ke- <span class="text-rose-500">*</span>
+                        </span>
+                        <input
+                            type="number"
+                            name="jam_ke"
+                            x-model="selectedJamKe"
+                            min="1"
+                            max="13"
+                            required
+                            placeholder="Contoh: 1"
+                            class="mt-2 w-full rounded-lg border border-slate-200 px-4 py-3 text-sm text-slate-700 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100"
+                        >
+                    </label>
+
+                    {{-- TUGAS --}}
+                    <label class="block">
+                        <span class="text-sm font-semibold text-slate-700">
+                            Ada Tugas untuk Siswa?
+                        </span>
+                        <select
+                            name="ada_tugas"
+                            required
+                            class="mt-2 w-full rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100"
+                        >
+                            <option value="Tidak">
+                                Tidak Ada Tugas
+                            </option>
+                            <option value="Ya">
+                                Ya, Ada Tugas
+                            </option>
+                        </select>
+                    </label>
+
+                    {{-- MATERI --}}
+                    <label class="block sm:col-span-2">
+                        <span class="text-sm font-semibold text-slate-700">
+                            Materi / Pokok Pembahasan <span class="text-rose-500">*</span>
+                        </span>
+                        <input
+                            type="text"
+                            name="materi"
+                            required
+                            placeholder="Contoh: Pengenalan struktur data array dan penerapannya"
+                            class="mt-2 w-full rounded-lg border border-slate-200 px-4 py-3 text-sm text-slate-700 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100"
+                        >
+                    </label>
 
                 </div>
 
             </div>
 
-        @endif
+
+            {{-- ================================================= --}}
+            {{-- LAMPIRAN BUKTI HADIR DI KELAS --}}
+            {{-- ================================================= --}}
+
+            <div class="rounded-2xl bg-white p-5 shadow-md sm:p-6">
+                <div class="border-b border-slate-100 pb-4">
+                    <h3 class="text-base font-bold text-slate-800">Lampiran Bukti Hadir di Kelas</h3>
+                    <p class="text-xs text-slate-500 mt-0.5">Unggah foto dokumentasi kelas atau berkas sebagai bukti Anda benar-benar hadir mengajar.</p>
+                </div>
+                <div class="mt-4">
+                    <label class="block">
+                        <span class="text-sm font-semibold text-slate-700">Foto / Dokumen Bukti Mengajar (Opsional)</span>
+                        <input
+                            type="file"
+                            name="lampiran"
+                            accept="image/*,application/pdf"
+                            class="mt-2 w-full text-sm text-slate-500 file:mr-4 file:rounded-lg file:border-0 file:bg-emerald-50 file:px-4 file:py-2.5 file:text-sm file:font-semibold file:text-emerald-700 hover:file:bg-emerald-100"
+                        >
+                        <p class="mt-1 text-xs text-slate-400">Format: JPG, PNG, WebP, PDF. Maksimal 5 MB.</p>
+                    </label>
+                </div>
+            </div>
 
 
-        {{-- FORM LOGBOOK --}}
-        @if(!$hasSubmittedJournal)
+            {{-- ================================================= --}}
+            {{-- PRESENSI KEHADIRAN SISWA (LANGSUNG TAMPIL DENGAN SCROLL MANDIRI) --}}
+            {{-- ================================================= --}}
 
-            <form
-                x-cloak
-                x-show="hasCheckedIn"
-                action="{{ route('guru.jurnal.store') }}"
-                method="POST"
-                enctype="multipart/form-data"
-                class="mt-4 space-y-6"
-            >
+            <div class="rounded-2xl bg-white p-5 shadow-md sm:p-6">
 
-                @csrf
-
-                {{-- DATA JURNAL --}}
-                <div class="rounded-2xl bg-white p-5 shadow-md sm:p-6">
-
-                    <div class="border-b border-slate-100 pb-4 mb-5">
+                <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 pb-4 mb-4">
+                    <div>
                         <h3 class="text-base font-bold text-slate-800">
-                            Data Kelas & Mata Pelajaran
+                            Presensi Kehadiran Siswa
                         </h3>
                         <p class="text-xs text-slate-500 mt-0.5">
-                            Data guru dan mata pelajaran otomatis diselaraskan dengan sesi login dan jadwal mengajar Anda.
+                            Daftar siswa otomatis menyesuaikan kelas yang Anda pilih di atas. Default: Hadir (H).
                         </p>
                     </div>
 
-                    <div class="grid gap-5 sm:grid-cols-2">
-
-                        {{-- NAMA GURU (AUTO-FILLED) --}}
-                        <label class="block">
-                            <span class="text-sm font-semibold text-slate-700">
-                                Nama Guru Pengajar
-                            </span>
-                            <input
-                                type="text"
-                                value="{{ $user->name }}"
-                                readonly
-                                class="mt-2 w-full cursor-not-allowed rounded-lg border border-slate-200 bg-slate-100 px-4 py-3 text-sm font-semibold text-slate-700 outline-none"
-                            >
-                        </label>
-
-                        {{-- NIP GURU (AUTO-FILLED) --}}
-                        <label class="block">
-                            <span class="text-sm font-semibold text-slate-700">
-                                NIP / Username
-                            </span>
-                            <input
-                                type="text"
-                                value="{{ $user->nip ?? $user->username ?? '-' }}"
-                                readonly
-                                class="mt-2 w-full cursor-not-allowed rounded-lg border border-slate-200 bg-slate-100 px-4 py-3 text-sm font-semibold text-slate-700 outline-none"
-                            >
-                        </label>
-
-                        {{-- MAPEL (AUTO-FILLED DARI JADWAL HARI INI) --}}
-                        <label class="block">
-                            <span class="text-sm font-semibold text-slate-700">
-                                Mata Pelajaran
-                            </span>
-                            <select
-                                name="id_mapel"
-                                x-model="selectedMapel"
-                                required
-                                class="mt-2 w-full rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100"
-                            >
-                                <option value="">
-                                    Pilih Mata Pelajaran
-                                </option>
-                                @foreach($mapels as $mapel)
-                                    <option value="{{ $mapel->id }}">
-                                        {{ $mapel->nama_mapel ?? $mapel->nama ?? $mapel->kode }}
-                                    </option>
-                                @endforeach
-                            </select>
-                        </label>
-
-                        {{-- KELAS (AUTO-FILLED DARI JADWAL HARI INI) --}}
-                        <label class="block">
-                            <span class="text-sm font-semibold text-slate-700">
-                                Kelas
-                            </span>
-                            <select
-                                name="id_kelas"
-                                x-model="selectedKelas"
-                                required
-                                class="mt-2 w-full rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100"
-                            >
-                                <option value="">
-                                    Pilih Kelas
-                                </option>
-                                @foreach($kelases as $kelas)
-                                    <option value="{{ $kelas->id_kelas }}">
-                                        {{ $kelas->nama_kelas }}
-                                    </option>
-                                @endforeach
-                            </select>
-                        </label>
-
-                        {{-- JAM KE (AUTO-FILLED DARI JADWAL HARI INI) --}}
-                        <label class="block">
-                            <span class="text-sm font-semibold text-slate-700">
-                                Jam Pelajaran Ke-
-                            </span>
-                            <input
-                                type="number"
-                                name="jam_ke"
-                                x-model="selectedJamKe"
-                                min="1"
-                                max="13"
-                                required
-                                placeholder="Contoh: 1"
-                                class="mt-2 w-full rounded-lg border border-slate-200 px-4 py-3 text-sm text-slate-700 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100"
-                            >
-                        </label>
-
-                        {{-- TUGAS --}}
-                        <label class="block">
-                            <span class="text-sm font-semibold text-slate-700">
-                                Ada Tugas untuk Siswa?
-                            </span>
-                            <select
-                                name="ada_tugas"
-                                required
-                                class="mt-2 w-full rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100"
-                            >
-                                <option value="Tidak">
-                                    Tidak Ada Tugas
-                                </option>
-                                <option value="Ya">
-                                    Ya, Ada Tugas
-                                </option>
-                            </select>
-                        </label>
-
-                        {{-- MATERI --}}
-                        <label class="block sm:col-span-2">
-                            <span class="text-sm font-semibold text-slate-700">
-                                Materi / Pokok Pembahasan
-                            </span>
-                            <input
-                                type="text"
-                                name="materi"
-                                required
-                                placeholder="Contoh: Pengenalan struktur data array dan penerapannya"
-                                class="mt-2 w-full rounded-lg border border-slate-200 px-4 py-3 text-sm text-slate-700 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100"
-                            >
-                        </label>
-
-                    </div>
-
-                </div>
-
-
-                {{-- ================================================= --}}
-                {{-- LAMPIRAN BUKTI HADIR DI KELAS --}}
-                {{-- ================================================= --}}
-
-                <div class="rounded-2xl bg-white p-5 shadow-md sm:p-6">
-                    <div class="border-b border-slate-100 pb-4">
-                        <h3 class="text-base font-bold text-slate-800">Lampiran Bukti Hadir di Kelas</h3>
-                        <p class="text-xs text-slate-500 mt-0.5">Unggah foto atau dokumen sebagai bukti bahwa Anda benar-benar hadir di kelas saat mengajar.</p>
-                    </div>
-                    <div class="mt-4">
-                        <label class="block">
-                            <span class="text-sm font-semibold text-slate-700">Foto / Dokumen Lampiran (Opsional)</span>
-                            <input
-                                type="file"
-                                name="lampiran"
-                                accept="image/*,application/pdf"
-                                class="mt-2 w-full text-sm text-slate-500 file:mr-4 file:rounded-lg file:border-0 file:bg-emerald-50 file:px-4 file:py-2.5 file:text-sm file:font-semibold file:text-emerald-700 hover:file:bg-emerald-100"
-                            >
-                            <p class="mt-1 text-xs text-slate-400">Format: JPG, PNG, WebP, PDF. Maksimal 5 MB.</p>
-                        </label>
-                    </div>
-                </div>
-
-
-                {{-- ================================================= --}}
-                {{-- ABSENSI SISWA — TOMBOL BUKA POPUP --}}
-                {{-- ================================================= --}}
-
-                <div
-                    x-data="{ absensiOpen: false }"
-                    class="rounded-2xl bg-white p-5 shadow-md sm:p-6"
-                >
-                    <div class="flex items-center justify-between border-b border-slate-100 pb-4">
-                        <div>
-                            <h3 class="text-base font-bold text-slate-800">Presensi Kehadiran Siswa</h3>
-                            <p class="text-xs text-slate-500 mt-0.5">Isi status kehadiran setiap siswa untuk sesi ini.</p>
-                        </div>
-                        <button
-                            type="button"
-                            @click="absensiOpen = true"
-                            class="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700"
-                        >
-                            <i class="bi bi-people-fill"></i>
-                            Isi Absensi Siswa
-                        </button>
-                    </div>
-
-                    <p class="mt-3 text-xs text-slate-400">
-                        <i class="bi bi-info-circle mr-1"></i>
-                        Klik tombol "Isi Absensi Siswa" untuk mengisi daftar hadir. Data yang sudah diisi akan tersimpan saat form dikirim.
-                    </p>
-
-                    {{-- HIDDEN inputs absensi siswa (agar ikut tersubmit bersama form) --}}
-                    <div id="absensi-hidden-inputs" class="hidden">
-                        @forelse($siswas as $siswa)
-                            <input type="hidden" name="absensi[{{ $siswa->id }}]" value="Hadir" id="absensi-input-{{ $siswa->id }}">
-                        @empty
-                        @endforelse
-                    </div>
-
-                    {{-- POPUP MODAL ABSENSI SISWA --}}
-                    <template x-teleport="body">
-                        <div
-                            x-show="absensiOpen"
-                            x-cloak
-                            x-transition:enter="transition ease-out duration-200"
-                            x-transition:enter-start="opacity-0"
-                            x-transition:enter-end="opacity-100"
-                            x-transition:leave="transition ease-in duration-150"
-                            x-transition:leave-start="opacity-100"
-                            x-transition:leave-end="opacity-0"
-                            class="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm"
-                            @click.self="absensiOpen = false"
-                        >
-                            <div
-                                x-show="absensiOpen"
-                                x-transition:enter="transition ease-out duration-200"
-                                x-transition:enter-start="opacity-0 scale-95"
-                                x-transition:enter-end="opacity-100 scale-100"
-                                x-transition:leave="transition ease-in duration-150"
-                                x-transition:leave-start="opacity-100 scale-100"
-                                x-transition:leave-end="opacity-0 scale-95"
-                                @click.stop
-                                class="flex w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl"
-                                style="max-height: 85vh;"
-                            >
-                                {{-- Header Modal --}}
-                                <div class="flex shrink-0 items-center justify-between border-b border-slate-200 px-5 py-4">
-                                    <div>
-                                        <h3 class="text-base font-bold text-slate-900">Daftar Hadir Siswa</h3>
-                                        <p class="text-xs text-slate-400 mt-0.5">Scroll untuk melihat semua siswa. Pilih status untuk setiap siswa.</p>
-                                    </div>
-                                    <button
-                                        type="button"
-                                        @click="absensiOpen = false"
-                                        class="flex h-8 w-8 items-center justify-center rounded-full text-slate-500 transition hover:bg-slate-100"
-                                        aria-label="Tutup"
-                                    >
-                                        <i class="bi bi-x-lg text-base"></i>
-                                    </button>
-                                </div>
-
-                                {{-- Body Scrollable --}}
-                                <div class="flex-1 overflow-y-auto p-4 min-h-0" style="max-height: calc(85vh - 130px);">
-                                    <div class="space-y-2">
-                                        @forelse($siswas as $siswa)
-                                            <div
-                                                x-show="selectedKelas == '{{ $siswa->kelas_id }}'"
-                                                class="flex flex-col gap-3 rounded-xl border border-slate-100 bg-slate-50/50 p-4 sm:flex-row sm:items-center sm:justify-between"
-                                            >
-                                                <div>
-                                                    <p class="text-sm font-bold text-slate-800">{{ $siswa->nama }}</p>
-                                                    <p class="text-xs text-slate-400">NIS: {{ $siswa->nis ?? '-' }} | {{ $siswa->jenis_kelamin }}</p>
-                                                </div>
-
-                                                <div class="flex flex-wrap items-center gap-2">
-                                                    @foreach(['Hadir' => 'emerald', 'Sakit' => 'amber', 'Izin' => 'blue', 'Alpa' => 'rose'] as $statusSiswa => $color)
-                                                        <label
-                                                            class="flex cursor-pointer items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition"
-                                                            :class="$refs['ab{{ $siswa->id }}']?.value === '{{ $statusSiswa }}'
-                                                                ? 'border-{{ $color }}-400 bg-{{ $color }}-50 text-{{ $color }}-700'
-                                                                : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'"
-                                                        >
-                                                            <input
-                                                                type="radio"
-                                                                name="absensi_popup[{{ $siswa->id }}]"
-                                                                value="{{ $statusSiswa }}"
-                                                                class="sr-only"
-                                                                {{ $statusSiswa === 'Hadir' ? 'checked' : '' }}
-                                                                @change="
-                                                                    document.getElementById('absensi-input-{{ $siswa->id }}').value = '{{ $statusSiswa }}';
-                                                                "
-                                                            >
-                                                            {{ $statusSiswa }}
-                                                        </label>
-                                                    @endforeach
-                                                </div>
-                                            </div>
-                                        @empty
-                                            <div class="p-6 text-center text-sm text-slate-500">
-                                                Belum ada data siswa terdaftar untuk kelas ini.
-                                            </div>
-                                        @endforelse
-                                    </div>
-                                </div>
-
-                                {{-- Footer --}}
-                                <div class="shrink-0 border-t border-slate-200 px-5 py-4">
-                                    <button
-                                        type="button"
-                                        @click="absensiOpen = false"
-                                        class="w-full rounded-xl bg-emerald-600 py-3 text-sm font-bold text-white transition hover:bg-emerald-700"
-                                    >
-                                        <i class="bi bi-check2-all mr-1"></i>
-                                        Simpan & Tutup Absensi
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </template>
-
-                </div>
-
-
-                {{-- CATATAN --}}
-                <div class="rounded-2xl bg-white p-5 shadow-md sm:p-6">
-
-                    <label
-                        for="catatan-khusus"
-                        class="block"
-                    >
-
-                        <span class="text-sm font-semibold text-slate-700">
-                            Catatan Khusus / Hambatan Kelas (Opsional)
+                    <div class="flex items-center gap-2">
+                        <span class="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">
+                            <span class="h-2 w-2 rounded-full bg-emerald-500"></span> H = Hadir
                         </span>
+                        <span class="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700">
+                            <span class="h-2 w-2 rounded-full bg-amber-500"></span> S = Sakit
+                        </span>
+                        <span class="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700">
+                            <span class="h-2 w-2 rounded-full bg-blue-500"></span> I = Izin
+                        </span>
+                        <span class="inline-flex items-center gap-1 rounded-full bg-rose-50 px-2.5 py-1 text-xs font-semibold text-rose-700">
+                            <span class="h-2 w-2 rounded-full bg-rose-500"></span> A = Alpa
+                        </span>
+                    </div>
+                </div>
 
-                        <textarea
-                            id="catatan-khusus"
-                            name="catatan"
-                            rows="4"
-                            placeholder="Tulis catatan atau hambatan selama pembelajaran berlangsung..."
-                            class="mt-2 w-full resize-none rounded-lg border border-slate-200 px-4 py-3 text-sm text-slate-700 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100"
-                        ></textarea>
+                {{-- INFO KELAS TERPILIH --}}
+                <div x-show="!selectedKelas" class="rounded-xl border border-dashed border-slate-200 bg-slate-50 p-6 text-center text-xs text-slate-500">
+                    <i class="bi bi-info-circle text-lg text-slate-400 block mb-1"></i>
+                    Silakan pilih kelas terlebih dahulu pada data form di atas untuk menampilkan daftar siswa.
+                </div>
 
-                    </label>
+                {{-- CONTAINER SCROLLABLE MANDIRI UNTUK DAFTAR SISWA --}}
+                <div
+                    x-show="selectedKelas"
+                    class="max-h-80 overflow-y-auto pr-1 space-y-2.5 custom-scrollbar border border-slate-100 rounded-xl p-3 bg-slate-50/60"
+                >
+
+                    @forelse($siswas as $siswa)
+
+                        <div
+                            x-show="selectedKelas == '{{ $siswa->kelas_id }}'"
+                            class="flex flex-col gap-2 rounded-xl border border-slate-200/80 bg-white p-3.5 sm:flex-row sm:items-center sm:justify-between shadow-xs transition hover:border-emerald-300"
+                        >
+
+                            <div class="min-w-0 flex-1">
+                                <p class="text-sm font-bold text-slate-800 truncate">
+                                    {{ $siswa->nama }}
+                                </p>
+                                <p class="text-xs text-slate-400">
+                                    NIS: {{ $siswa->nis ?? '-' }} | Gender: {{ $siswa->jenis_kelamin }}
+                                </p>
+                            </div>
+
+                            <div class="flex items-center gap-2 shrink-0">
+                                {{-- HADIR --}}
+                                <label class="cursor-pointer">
+                                    <input
+                                        type="radio"
+                                        name="absensi[{{ $siswa->id }}]"
+                                        value="Hadir"
+                                        checked
+                                        class="peer sr-only"
+                                    >
+                                    <span class="flex h-8 min-w-9 items-center justify-center rounded-lg border text-xs font-bold transition peer-checked:border-emerald-600 peer-checked:bg-emerald-600 peer-checked:text-white border-slate-200 bg-white text-slate-600 hover:bg-slate-50">
+                                        H
+                                    </span>
+                                </label>
+
+                                {{-- SAKIT --}}
+                                <label class="cursor-pointer">
+                                    <input
+                                        type="radio"
+                                        name="absensi[{{ $siswa->id }}]"
+                                        value="Sakit"
+                                        class="peer sr-only"
+                                    >
+                                    <span class="flex h-8 min-w-9 items-center justify-center rounded-lg border text-xs font-bold transition peer-checked:border-amber-500 peer-checked:bg-amber-500 peer-checked:text-white border-slate-200 bg-white text-slate-600 hover:bg-slate-50">
+                                        S
+                                    </span>
+                                </label>
+
+                                {{-- IZIN --}}
+                                <label class="cursor-pointer">
+                                    <input
+                                        type="radio"
+                                        name="absensi[{{ $siswa->id }}]"
+                                        value="Izin"
+                                        class="peer sr-only"
+                                    >
+                                    <span class="flex h-8 min-w-9 items-center justify-center rounded-lg border text-xs font-bold transition peer-checked:border-blue-500 peer-checked:bg-blue-500 peer-checked:text-white border-slate-200 bg-white text-slate-600 hover:bg-slate-50">
+                                        I
+                                    </span>
+                                </label>
+
+                                {{-- ALPA --}}
+                                <label class="cursor-pointer">
+                                    <input
+                                        type="radio"
+                                        name="absensi[{{ $siswa->id }}]"
+                                        value="Alpa"
+                                        class="peer sr-only"
+                                    >
+                                    <span class="flex h-8 min-w-9 items-center justify-center rounded-lg border text-xs font-bold transition peer-checked:border-rose-500 peer-checked:bg-rose-500 peer-checked:text-white border-slate-200 bg-white text-slate-600 hover:bg-slate-50">
+                                        A
+                                    </span>
+                                </label>
+                            </div>
+
+                        </div>
+
+                    @empty
+
+                        <div class="p-6 text-center text-xs text-slate-400">
+                            Belum ada data siswa terdaftar.
+                        </div>
+
+                    @endforelse
 
                 </div>
 
+            </div>
 
-                {{-- SUBMIT --}}
-                <button
-                    type="submit"
-                    class="flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-5 py-3.5 text-sm font-bold text-white shadow-sm transition hover:bg-emerald-700"
+
+            {{-- CATATAN --}}
+            <div class="rounded-2xl bg-white p-5 shadow-md sm:p-6">
+
+                <label
+                    for="catatan-khusus"
+                    class="block"
                 >
 
-                    <i class="bi bi-send-fill"></i>
+                    <span class="text-sm font-semibold text-slate-700">
+                        Catatan Khusus / Hambatan Kelas (Opsional)
+                    </span>
 
-                    Kirim Logbook & Absensi Siswa
+                    <textarea
+                        id="catatan-khusus"
+                        name="catatan"
+                        rows="4"
+                        placeholder="Tulis catatan penting atau kendala selama pembelajaran berlangsung..."
+                        class="mt-2 w-full resize-none rounded-lg border border-slate-200 px-4 py-3 text-sm text-slate-700 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100"
+                    ></textarea>
 
-                </button>
+                </label>
 
-            </form>
+            </div>
 
-        @endif
+
+            {{-- SUBMIT --}}
+            <button
+                type="submit"
+                class="flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-5 py-3.5 text-sm font-bold text-white shadow-sm transition hover:bg-emerald-700"
+            >
+
+                <i class="bi bi-send-fill"></i>
+
+                Kirim Logbook &amp; Presensi Siswa
+
+            </button>
+
+        </form>
 
     </section>
 
