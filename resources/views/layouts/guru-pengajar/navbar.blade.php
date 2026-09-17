@@ -10,6 +10,9 @@
     <p class="text-base font-bold text-slate-800">Bapak/Ibu Guru Pengajar</p>
 
     <div x-data="{ openNotif: false }" class="relative">
+        @php
+            $notifBadgeCount = \App\Models\JurnalMengajar::where('id_user', Auth::id())->where('status_validasi', 'disetujui')->count();
+        @endphp
         <button type="button"
                 @click="openNotif = !openNotif"
                 @click.outside="openNotif = false"
@@ -17,7 +20,9 @@
                 aria-label="Notifikasi persetujuan dan revisi logbook"
                 aria-expanded="openNotif">
             <i class="bi bi-bell text-xl" aria-hidden="true"></i>
-            <span class="absolute right-1.5 top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full border-2 border-white bg-rose-500 px-1 text-[9px] font-bold text-white">2</span>
+            @if($notifBadgeCount > 0)
+                <span class="absolute right-1.5 top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full border-2 border-white bg-rose-500 px-1 text-[9px] font-bold text-white">{{ $notifBadgeCount }}</span>
+            @endif
         </button>
 
         <div x-show="openNotif"
@@ -37,38 +42,38 @@
             </div>
 
             <div class="max-h-96 overflow-y-auto p-2">
-    <div class="rounded-xl border border-emerald-100 bg-emerald-50/40 p-3">
-        <div class="flex items-start gap-3">
-            <span class="mt-0.5 flex h-9 w-9 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
-                <i class="bi bi-check-circle-fill text-base" aria-hidden="true"></i>
-            </span>
-            <div class="min-w-0 flex-1">
-                <p class="text-sm font-bold text-slate-800">Logbook Disetujui</p>
-                <p class="mt-1 text-xs leading-relaxed text-slate-600">
-                    Logbook Mata Pelajaran Informatika kelas XI RPL 2 telah divalidasi oleh Pengurus Kelas.
-                </p>
-                <a href="{{ route('guru.riwayat') }}"
-                    class="mt-2 inline-flex items-center rounded-md border border-emerald-200 bg-white px-2.5 py-1.5 text-[11px] font-semibold text-emerald-700 transition hover:bg-emerald-50"
-                >
-                    Lihat 
-                </a>
+    @php
+        $notifNavbar = \App\Models\JurnalMengajar::with(['kelas', 'mapel'])
+            ->where('id_user', Auth::id())
+            ->where('status_validasi', 'disetujui')
+            ->orderBy('id_jurnal', 'desc')
+            ->take(5)
+            ->get();
+    @endphp
+    @forelse($notifNavbar as $notif)
+        <div class="rounded-xl border border-emerald-100 bg-emerald-50/40 p-3 mb-2">
+            <div class="flex items-start gap-3">
+                <span class="mt-0.5 flex h-9 w-9 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
+                    <i class="bi bi-check-circle-fill text-base" aria-hidden="true"></i>
+                </span>
+                <div class="min-w-0 flex-1">
+                    <p class="text-sm font-bold text-slate-800">Logbook Disetujui</p>
+                    <p class="mt-1 text-xs leading-relaxed text-slate-600">
+                        Logbook {{ $notif->mapel->nama_mapel ?? '-' }} kelas {{ $notif->kelas->nama_kelas ?? '-' }} telah divalidasi oleh Pengurus Kelas.
+                    </p>
+                    <a href="{{ route('guru.riwayat') }}"
+                        class="mt-2 inline-flex items-center rounded-md border border-emerald-200 bg-white px-2.5 py-1.5 text-[11px] font-semibold text-emerald-700 transition hover:bg-emerald-50"
+                    >
+                        Lihat 
+                    </a>
+                </div>
             </div>
         </div>
-    </div>
-
-    <div class="mt-2 rounded-xl border border-slate-200 bg-slate-50 p-3">
-        <div class="flex items-start gap-3">
-            <span class="mt-0.5 flex h-9 w-9 items-center justify-center rounded-full bg-amber-100 text-amber-600">
-                <i class="bi bi-exclamation-circle-fill text-base" aria-hidden="true"></i>
-            </span>
-            <div class="min-w-0 flex-1">
-                <p class="text-sm font-bold text-slate-800">Jadwal Mengajar Dimulai</p>
-                <p class="mt-1 text-xs leading-relaxed text-slate-600">
-                    Jadwal mengajar Anda hari ini telah dimulai pada jam ke 1 - 2.
-                </p>
-            </div>
+    @empty
+        <div class="rounded-xl border border-slate-100 bg-slate-50 p-4 text-center text-xs text-slate-400">
+            Belum ada notifikasi persetujuan logbook.
         </div>
-    </div>
+    @endforelse
 </div>
         </div>
     </div>
@@ -84,8 +89,15 @@
 
     <div class="flex items-center gap-3">
         <div class="flex items-center gap-2">
-            <span class="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-100 text-[10px] font-bold text-emerald-800">AF</span>
-            <span class="max-w-24 truncate text-xs font-semibold text-slate-700">Ahmad Fauzi</span>
+            @php
+                $namaParts = explode(' ', Auth::user()->name);
+                $initials = strtoupper(substr($namaParts[0], 0, 1));
+                if (count($namaParts) > 1) {
+                    $initials .= strtoupper(substr($namaParts[1], 0, 1));
+                }
+            @endphp
+            <span class="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-100 text-[10px] font-bold text-emerald-800">{{ $initials }}</span>
+            <span class="max-w-24 truncate text-xs font-semibold text-slate-700">{{ Auth::user()->name }}</span>
         </div>
 
         <div x-data="{ openNotif: false }" class="relative">
@@ -110,38 +122,30 @@
                 </div>
 
 <div class="p-2">
-    <div class="rounded-lg border border-emerald-100 bg-emerald-50/40 p-2.5">
-        <div class="flex items-start gap-2">
-            <span class="mt-0.5 flex h-7 w-7 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
-                <i class="bi bi-check-circle-fill text-sm" aria-hidden="true"></i>
-            </span>
-            <div class="min-w-0 flex-1">
-                <p class="text-xs font-bold text-slate-800">Logbook Disetujui</p>
-                <p class="mt-1 text-[11px] leading-relaxed text-slate-600">
-                    Logbook Informatika XI RPL 2 telah divalidasi oleh Pengurus Kelas.
-                </p>
-                <a href="{{ route('guru.riwayat') }}"
-                    class="mt-2 inline-flex items-center rounded-md border border-emerald-200 bg-white px-2.5 py-1.5 text-[11px] font-semibold text-emerald-700 transition hover:bg-emerald-50"
-                >
-                    Lihat 
-                </a>
+    @forelse($notifNavbar ?? \App\Models\JurnalMengajar::with(['kelas', 'mapel'])->where('id_user', Auth::id())->where('status_validasi', 'disetujui')->orderBy('id_jurnal', 'desc')->take(5)->get() as $notifM)
+        <div class="rounded-lg border border-emerald-100 bg-emerald-50/40 p-2.5 mb-2">
+            <div class="flex items-start gap-2">
+                <span class="mt-0.5 flex h-7 w-7 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
+                    <i class="bi bi-check-circle-fill text-sm" aria-hidden="true"></i>
+                </span>
+                <div class="min-w-0 flex-1">
+                    <p class="text-xs font-bold text-slate-800">Logbook Disetujui</p>
+                    <p class="mt-1 text-[11px] leading-relaxed text-slate-600">
+                        Logbook {{ $notifM->mapel->nama_mapel ?? '-' }} {{ $notifM->kelas->nama_kelas ?? '-' }} telah divalidasi.
+                    </p>
+                    <a href="{{ route('guru.riwayat') }}"
+                        class="mt-2 inline-flex items-center rounded-md border border-emerald-200 bg-white px-2.5 py-1.5 text-[11px] font-semibold text-emerald-700 transition hover:bg-emerald-50"
+                    >
+                        Lihat 
+                    </a>
+                </div>
             </div>
         </div>
-    </div>
-
-    <div class="mt-2 rounded-lg border border-slate-200 bg-slate-50 p-2.5">
-        <div class="flex items-start gap-2">
-            <span class="mt-0.5 flex h-7 w-7 items-center justify-center rounded-full bg-amber-100 text-amber-600">
-                <i class="bi bi-exclamation-circle-fill text-sm" aria-hidden="true"></i>
-            </span>
-            <div class="min-w-0 flex-1">
-                <p class="text-xs font-bold text-slate-800">Jadwal Mengajar Dimulai</p>
-                <p class="mt-1 text-[11px] leading-relaxed text-slate-600">
-                    Jadwal mengajar Anda hari ini telah dimulai pada jam ke 1 - 2.
-                </p>
-            </div>
+    @empty
+        <div class="rounded-lg border border-slate-100 bg-slate-50 p-3 text-center text-[11px] text-slate-400">
+            Belum ada notifikasi.
         </div>
-    </div>
+    @endforelse
 </div>
             </div>
         </div>

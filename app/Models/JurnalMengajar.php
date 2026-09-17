@@ -10,8 +10,10 @@ class JurnalMengajar extends Model
     use HasFactory;
 
     protected $table = 'jurnal_mengajars';
+
     protected $primaryKey = 'id_jurnal';
-    public $timestamps = false; // Sesuai migrasi Anda yang tidak ada timestamps()
+
+    public $timestamps = false;
 
     protected $fillable = [
         'id_user',
@@ -30,6 +32,10 @@ class JurnalMengajar extends Model
         'status_kehadiran_guru',
         'ada_tugas',
         'catatan',
+        'lampiran',
+        'status_validasi',
+        'catatan_validasi',
+        'divalidasi_pada',
     ];
 
     public function absensis()
@@ -53,6 +59,6 @@ class JurnalMengajar extends Model
 
     public function mapel()
     {
-        return $this->belongsTo(Mapel::class, 'id_mapel');
+        return $this->belongsTo(Mapel::class, 'id_mapel', 'id');
     }
 }

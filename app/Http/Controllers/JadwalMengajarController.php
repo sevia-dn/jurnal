@@ -15,20 +15,20 @@ class JadwalMengajarController extends Controller
         $jadwals = JadwalMengajar::with([
             'guru',
             'kelas',
-            'mapel'
+            'mapel',
         ])
-        ->orderByRaw("
-            FIELD(
-                hari,
-                'Senin',
-                'Selasa',
-                'Rabu',
-                'Kamis',
-                'Jumat'
-            )
-        ")
-        ->orderBy('jam_mulai')
-        ->get();
+            ->orderByRaw("
+                FIELD(
+                    hari,
+                    'Senin',
+                    'Selasa',
+                    'Rabu',
+                    'Kamis',
+                    'Jumat'
+                )
+            ")
+            ->orderBy('jam_mulai')
+            ->get();
 
         return view(
             'dashboard.admin.jadwal',
@@ -49,7 +49,7 @@ class JadwalMengajarController extends Controller
             ->get();
 
         return view(
-            'jadwal.create',
+            'dashboard.admin.jadwal-create',
             compact('guru', 'kelas', 'mapels')
         );
     }

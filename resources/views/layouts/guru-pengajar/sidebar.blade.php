@@ -33,23 +33,30 @@
     <div class="mt-auto border-t border-[#17826E] px-4 pb-6 pt-4">
         <div class="flex items-center justify-between gap-3">
             <div class="flex min-w-0 items-center gap-3">
+                @php
+                    $namaParts = explode(' ', Auth::user()->name);
+                    $initials = strtoupper(substr($namaParts[0], 0, 1));
+                    if (count($namaParts) > 1) {
+                        $initials .= strtoupper(substr($namaParts[1], 0, 1));
+                    }
+                @endphp
                 <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#DFFAF3] text-xs font-bold text-[#0D6B5A]">
-                    AF
+                    {{ $initials }}
                 </span>
                 <div class="min-w-0">
-                    <p class="truncate text-sm font-semibold text-white">Ahmad Fauzi, S.Pd</p>
+                    <p class="truncate text-sm font-semibold text-white">{{ Auth::user()->name }}</p>
                     <p class="truncate text-[11px] text-[#AEE5D4]">Guru Pengajar</p>
                 </div>
             </div>
 
-            <form action="{{ route('logout') }}" method="POST" class="m-0 p-0">
-                @csrf
-                <button type="submit"
-                        class="inline-flex items-center justify-center gap-1.5 rounded-lg border border-[#9BE0CF] bg-transparent px-2.5 py-2 text-[11px] font-medium text-[#F2FFFB] transition hover:border-[#D8F9EF] hover:bg-white/5">
-                    <i class="bi bi-box-arrow-right text-sm" aria-hidden="true"></i>
-                    <span>Keluar</span>
-                </button>
-            </form>
+<form action="{{ route('logout') }}" method="POST" class="m-0 p-0">
+    @csrf
+    <button type="submit"
+            title="Keluar"
+            class="inline-flex items-center justify-center p-1 text-white transition hover:text-slate-300 focus:outline-none focus:ring-2 focus:ring-white/50 rounded">
+        <i class="bi bi-box-arrow-right text-xl" aria-hidden="true"></i>
+    </button>
+</form>
         </div>
     </div>
 </aside>

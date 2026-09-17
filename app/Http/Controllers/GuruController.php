@@ -2,23 +2,23 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
-use App\Models\TeacherAttendance;
+use App\Models\JadwalMengajar;
 use App\Models\JurnalMengajar;
 use App\Models\Kelas;
 use App\Models\Mapel;
 use App\Models\Siswa;
+use App\Models\TeacherAttendance;
 use App\Models\User;
-use App\Models\JadwalMengajar;
 use Carbon\Carbon;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class GuruController extends Controller
 {
     /**
-     * Halaman utama guru
+     * Halaman utama guru (Dashboard pribadi guru)
      */
-    public function beranda()
+    public function beranda(Request $request)
     {
         Carbon::setLocale('id');
 
@@ -27,6 +27,9 @@ class GuruController extends Controller
         $now = Carbon::now();
         $todayDate = $now->toDateString();
         $hariIni = $now->translatedFormat('l');
+
+        // Hari yang dipilih (default adalah hari saat guru login)
+        $selectedHari = $request->query('hari', $hariIni);
 
         // Absensi guru hari ini
         $attendance = TeacherAttendance::where('user_id', $user->id)
@@ -40,13 +43,23 @@ class GuruController extends Controller
             ->where('tanggal', $todayDate)
             ->exists();
 
-        // Jadwal guru hari ini
+        // Jadwal guru untuk hari yang dipilih (default hari login)
         $jadwals = JadwalMengajar::with(['kelas', 'mapel'])
             ->where('id_user', $user->id)
-            ->where('hari', $hariIni)
+            ->where('hari', $selectedHari)
             ->orderBy('jam_mulai')
             ->get();
-        // Data form
+
+        // Ringkasan jumlah jam/sesi mengajar guru per hari
+        $jadwalCounts = JadwalMengajar::where('id_user', $user->id)
+            ->selectRaw('hari, count(*) as total')
+            ->groupBy('hari')
+            ->pluck('total', 'hari');
+
+        // Jadwal aktif pertama hari ini untuk auto-fill form logbook
+        $activeJadwal = $jadwals->first();
+
+        // Data pendukung form
         $teachers = User::where('role', 'guru')
             ->orderBy('name')
             ->get();
@@ -57,8 +70,7 @@ class GuruController extends Controller
         $mapels = Mapel::orderBy('nama_mapel')
             ->get();
 
-        // SEMUA siswa dikirim ke view.
-        // Nanti Blade akan memfilter berdasarkan kelas yang dipilih.
+        // Siswa dikirim ke view untuk filter otomatis per kelas
         $siswas = Siswa::with('kelas')
             ->orderBy('nama')
             ->get();
@@ -69,10 +81,14 @@ class GuruController extends Controller
             'hasCheckedIn',
             'hasSubmittedJournal',
             'jadwals',
+            'activeJadwal',
             'teachers',
             'kelases',
             'mapels',
-            'siswas'
+            'siswas',
+            'hariIni',
+            'selectedHari',
+            'jadwalCounts'
         ));
     }
 
@@ -81,20 +97,19 @@ class GuruController extends Controller
      */
     public function storeAbsen(Request $request)
     {
+        $teacherId = $request->teacher_id ?: Auth::id();
+
         $request->validate([
             'teacher_id' => 'required|exists:users,id',
             'nip' => 'nullable|string',
-            'status_kehadiran_guru' => 'required|in:Hadir,Izin,Sakit,Tanpa Keterangan',
-            'reason' => 'nullable|string|max:255',
-            'proof_file' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
+            'status_kehadiran_guru' => 'required|in:Hadir,Tidak Hadir',
+            'reason' => 'nullable|string|max:500',
+            'proof_file' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
         ]);
 
         $todayDate = Carbon::today()->toDateString();
 
-        $existingAttendance = TeacherAttendance::where(
-            'user_id',
-            $request->teacher_id
-        )
+        $existingAttendance = TeacherAttendance::where('user_id', $teacherId)
             ->where('date', $todayDate)
             ->first();
 
@@ -112,7 +127,7 @@ class GuruController extends Controller
         }
 
         TeacherAttendance::create([
-            'user_id' => $request->teacher_id,
+            'user_id' => $teacherId,
             'date' => $todayDate,
             'status' => $request->status_kehadiran_guru,
             'reason' => $request->reason,
@@ -123,7 +138,7 @@ class GuruController extends Controller
             ->route('guru.utama')
             ->with(
                 'success',
-                'Absen masuk berhasil dicatat. Silakan lanjutkan mengisi jurnal pembelajaran.'
+                'Presensi/Absen masuk berhasil dicatat. Silakan lanjutkan mengisi jurnal pembelajaran.'
             );
     }
 }

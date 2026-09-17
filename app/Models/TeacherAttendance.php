@@ -9,15 +9,14 @@ class TeacherAttendance extends Model
 {
     use HasFactory;
 
-    // Nama tabel di database (sesuaikan jika nama tabel Anda berbeda, misal: 'teacher_attendances')
     protected $table = 'teacher_attendances';
 
     protected $fillable = [
         'user_id',
         'date',
         'status',
-        'time',
-        'keterangan',
+        'reason',
+        'proof_file',
     ];
 
     /**

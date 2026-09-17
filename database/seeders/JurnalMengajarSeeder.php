@@ -4,23 +4,17 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
-use App\Models\Absensi;
 
 class JurnalMengajarSeeder extends Seeder
 {
-
-    public function absensis()
-    {
-        return $this->hasMany(Absensi::class, 'id_jurnal', 'id_jurnal');
-    }
     public function run(): void
     {
         DB::table('jurnal_mengajars')->insert([
             [
                 'id_jurnal' => 1,
-                'id_user' => 1, 
+                'id_user' => 1,
                 'id_kelas' => 1,
-                'id_mapel' => 1, 
+                'id_mapel' => 1,
                 'tanggal' => '2026-07-20',
                 'jam_ke' => 1,
                 'materi' => 'Pengenalan DDL, DML, dan Normalisasi',
@@ -36,9 +30,9 @@ class JurnalMengajarSeeder extends Seeder
             ],
             [
                 'id_jurnal' => 2,
-                'id_user' => 2, 
+                'id_user' => 2,
                 'id_kelas' => 1,
-                'id_mapel' => 2, 
+                'id_mapel' => 2,
                 'tanggal' => '2026-07-20',
                 'jam_ke' => 2,
                 'materi' => 'Konsep OOP: Class dan Object',
@@ -56,7 +50,7 @@ class JurnalMengajarSeeder extends Seeder
                 'id_jurnal' => 3,
                 'id_user' => 1,
                 'id_kelas' => 1,
-                'id_mapel' => 3, 
+                'id_mapel' => 3,
                 'tanggal' => '2026-07-21',
                 'jam_ke' => 1,
                 'materi' => 'Persamaan Linear dan Logika Data',
@@ -74,7 +68,7 @@ class JurnalMengajarSeeder extends Seeder
                 'id_jurnal' => 4,
                 'id_user' => 2,
                 'id_kelas' => 1,
-                'id_mapel' => 4, 
+                'id_mapel' => 4,
                 'tanggal' => '2026-07-21',
                 'jam_ke' => 2,
                 'materi' => 'Pemodelan Perangkat Lunak',
