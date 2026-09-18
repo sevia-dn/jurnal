@@ -7,7 +7,7 @@
 <div class="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
     <div class="mb-6">
         <p class="text-sm font-semibold text-emerald-700">Dashboard Pengurus Kelas</p>
-        <h1 class="mt-1 text-2xl font-extrabold leading-tight text-slate-900 sm:text-3xl">Selamat datang, Sekretaris</h1>
+        <h1 class="mt-1 text-2xl font-extrabold leading-tight text-slate-900 sm:text-3xl">Selamat datang, Pengurus</h1>
         <p class="mt-2 text-sm text-slate-500">Kamis, 24 Agustus 2023</p>
     </div>
 

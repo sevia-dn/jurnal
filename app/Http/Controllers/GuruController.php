@@ -101,13 +101,6 @@ class GuruController extends Controller
         $currentTime = $now->format('H:i');
         $currentFullTime = $now->format('H:i:s');
 
-        // Absensi guru hari ini
-        $attendance = TeacherAttendance::where('user_id', $user->id)
-            ->where('date', $todayDate)
-            ->first();
-
-        $hasCheckedIn = $attendance ? true : false;
-
         // Jadwal guru khusus HARI INI (hari saat login)
         $jadwals = JadwalMengajar::with(['kelas', 'mapel'])
             ->where('id_user', $user->id)
@@ -167,8 +160,6 @@ class GuruController extends Controller
 
         return view('dashboard.guru-pengajar.utama', compact(
             'user',
-            'attendance',
-            'hasCheckedIn',
             'hasSubmittedJournal',
             'jadwals',
             'activeJadwal',
