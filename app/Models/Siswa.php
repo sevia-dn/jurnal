@@ -7,10 +7,30 @@ use App\Models\Kelas;
 
 class Siswa extends Model
 {
-    protected $fillable = ['kelas_id', 'nis', 'nama', 'jenis_kelamin'];
+    protected $table = 'siswas';
+
+    protected $fillable = [
+        'kelas_id',
+        'nis',
+        'nama',
+        'jenis_kelamin',
+    ];
 
     public function kelas()
     {
-        return $this->belongsTo(Kelas::class, 'kelas_id', 'id_kelas');
+        return $this->belongsTo(
+            Kelas::class,
+            'kelas_id',
+            'id_kelas'
+        );
+    }
+
+    public function absensis()
+    {
+        return $this->hasMany(
+            Absensi::class,
+            'id_siswa',
+            'id'
+        );
     }
 }

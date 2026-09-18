@@ -6,5 +6,12 @@ use Illuminate\Database\Eloquent\Model;
 
 class Mapel extends Model
 {
-    //
+    protected $table = 'mapels';
+
+    protected $primaryKey = 'id';
+
+    protected $fillable = [
+        'kode_mapel',
+        'nama_mapel',
+    ];
 }

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class JurnalMengajar extends Model
@@ -16,6 +17,7 @@ class JurnalMengajar extends Model
         'id_mapel',
         'tanggal',
         'jam_ke',
+        'jam_selesai',
         'materi',
         'keterangan',
         'jumlah_hadir',
@@ -27,7 +29,25 @@ class JurnalMengajar extends Model
         'status_kehadiran_guru',
         'ada_tugas',
         'catatan',
+        'lampiran',
+        'status_validasi',
+        'catatan_validasi',
+        'divalidasi_pada',
     ];
+
+    public function absensis()
+    {
+        return $this->hasMany(
+            Absensi::class,
+            'id_jurnal',
+            'id_jurnal'
+        );
+    }
+
+    public function user()
+    {
+        return $this->belongsTo(User::class, 'id_user', 'id');
+    }
 
     public function kelas()
     {
@@ -39,9 +59,9 @@ class JurnalMengajar extends Model
         return $this->belongsTo(User::class, 'id_user');
     }
 
-    public function absensis()
+    public function mapel()
     {
-        return $this->hasMany(Absensi::class, 'id_jurnal', 'id_jurnal');
+        return $this->belongsTo(Mapel::class, 'id_mapel', 'id');
     }
-}
 
+}

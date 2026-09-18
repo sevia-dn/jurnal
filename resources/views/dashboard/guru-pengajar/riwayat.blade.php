@@ -13,135 +13,261 @@
 @section('content')
     <style>
         [x-cloak] { display: none !important; }
-        .custom-scrollbar::-webkit-scrollbar { width: 8px; }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: rgba(16, 185, 129, 0.08); }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(16, 185, 129, 0.35); border-radius: 9999px; }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(16, 185, 129, 0.5); }
     </style>
 
-    <div x-data="{ openDetailModal: false, filterStart: '2026-09-01', filterEnd: '2026-09-30' }" id="riwayat" class="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+    <div
+        x-data="{
+            openDetailModal: false,
+            detail: {},
+            openDetail(data) {
+                this.detail = data;
+                this.openDetailModal = true;
+            }
+        }"
+        id="riwayat"
+        class="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8"
+    >
+
+        {{-- HEADER --}}
         <section class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
             <div>
                 <p class="text-sm font-semibold text-emerald-700">Arsip Pembelajaran</p>
-                <h1 class="mt-1 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">Riwayat &amp; Rekap</h1>
-                <p class="mt-2 text-sm text-slate-500">Riwayat logbook, dokumentasi, dan presensi siswa.</p>
+                <h1 class="mt-1 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">Riwayat &amp; Rekap Logbook</h1>
+                <p class="mt-2 text-sm text-slate-500">Riwayat jurnal mengajar, dokumentasi lampiran, dan presensi siswa yang telah diisi.</p>
             </div>
             <span class="w-fit rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700">Guru Pengajar</span>
         </section>
 
-<section class="mt-6 rounded-2xl bg-white p-4 shadow-md sm:p-6">
-            <div class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_190px_190px]">
-                
-                <!-- Kolom Pencarian -->
+        {{-- NOTIFIKASI SUCCESS --}}
+        @if(session('success'))
+            <div class="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-900 shadow-sm" role="alert">
+                <div class="flex items-center gap-3">
+                    <i class="bi bi-check-circle-fill text-lg text-emerald-600"></i>
+                    <p class="text-sm font-semibold">{{ session('success') }}</p>
+                </div>
+            </div>
+        @endif
+
+        {{-- NOTIFIKASI ERROR --}}
+        @if(session('error'))
+            <div class="mt-4 rounded-xl border border-rose-200 bg-rose-50 p-4 text-rose-900 shadow-sm" role="alert">
+                <div class="flex items-center gap-3">
+                    <i class="bi bi-exclamation-triangle-fill text-lg text-rose-600"></i>
+                    <p class="text-sm font-semibold">{{ session('error') }}</p>
+                </div>
+            </div>
+        @endif
+
+        {{-- FORM PENCARIAN & FILTER --}}
+        <section class="mt-6 rounded-2xl bg-white p-4 shadow-md sm:p-6">
+            <form method="GET" action="{{ route('guru.riwayat') }}" class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_190px_190px_auto]">
+
                 <label class="relative flex items-center">
                     <span class="sr-only">Cari riwayat</span>
                     <i class="bi bi-search absolute left-4 text-slate-400" aria-hidden="true"></i>
-                    <input type="search" placeholder="Cari mata pelajaran, kelas, atau materi..." class="w-full rounded-lg border border-slate-200 bg-white py-3 pl-11 pr-4 text-sm text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-emerald-600 focus:ring-4 focus:ring-emerald-100">
+                    <input
+                        type="search"
+                        name="keyword"
+                        value="{{ $keyword ?? '' }}"
+                        placeholder="Cari mata pelajaran, kelas, atau materi..."
+                        class="w-full rounded-lg border border-slate-200 bg-white py-3 pl-11 pr-4 text-sm text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-emerald-600 focus:ring-4 focus:ring-emerald-100"
+                    >
                 </label>
 
                 <div class="relative flex items-center">
-                    <span class="sr-only">Tanggal mulai</span>
                     <i class="bi bi-calendar3 pointer-events-none absolute left-4 text-emerald-700" aria-hidden="true"></i>
-
-                    <input type="date" 
-                           x-model="filterStart" 
-                           lang="id-ID"
-                           onclick="this.showPicker()" 
-                           class="w-full cursor-pointer rounded-lg border border-slate-200 bg-white py-3 pl-11 pr-3 text-sm text-slate-700 outline-none transition focus:border-emerald-600 focus:ring-4 focus:ring-emerald-100 [&::-webkit-calendar-picker-indicator]:hidden">
+                    <input
+                        type="date"
+                        name="start_date"
+                        value="{{ $filterStart ?? '' }}"
+                        onclick="this.showPicker()"
+                        class="w-full cursor-pointer rounded-lg border border-slate-200 bg-white py-3 pl-11 pr-3 text-sm text-slate-700 outline-none transition focus:border-emerald-600 focus:ring-4 focus:ring-emerald-100 [&::-webkit-calendar-picker-indicator]:hidden"
+                        placeholder="Tanggal mulai"
+                    >
                 </div>
 
                 <div class="relative flex items-center">
-                    <span class="sr-only">Tanggal akhir</span>
                     <i class="bi bi-calendar3 pointer-events-none absolute left-4 text-emerald-700" aria-hidden="true"></i>
-                    
-                    <input type="date" 
-                           x-model="filterEnd" 
-                           lang="id-ID"
-                           onclick="this.showPicker()" 
-                           class="w-full cursor-pointer rounded-lg border border-slate-200 bg-white py-3 pl-11 pr-3 text-sm text-slate-700 outline-none transition focus:border-emerald-600 focus:ring-4 focus:ring-emerald-100 [&::-webkit-calendar-picker-indicator]:hidden">
+                    <input
+                        type="date"
+                        name="end_date"
+                        value="{{ $filterEnd ?? '' }}"
+                        onclick="this.showPicker()"
+                        class="w-full cursor-pointer rounded-lg border border-slate-200 bg-white py-3 pl-11 pr-3 text-sm text-slate-700 outline-none transition focus:border-emerald-600 focus:ring-4 focus:ring-emerald-100 [&::-webkit-calendar-picker-indicator]:hidden"
+                        placeholder="Tanggal akhir"
+                    >
                 </div>
-                
-            </div>
+
+                <button type="submit"
+                        class="rounded-lg bg-emerald-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700">
+                    Cari
+                </button>
+            </form>
+
+            @if($keyword || $filterStart || $filterEnd)
+                <div class="mt-3 flex items-center gap-2">
+                    <a href="{{ route('guru.riwayat') }}" class="text-xs font-medium text-slate-500 hover:text-rose-600">
+                        <i class="bi bi-x-circle mr-1"></i>Reset filter
+                    </a>
+                    @if($keyword)
+                        <span class="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs text-slate-600">Keyword: "{{ $keyword }}"</span>
+                    @endif
+                </div>
+            @endif
         </section>
 
-        <section class="mt-6 rounded-2xl bg-white p-3 shadow-md sm:p-4">
-            <div class="mb-5 flex items-center justify-end">
-                <span class="rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700">Total 9 data</span>
+
+        {{-- DAFTAR RIWAYAT LOGBOOK --}}
+        <section class="mt-6 rounded-2xl bg-white p-4 shadow-md sm:p-6">
+            <div class="mb-5 flex items-center justify-between border-b border-slate-100 pb-3">
+                <h2 class="text-base font-bold text-slate-800">Daftar Jurnal Pembelajaran</h2>
+                <span class="rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700">
+                    Total {{ $riwayatJurnals->count() }} data
+                </span>
             </div>
 
             <div class="space-y-4">
-                <article class="rounded-2xl border border-amber-200 bg-amber-50 p-5 shadow-sm">
-                    <div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                        <div class="flex items-start gap-3">
-                            <span class="flex h-12 w-12 items-center justify-center rounded-xl bg-white text-emerald-700 shadow-sm"><i class="bi bi-journal-text text-xl" aria-hidden="true"></i></span>
+
+                @forelse($riwayatJurnals as $jurnal)
+                    @php
+                        $statusValidasi = $jurnal->status_validasi ?? 'belum_divalidasi';
+                        $statusLabel = match($statusValidasi) {
+                            'disetujui' => 'Disetujui',
+                            'ditolak' => 'Ditolak',
+                            default => 'Menunggu Validasi',
+                        };
+                        $statusColor = match($statusValidasi) {
+                            'disetujui' => 'emerald',
+                            'ditolak' => 'rose',
+                            default => 'amber',
+                        };
+                        $tanggalFormatted = \Carbon\Carbon::parse($jurnal->tanggal)->format('d/m/y');
+                        $tanggalLong = \Carbon\Carbon::parse($jurnal->tanggal)->translatedFormat('l, d F Y');
+                    @endphp
+
+                    <article class="rounded-2xl bg-white p-5 shadow-xs ring-1 ring-slate-200 transition hover:ring-emerald-300">
+                        <div class="grid gap-5 md:grid-cols-[minmax(0,1fr)_auto]">
                             <div>
                                 <div class="flex flex-wrap items-center gap-2">
-                                    <h2 class="text-lg font-bold text-slate-900">Informatika</h2>
-                                    <span class="rounded-full bg-amber-100 px-2.5 py-1 text-[10px] font-bold text-amber-700">Menunggu Validasi</span>
+                                    <h3 class="text-base font-bold text-slate-900">
+                                        {{ $jurnal->mapel->nama_mapel ?? '-' }}
+                                    </h3>
+                                    <span class="rounded-full bg-{{ $statusColor }}-100 px-2.5 py-0.5 text-[10px] font-bold text-{{ $statusColor }}-700">
+                                        {{ $statusLabel }}
+                                    </span>
                                 </div>
-                                <p class="mt-2 text-sm font-semibold text-slate-700">Kelas XI RPL 2</p>
-                                <p class="mt-1 text-sm text-slate-500">Jam Pelajaran: Jam ke 1-2</p>
+
+                                <p class="mt-1 text-sm font-semibold text-slate-700">
+                                    Kelas {{ $jurnal->kelas->nama_kelas ?? '-' }}
+                                    <span class="mx-1 text-slate-300">&bull;</span>
+                                    Jam Pelajaran ke-{{ $jurnal->jam_ke }}
+                                </p>
+
+                                <p class="mt-2 text-sm leading-relaxed text-slate-600">
+                                    <span class="font-medium text-slate-500">Materi:</span> {{ $jurnal->materi }}
+                                </p>
+
+                                <div class="mt-3 flex flex-wrap gap-2">
+                                    <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
+                                        <i class="bi bi-calendar3 mr-1"></i>{{ $tanggalFormatted }}
+                                    </span>
+                                    <span class="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 border border-emerald-100">
+                                        {{ $jurnal->jumlah_hadir ?? 0 }} Hadir
+                                    </span>
+                                    @if(($jurnal->jumlah_sakit ?? 0) > 0)
+                                        <span class="rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700 border border-amber-100">
+                                            {{ $jurnal->jumlah_sakit }} Sakit
+                                        </span>
+                                    @endif
+                                    @if(($jurnal->jumlah_izin ?? 0) > 0)
+                                        <span class="rounded-full bg-sky-50 px-3 py-1 text-xs font-semibold text-sky-700 border border-sky-100">
+                                            {{ $jurnal->jumlah_izin }} Izin
+                                        </span>
+                                    @endif
+                                    @if(($jurnal->jumlah_alpa ?? 0) > 0)
+                                        <span class="rounded-full bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-700 border border-rose-100">
+                                            {{ $jurnal->jumlah_alpa }} Alpa
+                                        </span>
+                                    @endif
+                                    @if($jurnal->lampiran)
+                                        <span class="rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-semibold text-indigo-700 border border-indigo-100">
+                                            <i class="bi bi-paperclip mr-0.5"></i>Ada Lampiran
+                                        </span>
+                                    @endif
+                                </div>
+                            </div>
+
+                            <div class="flex items-start justify-end">
+                                <button
+                                    type="button"
+                                    @click="openDetail(@js([
+                                        'mapel' => $jurnal->mapel->nama_mapel ?? '-',
+                                        'kelas' => $jurnal->kelas->nama_kelas ?? '-',
+                                        'tanggal' => $tanggalLong,
+                                        'tanggalShort' => $tanggalFormatted,
+                                        'jamKe' => $jurnal->jam_ke,
+                                        'materi' => $jurnal->materi,
+                                        'catatan' => $jurnal->catatan ?? '',
+                                        'statusValidasi' => $statusLabel,
+                                        'statusColor' => $statusColor,
+                                        'catatanValidasi' => $jurnal->catatan_validasi ?? '',
+                                        'divalidasiPada' => $jurnal->divalidasi_pada ? \Carbon\Carbon::parse($jurnal->divalidasi_pada)->format('d/m/y') : '',
+                                        'jumlahHadir' => $jurnal->jumlah_hadir ?? 0,
+                                        'jumlahSakit' => $jurnal->jumlah_sakit ?? 0,
+                                        'jumlahIzin' => $jurnal->jumlah_izin ?? 0,
+                                        'jumlahAlpa' => $jurnal->jumlah_alpa ?? 0,
+                                        'adaTugas' => $jurnal->ada_tugas ? 'Ya' : 'Tidak',
+                                        'lampiran' => $jurnal->lampiran ? asset('storage/' . $jurnal->lampiran) : '',
+                                    ]))"
+                                    class="inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-white px-3 py-2 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-50 focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:ring-offset-2"
+                                >
+                                    <i class="bi bi-eye" aria-hidden="true"></i>
+                                    Lihat Detail
+                                </button>
                             </div>
                         </div>
-                        <span class="rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-amber-700 shadow-sm">Senin, 14 Sep 2026</span>
-                    </div>
-                    <div class="mt-4 rounded-xl border border-amber-100 bg-white/70 p-4">
-                        <p class="text-[11px] font-bold uppercase tracking-[0.12em] text-amber-700">Ringkasan Logbook</p>
-                        <p class="mt-2 text-sm leading-relaxed text-slate-600">Materi: Pengenalan struktur data array dan penerapan dalam program sederhana. Siswa mengikuti praktek dengan antusias, serta menyelesaikan latihan pengolahan data pada kelompok kecil.</p>
-                    </div>
-                    <div class="mt-4 flex flex-wrap gap-2">
-                        <span class="rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700">07.00 - 08.20 WIB</span>
-                        <span class="rounded-full bg-sky-50 px-3 py-1.5 text-xs font-semibold text-sky-700">34 Hadir</span>
-                        <span class="rounded-full bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-700">1 Sakit</span>
-                    </div>
-                </article>
+                    </article>
 
-                <article class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
-                    <div class="grid gap-5 md:grid-cols-[112px_minmax(0,1fr)_auto]">
-                        <div class="flex h-28 items-center justify-center rounded-xl bg-emerald-100 text-center text-emerald-700"><div><i class="bi bi-camera-fill text-xl" aria-hidden="true"></i><p class="mt-1 text-[10px] font-semibold">Foto Kelas</p></div></div>
-                        <div>
-                            <div class="flex flex-wrap items-center gap-2"><h2 class="text-lg font-bold text-slate-900">Informatika</h2><span class="rounded-full bg-emerald-100 px-2.5 py-1 text-[10px] font-bold text-emerald-700">Disetujui</span></div>
-                            <p class="mt-2 text-sm font-semibold text-slate-700">Kelas XI RPL 2 <span class="mx-1 text-slate-300">&bull;</span> 07.00 - 08.20 WIB</p>
-                            <p class="mt-2 text-sm text-slate-500">Materi: Pengenalan struktur data array dan penerapannya dalam pemrograman.</p>
-                            <p class="mt-2 text-xs font-medium text-slate-400">Senin, 14 September 2026</p>
-                        </div>
-                        <div class="flex items-start md:justify-end">
-                            <button type="button" @click="openDetailModal = true" class="inline-flex items-center gap-2 rounded-lg border border-emerald-200 px-3 py-2 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-50 focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:ring-offset-2">
-                                <i class="bi bi-people" aria-hidden="true"></i>
-                                Lihat Detail
-                            </button>
-                        </div>
+                @empty
+                    <div class="flex flex-col items-center justify-center py-16 text-center">
+                        <span class="flex h-14 w-14 items-center justify-center rounded-full bg-slate-100 text-2xl text-slate-400">
+                            <i class="bi bi-journal-x"></i>
+                        </span>
+                        <p class="mt-4 text-sm font-semibold text-slate-600">Belum ada riwayat logbook</p>
+                        <p class="mt-1 text-xs text-slate-400">
+                            @if($keyword || $filterStart || $filterEnd)
+                                Tidak ada data yang cocok dengan filter pencarian.
+                            @else
+                                Riwayat jurnal pembelajaran akan muncul di sini setelah Anda mengisi logbook.
+                            @endif
+                        </p>
+                        @if($keyword || $filterStart || $filterEnd)
+                            <a href="{{ route('guru.riwayat') }}" class="mt-4 text-xs font-semibold text-emerald-600 hover:underline">Reset filter</a>
+                        @endif
                     </div>
-                </article>
+                @endforelse
 
-                <article class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
-                    <div class="grid gap-5 md:grid-cols-[112px_minmax(0,1fr)_auto]">
-                        <div class="flex h-28 items-center justify-center rounded-xl bg-amber-100 text-center text-amber-700"><div><i class="bi bi-camera-fill text-xl" aria-hidden="true"></i><p class="mt-1 text-[10px] font-semibold">Foto Kelas</p></div></div>
-                        <div>
-                            <div class="flex flex-wrap items-center gap-2"><h2 class="text-lg font-bold text-slate-900">Informatika</h2><span class="rounded-full bg-amber-100 px-2.5 py-1 text-[10px] font-bold text-amber-700">Perlu Revisi</span></div>
-                            <p class="mt-2 text-sm font-semibold text-slate-700">Kelas XI RPL 1 <span class="mx-1 text-slate-300">&bull;</span> 08.20 - 09.40 WIB</p>
-                            <p class="mt-2 text-sm text-slate-500">Materi: Pengolahan data menggunakan array multidimensi.</p>
-                            <p class="mt-2 text-xs font-medium text-slate-400">Jumat, 11 September 2026</p>
-                        </div>
-                        <div class="flex items-start md:justify-end">
-                            <button type="button" @click="openDetailModal = true" class="inline-flex items-center gap-2 rounded-lg border border-emerald-200 px-3 py-2 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-50 focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:ring-offset-2">
-                                <i class="bi bi-people" aria-hidden="true"></i>
-                                Lihat Detail
-                            </button>
-                        </div>
-                    </div>
-                </article>
             </div>
         </section>
 
-<!-- POP-UP MODAL KESELURUHAN -->
+
+        {{-- MODAL DETAIL LOGBOOK --}}
         <template x-teleport="body">
             <div
                 x-show="openDetailModal"
                 x-cloak
-                {{-- PERUBAHAN ADA DI BARIS BAWAH INI: Menambahkan md:left-64 dan z-[9999] mutlak --}}
-                class="fixed inset-0 md:left-64 z-[9999] flex items-center justify-center p-4 sm:p-6 bg-slate-900/60 backdrop-blur-md"
-                @click="openDetailModal = false"
+                x-transition:enter="transition ease-out duration-200"
+                x-transition:enter-start="opacity-0"
+                x-transition:enter-end="opacity-100"
+                x-transition:leave="transition ease-in duration-150"
+                x-transition:leave-start="opacity-100"
+                x-transition:leave-end="opacity-0"
+                class="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm"
+                @click.self="openDetailModal = false"
             >
                 <div
                     x-show="openDetailModal"
@@ -152,117 +278,155 @@
                     x-transition:leave-start="opacity-100 scale-100"
                     x-transition:leave-end="opacity-0 scale-95"
                     @click.stop
-                    class="flex flex-col w-full max-w-2xl max-h-[85vh] bg-white rounded-2xl shadow-2xl overflow-hidden"
+                    class="flex w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl"
+                    style="max-height: 88vh;"
                 >
-                    <!-- Header Modal -->
-                    <div class="flex shrink-0 items-center justify-between border-b border-slate-200 px-4 py-3 sm:px-6 sm:py-4">
-                        <h3 class="text-base font-bold text-slate-900 sm:text-lg">Detail Logbook Mengajar</h3>
-                        <button
-                            type="button"
-                            @click="openDetailModal = false"
-                            class="flex h-8 w-8 items-center justify-center rounded-full text-slate-500 transition hover:bg-slate-100 hover:text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                            aria-label="Tutup detail logbook"
-                        >
-                            <i class="bi bi-x-lg text-base" aria-hidden="true"></i>
+                    {{-- Header Modal --}}
+                    <div class="flex shrink-0 items-center justify-between border-b border-slate-200 px-5 py-4">
+                        <div>
+                            <h3 class="text-base font-bold text-slate-900">Detail Logbook Mengajar</h3>
+                            <p class="text-xs text-slate-400 mt-0.5" x-text="detail.tanggal"></p>
+                        </div>
+                        <button type="button" @click="openDetailModal = false"
+                                class="flex h-8 w-8 items-center justify-center rounded-full text-slate-500 transition hover:bg-slate-100"
+                                aria-label="Tutup">
+                            <i class="bi bi-x-lg text-base"></i>
                         </button>
                     </div>
 
-                    <!-- Body Modal -->
-                    <div class="flex-1 overflow-y-auto p-4 sm:p-6 min-h-0">
-                        <div class="space-y-4 sm:space-y-5">
-                            
+                    {{-- Body Modal Scrollable --}}
+                    <div class="flex-1 overflow-y-auto p-5 custom-scrollbar min-h-0">
+                        <div class="space-y-4">
+
+                            {{-- Status & Tanggal --}}
                             <div class="flex items-center justify-between gap-3">
-                                <span class="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-1 text-[10px] font-semibold text-emerald-700 sm:text-xs">Disetujui</span>
-                                <span class="text-[10px] font-medium text-slate-400 sm:text-xs">Senin, 14 Sep 2026</span>
+                                <span
+                                    class="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold"
+                                    :class="{
+                                        'bg-emerald-100 text-emerald-700': detail.statusColor === 'emerald',
+                                        'bg-amber-100 text-amber-700': detail.statusColor === 'amber',
+                                        'bg-rose-100 text-rose-700': detail.statusColor === 'rose'
+                                    }"
+                                    x-text="detail.statusValidasi"
+                                ></span>
+                                <span class="text-xs font-bold text-slate-500">
+                                    Tanggal: <span x-text="detail.tanggalShort"></span>
+                                </span>
                             </div>
 
-                            <!-- Grid 4 Kolom -->
-                            <div class="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
+                            {{-- Info Grid --}}
+                            <div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
                                 <div class="rounded-xl bg-slate-50 p-3">
-                                    <p class="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500 sm:text-[11px]">Tanggal</p>
-                                    <p class="mt-2 text-sm font-bold text-slate-800 sm:text-base">14 Sep 2026</p>
+                                    <p class="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Mata Pelajaran</p>
+                                    <p class="mt-1 text-sm font-bold text-slate-800" x-text="detail.mapel"></p>
                                 </div>
                                 <div class="rounded-xl bg-slate-50 p-3">
-                                    <p class="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500 sm:text-[11px]">Mata Pelajaran</p>
-                                    <p class="mt-2 text-sm font-bold text-slate-800 sm:text-base">Informatika</p>
+                                    <p class="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Kelas</p>
+                                    <p class="mt-1 text-sm font-bold text-slate-800" x-text="detail.kelas"></p>
                                 </div>
                                 <div class="rounded-xl bg-slate-50 p-3">
-                                    <p class="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500 sm:text-[11px]">Kelas</p>
-                                    <p class="mt-2 text-sm font-bold text-slate-800 sm:text-base">XI RPL 2</p>
-                                </div>
-                                <div class="rounded-xl bg-slate-50 p-3">
-                                    <p class="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500 sm:text-[11px]">Jam Pelajaran</p>
-                                    <p class="mt-2 text-sm font-bold text-slate-800 sm:text-base">Jam ke 1-2</p>
+                                    <p class="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Jam Pelajaran</p>
+                                    <p class="mt-1 text-sm font-bold text-slate-800">Jam ke-<span x-text="detail.jamKe"></span></p>
                                 </div>
                             </div>
 
-                            <!-- Ringkasan Materi -->
+                            {{-- Materi --}}
                             <div>
-                                <p class="text-sm font-semibold text-slate-700">Ringkasan Materi</p>
-                                <div class="mt-2 rounded-xl bg-slate-50 p-3 sm:p-4">
-                                    <p class="text-sm leading-relaxed text-slate-600">
-                                        Materi yang dibahas hari ini adalah pengenalan struktur data array dan penerapannya dalam program sederhana. Siswa mengikuti praktek dengan antusias dan menyelesaikan latihan secara berkelompok.
-                                    </p>
+                                <p class="text-sm font-semibold text-slate-700">Materi / Pokok Pembahasan</p>
+                                <div class="mt-1.5 rounded-xl bg-slate-50 p-3.5 border border-slate-100">
+                                    <p class="text-sm leading-relaxed text-slate-700 whitespace-pre-line" x-text="detail.materi"></p>
                                 </div>
                             </div>
 
-                            <!-- Form Catatan Khusus / Hambatan -->
-                            <div>
-                                <p class="text-sm font-semibold text-slate-700">Catatan Khusus / Hambatan Kelas</p>
-                                <div class="mt-2 rounded-xl border border-amber-100 bg-amber-50 p-3 sm:p-4">
-                                    <p class="text-sm leading-relaxed text-amber-800">
-                                        Beberapa siswa masih mengalami kesulitan dalam memahami konsep array multidimensi. Perlu diadakan review singkat pada pertemuan berikutnya.
-                                    </p>
-                                </div>
-                            </div>
-
-                            <!-- Rincian Kehadiran Siswa -->
-                            <div class="rounded-xl border border-emerald-100 bg-emerald-50 p-3 sm:p-4">
-                                <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                                    <p class="text-sm font-semibold text-slate-700">Rincian Kehadiran Siswa</p>
-                                    <span class="rounded-full bg-emerald-100 px-2.5 py-1 text-center text-[10px] font-semibold text-emerald-700 sm:text-xs">34 Hadir, 1 Sakit, 1 Alpa</span>
-                                </div>
-
-                                <div class="mt-3 max-h-48 overflow-y-auto rounded-xl border border-slate-100 bg-white custom-scrollbar">
-                                    <div class="divide-y divide-slate-100">
-                                        <div class="flex items-center justify-between gap-3 px-3 py-3 sm:px-4">
-                                            <span class="text-sm font-medium text-slate-700">Aisyah Nurhaliza</span>
-                                            <span class="rounded-full bg-emerald-100 px-2.5 py-1 text-[10px] font-semibold text-emerald-700">Hadir</span>
-                                        </div>
-                                        <div class="flex items-center justify-between gap-3 px-3 py-3 sm:px-4">
-                                            <span class="text-sm font-medium text-slate-700">Bagas Pratama</span>
-                                            <span class="rounded-full bg-amber-100 px-2.5 py-1 text-[10px] font-semibold text-amber-700">Sakit</span>
-                                        </div>
-                                        <div class="flex items-center justify-between gap-3 px-3 py-3 sm:px-4">
-                                            <span class="text-sm font-medium text-slate-700">Citra Lestari</span>
-                                            <span class="rounded-full bg-rose-100 px-2.5 py-1 text-[10px] font-semibold text-rose-700">Alpa</span>
-                                        </div>
-                                        <div class="flex items-center justify-between gap-3 px-3 py-3 sm:px-4">
-                                            <span class="text-sm font-medium text-slate-700">Dimas Rahardian</span>
-                                            <span class="rounded-full bg-sky-100 px-2.5 py-1 text-[10px] font-semibold text-sky-700">Izin</span>
-                                        </div>
-                                        <div class="flex items-center justify-between gap-3 px-3 py-3 sm:px-4">
-                                            <span class="text-sm font-medium text-slate-700">Eka Putri Maharani</span>
-                                            <span class="rounded-full bg-emerald-100 px-2.5 py-1 text-[10px] font-semibold text-emerald-700">Hadir</span>
-                                        </div>
+                            {{-- Catatan --}}
+                            <template x-if="detail.catatan">
+                                <div>
+                                    <p class="text-sm font-semibold text-slate-700">Catatan Khusus / Hambatan</p>
+                                    <div class="mt-1.5 rounded-xl border border-amber-100 bg-amber-50 p-3.5">
+                                        <p class="text-sm leading-relaxed text-amber-800 whitespace-pre-line" x-text="detail.catatan"></p>
                                     </div>
                                 </div>
+                            </template>
+
+                            {{-- Tugas --}}
+                            <div class="flex items-center gap-2 rounded-xl border border-slate-100 bg-slate-50 px-4 py-2.5 text-xs text-slate-600">
+                                <i class="bi bi-clipboard-check text-slate-500"></i>
+                                <span>Status Tugas Siswa:</span>
+                                <strong class="text-slate-800" x-text="detail.adaTugas === 'Ya' ? 'Ada Tugas Diberikan' : 'Tidak Ada Tugas'"></strong>
                             </div>
 
-                            <!-- Dokumentasi Foto -->
-                            <div>
-                                <p class="text-sm font-semibold text-slate-700">Dokumentasi / Bukti Foto</p>
-                                <div class="mt-2 flex h-32 items-center justify-center rounded-xl border border-dashed border-slate-300 bg-slate-100 sm:h-48">
-                                    <div class="flex flex-col items-center text-slate-400">
-                                        <i class="bi bi-image text-3xl" aria-hidden="true"></i>
-                                        <span class="mt-2 text-sm font-medium">Foto Dokumentasi</span>
-                                    </div>
+                            {{-- Rekap Kehadiran Siswa --}}
+                            <div class="rounded-xl border border-emerald-100 bg-emerald-50/70 p-4">
+                                <p class="text-xs font-bold uppercase tracking-wider text-emerald-800">Rekap Presensi Siswa</p>
+                                <div class="mt-2.5 flex flex-wrap gap-2">
+                                    <span class="rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-800">
+                                        <span x-text="detail.jumlahHadir"></span> Hadir
+                                    </span>
+                                    <template x-if="parseInt(detail.jumlahSakit) > 0">
+                                        <span class="rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-800">
+                                            <span x-text="detail.jumlahSakit"></span> Sakit
+                                        </span>
+                                    </template>
+                                    <template x-if="parseInt(detail.jumlahIzin) > 0">
+                                        <span class="rounded-full bg-sky-100 px-3 py-1 text-xs font-bold text-sky-800">
+                                            <span x-text="detail.jumlahIzin"></span> Izin
+                                        </span>
+                                    </template>
+                                    <template x-if="parseInt(detail.jumlahAlpa) > 0">
+                                        <span class="rounded-full bg-rose-100 px-3 py-1 text-xs font-bold text-rose-800">
+                                            <span x-text="detail.jumlahAlpa"></span> Alpa
+                                        </span>
+                                    </template>
                                 </div>
+                            </div>
+
+                            {{-- Validasi Info --}}
+                            <template x-if="detail.statusColor === 'emerald' && detail.divalidasiPada">
+                                <div class="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs text-emerald-800">
+                                    <i class="bi bi-shield-check mr-1 text-emerald-600 font-bold"></i>
+                                    Divalidasi pada: <span class="font-bold" x-text="detail.divalidasiPada"></span>
+                                    <template x-if="detail.catatanValidasi">
+                                        <p class="mt-1 text-emerald-700">Catatan Pengurus Kelas: <span x-text="detail.catatanValidasi"></span></p>
+                                    </template>
+                                </div>
+                            </template>
+
+                            <template x-if="detail.statusColor === 'rose' && detail.catatanValidasi">
+                                <div class="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs text-rose-800">
+                                    <i class="bi bi-exclamation-triangle mr-1 text-rose-600 font-bold"></i>
+                                    Alasan ditolak: <span class="font-bold" x-text="detail.catatanValidasi"></span>
+                                </div>
+                            </template>
+
+                            {{-- Lampiran / Dokumentasi Foto --}}
+                            <div>
+                                <p class="text-sm font-semibold text-slate-700">Dokumentasi / Lampiran</p>
+                                <template x-if="detail.lampiran">
+                                    <div class="mt-2">
+                                        <a :href="detail.lampiran" target="_blank" class="group block overflow-hidden rounded-xl border border-slate-200 bg-slate-50 hover:border-emerald-300">
+                                            <img :src="detail.lampiran" alt="Lampiran" class="max-h-56 w-full object-cover" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'">
+                                            <div style="display:none;" class="h-20 items-center justify-center gap-2 text-sm font-semibold text-emerald-700">
+                                                <i class="bi bi-file-earmark-pdf text-2xl text-rose-500"></i>
+                                                <span>Buka Berkas Lampiran (PDF)</span>
+                                            </div>
+                                        </a>
+                                        <p class="mt-1 text-xs text-slate-400">Klik untuk melihat berkas lampiran secara penuh.</p>
+                                    </div>
+                                </template>
+                                <template x-if="!detail.lampiran">
+                                    <div class="mt-2 flex h-20 items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50">
+                                        <span class="text-xs text-slate-400">Tidak ada lampiran berkas/foto</span>
+                                    </div>
+                                </template>
                             </div>
 
                         </div>
                     </div>
+
                 </div>
             </div>
         </template>
-        @endsection
+
+    </div>
+
+@endsection

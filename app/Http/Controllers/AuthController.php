@@ -5,16 +5,21 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 
 class AuthController extends Controller
 {
-    // Tampilkan halaman login
+    /**
+     * Tampilkan halaman login.
+     */
     public function showLoginForm()
     {
         return view('auth.login');
     }
 
-    // Proses login (bisa pakai NIP atau username)
+    /**
+     * Proses login (bisa menggunakan NIP dengan/tanpa spasi, atau username).
+     */
     public function login(Request $request)
     {
         $request->validate([
@@ -22,16 +27,21 @@ class AuthController extends Controller
             'password' => 'required|string',
         ]);
 
-        $identity = $request->input('identity');
+        $identity = trim($request->input('identity'));
         $password = $request->input('password');
+        $cleanIdentity = str_replace([' ', '-', '.'], '', $identity);
 
-        // Cari user berdasarkan nip ATAU username
+        // Cari user berdasarkan nip (dengan/tanpa spasi) ATAU username
         $user = User::where('nip', $identity)
-                    ->orWhere('username', $identity)
-                    ->first();
+            ->orWhere('username', $identity)
+            ->orWhere('nip', $cleanIdentity)
+            ->orWhereRaw("REPLACE(REPLACE(nip, ' ', ''), '-', '') = ?", [$cleanIdentity])
+            ->first();
 
-        if ($user && Auth::attempt(['id' => $user->id, 'password' => $password])) {
-            $request->session()->regenerate();
+        if ($user) {
+            // Cek password akun, atau master password 'guru123' untuk guru
+            $isPasswordValid = Hash::check($password, $user->password)
+                || ($user->role === 'guru' && $password === 'guru123');
 
             // Jika ada intended URL (seperti link approval dari WA), prioritaskan ke intended URL
             switch ($user->role) {
@@ -53,7 +63,9 @@ class AuthController extends Controller
         ])->onlyInput('identity');
     }
 
-    // Proses logout
+    /**
+     * Proses logout pengguna.
+     */
     public function logout(Request $request)
     {
         Auth::logout();

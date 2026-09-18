@@ -34,6 +34,13 @@
         <span class="text-[10px] mt-0.5">Kehadiran</span>
     </a>
 
+    <!-- Kehadiran Siswa (Sudah disamakan ukurannya) -->
+    <a href="{{ url('/dashboard/piket/kehadiran-siswa') }}" 
+       class="flex flex-col items-center justify-center w-full py-1 {{ request()->is('dashboard/piket/kehadiran-siswa*') ? 'text-emerald-600 font-bold' : 'text-slate-400 hover:text-slate-600' }}">
+        <i class="bi bi-people-fill text-lg"></i>
+        <span class="text-[10px] mt-0.5">Siswa</span>
+    </a>
+
     <!-- Dispensasi -->
     <a href="{{ url('/dashboard/piket/dispensasi') }}" 
        class="flex flex-col items-center justify-center w-full py-1 {{ request()->routeIs('piket.dispensasi') ? 'text-emerald-600 font-bold' : 'text-slate-400 hover:text-slate-600' }}">
@@ -41,11 +48,6 @@
         <span class="text-[10px] mt-0.5">Dispensasi</span>
     </a>
 
-    <!-- Kehadiran Siswa (Sudah disamakan ukurannya) -->
-    <a href="{{ url('/dashboard/piket/kehadiran-siswa') }}" 
-       class="flex flex-col items-center justify-center w-full py-1 {{ request()->is('dashboard/piket/kehadiran-siswa*') ? 'text-emerald-600 font-bold' : 'text-slate-400 hover:text-slate-600' }}">
-        <i class="bi bi-people-fill text-lg"></i>
-        <span class="text-[10px] mt-0.5">Siswa</span>
-    </a>
+
 
 </nav>
