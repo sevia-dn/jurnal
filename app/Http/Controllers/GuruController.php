@@ -17,6 +17,9 @@ class GuruController extends Controller
 {
     /**
      * Mengambil slot waktu (mulai & selesai) untuk jam pelajaran tertentu
+     * sesuai aturan jadwal KBM SMKN 1 Boyolangu:
+     * - Senin s.d. Kamis: 1 JP = 40 menit (sampai jam ke-10, pulang 15:00)
+     * - Jumat: 1 JP = 30 menit (Kelas XI sampai jam ke-12 pulang 15:00, Kelas X sampai jam ke-13 pulang 15:30)
      * sesuai aturan jadwal KBM resmi SMKN 1 Boyolangu:
      * - Senin s.d. Kamis:
      *   - Jam 1-4: @ 40 menit (07:00 - 09:40)
@@ -42,6 +45,12 @@ class GuruController extends Controller
                 2 => ['start' => '07:40', 'end' => '08:20'],
                 3 => ['start' => '08:20', 'end' => '09:00'],
                 4 => ['start' => '09:00', 'end' => '09:40'],
+                5 => ['start' => '10:00', 'end' => '10:40'],
+                6 => ['start' => '10:40', 'end' => '11:20'],
+                7 => ['start' => '11:20', 'end' => '12:00'],
+                8 => ['start' => '13:00', 'end' => '13:40'],
+                9 => ['start' => '13:40', 'end' => '14:20'],
+                10 => ['start' => '14:20', 'end' => '15:00'],
                 5 => ['start' => '10:00', 'end' => '10:35'],
                 6 => ['start' => '10:35', 'end' => '11:10'],
                 7 => ['start' => '11:10', 'end' => '11:45'],
@@ -65,9 +74,13 @@ class GuruController extends Controller
             9 => ['start' => '13:00', 'end' => '13:30'],
             10 => ['start' => '13:30', 'end' => '14:00'],
             11 => ['start' => '14:00', 'end' => '14:30'],
+            12 => ['start' => '14:30', 'end' => '15:00'],
+            13 => ['start' => '15:00', 'end' => '15:30'],
             12 => ['start' => '14:30', 'end' => '15:10'],
             13 => ['start' => '15:00', 'end' => '15:35'],
         ];
+
+        return $jumat[$jamKe] ?? ['start' => '07:00', 'end' => '15:30'];
 
         return $jumat[$jamKe] ?? ['start' => '07:00', 'end' => '15:35'];
     }
@@ -81,6 +94,7 @@ class GuruController extends Controller
 
         $user = Auth::user();
 
+        $now = Carbon::now();
         $now = Carbon::now('Asia/Jakarta');
         $todayDate = $now->toDateString();
         $hariIni = $now->translatedFormat('l');
@@ -188,6 +202,7 @@ class GuruController extends Controller
             'proof_file.max' => 'Ukuran berkas bukti maksimal 5 MB.',
         ]);
 
+        $todayDate = Carbon::today()->toDateString();
         $todayDate = Carbon::today('Asia/Jakarta')->toDateString();
 
         $existingAttendance = TeacherAttendance::where('user_id', $teacherId)

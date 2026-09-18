@@ -190,7 +190,7 @@
                 </p>
                 <span class="inline-flex items-center gap-1.5 rounded-lg bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-800 border border-emerald-200 shadow-xs">
                     <span class="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                    <span>Waktu:</span>
+                    <span>Waktu Server:</span>
                     <strong x-text="liveClock + ' WIB'" class="font-mono text-emerald-950 font-bold"></strong>
                 </span>
             </div>
