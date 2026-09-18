@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\Absensi;
-use App\Models\JadwalMengajar;
 use App\Models\JurnalMengajar;
 use App\Models\Siswa;
 use App\Models\TeacherAttendance;
@@ -22,7 +21,7 @@ class LogbookController extends Controller
         Carbon::setLocale('id');
 
         $user = Auth::user();
-        $now = Carbon::now();
+        $now = Carbon::now('Asia/Jakarta');
         $todayDate = $now->toDateString();
         $hariIni = $now->translatedFormat('l');
         $currentTime = $now->format('H:i');
@@ -50,6 +49,7 @@ class LogbookController extends Controller
             'id_kelas' => 'required|exists:kelas,id_kelas',
             'id_mapel' => 'required|exists:mapels,id',
             'jam_ke' => 'required|integer|min:1|max:13',
+            'jam_selesai' => 'nullable|integer|min:1|max:13|gte:jam_ke',
             'materi' => 'required|string|max:500',
             'ada_tugas' => 'required|in:Ya,Tidak',
             'catatan' => 'nullable|string',
@@ -58,31 +58,35 @@ class LogbookController extends Controller
             'absensi.*' => 'nullable|in:Hadir,Sakit,Izin,Alpa',
         ], [
             'materi.required' => 'Materi / Pokok Pembahasan wajib diisi.',
+            'jam_selesai.gte' => 'Jam selesai mengajar harus lebih besar atau sama dengan jam mulai.',
             'lampiran.mimes' => 'Format lampiran harus berupa foto (JPG, PNG, WebP) atau berkas PDF.',
             'lampiran.max' => 'Ukuran berkas lampiran maksimal 5 MB.',
         ]);
 
+        $jamMulai = (int) $request->jam_ke;
+        $jamSelesai = (int) ($request->jam_selesai ?: $request->jam_ke);
+
         // 3. Batasan Waktu Jam Mengajar:
-        // Cek apakah ada jadwal guru untuk kelas & mapel tersebut pada hari ini
-        $jadwal = JadwalMengajar::where('id_user', $user->id)
-            ->where('hari', $hariIni)
-            ->where('id_kelas', $request->id_kelas)
-            ->where('id_mapel', $request->id_mapel)
-            ->first();
+        // Ambil slot waktu mulai dan selesai mengajar
+        $slotMulai = GuruController::getJamSlot($hariIni, $jamMulai);
+        $slotSelesai = GuruController::getJamSlot($hariIni, $jamSelesai);
+        $startSlot = $slotMulai['start'];
+        $endSlot = $slotSelesai['end'];
 
-        if ($jadwal) {
-            $slotMulai = GuruController::getJamSlot($hariIni, (int) $jadwal->jam_mulai);
-            $slotSelesai = GuruController::getJamSlot($hariIni, (int) $jadwal->jam_selesai);
-            $startSlot = $slotMulai['start'];
-            $endSlot = $slotSelesai['end'];
+        // Cek jika belum memasuki jam waktu mengajar
+        if ($currentTime < $startSlot) {
+            return redirect()
+                ->back()
+                ->withInput()
+                ->with('error', "Jam pelajaran untuk sesi ini belum dimulai ({$startSlot} - {$endSlot} WIB). Anda hanya dapat mengisi jurnal setelah jam pelajaran dimulai.");
+        }
 
-            // Cek apakah waktu saat ini telah melewati jam mengajar
-            if ($currentTime > $endSlot) {
-                return redirect()
-                    ->back()
-                    ->withInput()
-                    ->with('error', "Batas waktu pengisian jurnal untuk sesi ini ({$startSlot} - {$endSlot}) telah terlewat. Anda tidak dapat mengisi jurnal di luar jam mengajar.");
-            }
+        // Cek jika telah melewati jam waktu mengajar
+        if ($currentTime > $endSlot) {
+            return redirect()
+                ->back()
+                ->withInput()
+                ->with('error', "Batas waktu pengisian jurnal untuk sesi ini ({$startSlot} - {$endSlot} WIB) telah terlewat. Anda tidak dapat mengisi jurnal setelah jam mengajar berakhir.");
         }
 
         // 4. Cek apakah guru sudah mengirimkan jurnal untuk kelas, mapel, tanggal, dan jam_ke yang sama
@@ -90,7 +94,7 @@ class LogbookController extends Controller
             ->where('id_kelas', $request->id_kelas)
             ->where('id_mapel', $request->id_mapel)
             ->where('tanggal', $todayDate)
-            ->where('jam_ke', $request->jam_ke)
+            ->where('jam_ke', $jamMulai)
             ->exists();
 
         if ($existing) {
@@ -147,7 +151,8 @@ class LogbookController extends Controller
                 'id_kelas' => $request->id_kelas,
                 'id_mapel' => $request->id_mapel,
                 'tanggal' => $todayDate,
-                'jam_ke' => $request->jam_ke,
+                'jam_ke' => $jamMulai,
+                'jam_selesai' => $jamSelesai,
                 'materi' => $request->materi,
                 'keterangan' => null,
                 'jumlah_hadir' => $jmlHadir,

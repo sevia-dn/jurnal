@@ -34,6 +34,7 @@
         selectedKelas: '{{ $activeJadwal->id_kelas ?? "" }}',
         selectedMapel: '{{ $activeJadwal->id_mapel ?? "" }}',
         selectedJamKe: '{{ $activeJadwal->jam_mulai ?? 1 }}',
+        selectedJamSelesai: '{{ $activeJadwal->jam_selesai ?? ($activeJadwal->jam_mulai ?? 1) }}',
 
         teachers: @js($teachers ?? []),
         liveClock: '{{ $currentFullTime ?? \Carbon\Carbon::now("Asia/Jakarta")->format("H:i:s") }}',
@@ -58,10 +59,11 @@
                 : '';
         },
 
-        pilihJadwal(idKelas, idMapel, jamMulai) {
+        pilihJadwal(idKelas, idMapel, jamMulai, jamSelesai) {
             this.selectedKelas = idKelas;
             this.selectedMapel = idMapel;
             this.selectedJamKe = jamMulai;
+            this.selectedJamSelesai = jamSelesai || jamMulai;
             const logbookEl = document.getElementById('form-logbook-section');
             if (logbookEl) {
                 logbookEl.scrollIntoView({ behavior: 'smooth' });
@@ -254,14 +256,18 @@
                                 <span>Lihat Catatan</span>
                             </a>
                         @elseif($statusWaktu === 'lewat')
-                            <span class="rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-400 cursor-not-allowed" title="Batas waktu jam mengajar sesi ini telah terlewat">
+                            <span class="rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-400 cursor-not-allowed" title="Batas waktu jam mengajar sesi ini telah terlewat ({{ $jadwal->waktu_mulai }} - {{ $jadwal->waktu_selesai }} WIB)">
                                 <i class="bi bi-lock-fill mr-1"></i>Tenggat Lewat
+                            </span>
+                        @elseif($statusWaktu === 'belum_mulai')
+                            <span class="rounded-lg bg-sky-50 border border-sky-200 px-3 py-1.5 text-xs font-semibold text-sky-700 cursor-not-allowed" title="Jam mengajar sesi ini belum dimulai ({{ $jadwal->waktu_mulai }} - {{ $jadwal->waktu_selesai }} WIB)">
+                                <i class="bi bi-clock-history mr-1"></i>Belum Dimulai
                             </span>
                         @else
                             <button
                                 type="button"
                                 x-show="hasCheckedIn"
-                                @click="pilihJadwal('{{ $jadwal->id_kelas }}', '{{ $jadwal->id_mapel }}', '{{ $jadwal->jam_mulai }}')"
+                                @click="pilihJadwal('{{ $jadwal->id_kelas }}', '{{ $jadwal->id_mapel }}', '{{ $jadwal->jam_mulai }}', '{{ $jadwal->jam_selesai }}')"
                                 class="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white shadow-sm transition hover:bg-emerald-700"
                                 title="Gunakan sesi jadwal ini untuk mengisi logbook"
                             >
@@ -774,22 +780,40 @@
                         </select>
                     </label>
 
-                    {{-- JAM KE --}}
-                    <label class="block">
-                        <span class="text-sm font-semibold text-slate-700">
-                            Jam Pelajaran Ke- <span class="text-rose-500">*</span>
-                        </span>
-                        <input
-                            type="number"
-                            name="jam_ke"
-                            x-model="selectedJamKe"
-                            min="1"
-                            max="13"
-                            required
-                            placeholder="Contoh: 1"
-                            class="mt-2 w-full rounded-lg border border-slate-200 px-4 py-3 text-sm text-slate-700 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100"
-                        >
-                    </label>
+                    {{-- JAM PELAJARAN (RENTANG JAM MULAI S.D. SELESAI) --}}
+                    <div class="grid grid-cols-2 gap-3 sm:col-span-1">
+                        <label class="block">
+                            <span class="text-sm font-semibold text-slate-700">
+                                Jam Ke- <span class="text-rose-500">*</span>
+                            </span>
+                            <input
+                                type="number"
+                                name="jam_ke"
+                                x-model="selectedJamKe"
+                                min="1"
+                                max="13"
+                                required
+                                placeholder="Mulai"
+                                class="mt-2 w-full rounded-lg border border-slate-200 px-3 py-3 text-sm text-slate-700 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100"
+                            >
+                        </label>
+
+                        <label class="block">
+                            <span class="text-sm font-semibold text-slate-700">
+                                Sampai Jam Ke- <span class="text-rose-500">*</span>
+                            </span>
+                            <input
+                                type="number"
+                                name="jam_selesai"
+                                x-model="selectedJamSelesai"
+                                :min="selectedJamKe"
+                                max="13"
+                                required
+                                placeholder="Selesai"
+                                class="mt-2 w-full rounded-lg border border-slate-200 px-3 py-3 text-sm text-slate-700 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100"
+                            >
+                        </label>
+                    </div>
 
                     {{-- TUGAS --}}
                     <label class="block">

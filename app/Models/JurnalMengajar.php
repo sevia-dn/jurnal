@@ -21,6 +21,7 @@ class JurnalMengajar extends Model
         'id_mapel',
         'tanggal',
         'jam_ke',
+        'jam_selesai',
         'materi',
         'keterangan',
         'jumlah_hadir',
