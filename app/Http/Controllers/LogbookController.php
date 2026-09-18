@@ -53,12 +53,14 @@ class LogbookController extends Controller
             'materi' => 'required|string|max:500',
             'ada_tugas' => 'required|in:Ya,Tidak',
             'catatan' => 'nullable|string',
-            'lampiran' => 'nullable|file|mimes:jpeg,png,jpg,webp,pdf|max:5120',
+            'lampiran' => 'required|file|mimes:jpeg,png,jpg,webp,pdf|max:5120',
             'absensi' => 'nullable|array',
             'absensi.*' => 'nullable|in:Hadir,Sakit,Izin,Alpa',
         ], [
             'materi.required' => 'Materi / Pokok Pembahasan wajib diisi.',
             'jam_selesai.gte' => 'Jam selesai mengajar harus lebih besar atau sama dengan jam mulai.',
+            'lampiran.required' => 'Lampiran foto atau berkas bukti kehadiran di kelas wajib diunggah.',
+            'lampiran.file' => 'Lampiran harus berupa berkas/file yang valid.',
             'lampiran.mimes' => 'Format lampiran harus berupa foto (JPG, PNG, WebP) atau berkas PDF.',
             'lampiran.max' => 'Ukuran berkas lampiran maksimal 5 MB.',
         ]);

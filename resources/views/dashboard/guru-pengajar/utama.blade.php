@@ -859,19 +859,22 @@
 
             <div class="rounded-2xl bg-white p-5 shadow-md sm:p-6">
                 <div class="border-b border-slate-100 pb-4">
-                    <h3 class="text-base font-bold text-slate-800">Lampiran Bukti Hadir di Kelas</h3>
-                    <p class="text-xs text-slate-500 mt-0.5">Unggah foto dokumentasi kelas atau berkas sebagai bukti Anda benar-benar hadir mengajar.</p>
+                    <h3 class="text-base font-bold text-slate-800">
+                        Lampiran Bukti Hadir di Kelas <span class="text-rose-500">*</span>
+                    </h3>
+                    <p class="text-xs text-slate-500 mt-0.5">Unggah foto dokumentasi kelas atau berkas sebagai bukti otentik Anda hadir mengajar di kelas (Wajib diisi).</p>
                 </div>
                 <div class="mt-4">
                     <label class="block">
-                        <span class="text-sm font-semibold text-slate-700">Foto / Dokumen Bukti Mengajar (Opsional)</span>
+                        <span class="text-sm font-semibold text-slate-700">Foto / Dokumen Bukti Mengajar <span class="text-rose-500">*</span></span>
                         <input
                             type="file"
                             name="lampiran"
                             accept="image/*,application/pdf"
+                            required
                             class="mt-2 w-full text-sm text-slate-500 file:mr-4 file:rounded-lg file:border-0 file:bg-emerald-50 file:px-4 file:py-2.5 file:text-sm file:font-semibold file:text-emerald-700 hover:file:bg-emerald-100"
                         >
-                        <p class="mt-1 text-xs text-slate-400">Format: JPG, PNG, WebP, PDF. Maksimal 5 MB.</p>
+                        <p class="mt-1 text-xs text-slate-400">Format: JPG, PNG, WebP, PDF. Maksimal 5 MB. Wajib diunggah untuk mengirim logbook.</p>
                     </label>
                 </div>
             </div>
