@@ -692,6 +692,85 @@
             method="POST"
             enctype="multipart/form-data"
             class="mt-4 space-y-6"
+            x-data="{
+                cameraActive: false,
+                cameraStream: null,
+                capturedPhoto: null,
+
+                async startCamera() {
+                    try {
+                        this.cameraStream = await navigator.mediaDevices.getUserMedia({
+                            video: { facingMode: { ideal: 'environment' } },
+                            audio: false
+                        });
+                        this.$nextTick(() => {
+                            const vid = this.$refs.cameraVideoLogbook;
+                            if (vid) { vid.srcObject = this.cameraStream; vid.play(); }
+                        });
+                        this.cameraActive = true;
+                        this.capturedPhoto = null;
+                    } catch(e) {
+                        try {
+                            this.cameraStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+                            this.$nextTick(() => {
+                                const vid = this.$refs.cameraVideoLogbook;
+                                if (vid) { vid.srcObject = this.cameraStream; vid.play(); }
+                            });
+                            this.cameraActive = true;
+                            this.capturedPhoto = null;
+                        } catch(err) {
+                            alert('Kamera tidak dapat diakses. Pastikan izin kamera telah diberikan pada browser Anda.');
+                        }
+                    }
+                },
+
+                capturePhoto() {
+                    const vid = this.$refs.cameraVideoLogbook;
+                    const canvas = this.$refs.cameraCanvasLogbook;
+                    if (!vid || !canvas) return;
+                    canvas.width = vid.videoWidth;
+                    canvas.height = vid.videoHeight;
+                    canvas.getContext('2d').drawImage(vid, 0, 0);
+                    this.capturedPhoto = canvas.toDataURL('image/jpeg', 0.85);
+                    this.$refs.lampiranInput.value = '';
+                    fetch(this.capturedPhoto)
+                        .then(r => r.blob())
+                        .then(blob => {
+                            const file = new File([blob], 'foto-bukti-mengajar-live.jpg', { type: 'image/jpeg' });
+                            const dt = new DataTransfer();
+                            dt.items.add(file);
+                            this.$refs.lampiranInput.files = dt.files;
+                        });
+                    this.stopCamera();
+                },
+
+                retakePhoto() {
+                    this.capturedPhoto = null;
+                    this.startCamera();
+                },
+
+                stopCamera() {
+                    if (this.cameraStream) {
+                        this.cameraStream.getTracks().forEach(t => t.stop());
+                        this.cameraStream = null;
+                    }
+                    this.cameraActive = false;
+                },
+
+                submitForm(e) {
+                    if (!this.capturedPhoto || !this.$refs.lampiranInput.files || this.$refs.lampiranInput.files.length === 0) {
+                        e.preventDefault();
+                        alert('Wajib mengambil foto live bukti kehadiran di kelas sebelum mengirim logbook!');
+                        const lampiranEl = document.getElementById('section-lampiran-logbook');
+                        if (lampiranEl) {
+                            lampiranEl.scrollIntoView({ behavior: 'smooth' });
+                        }
+                        return false;
+                    }
+                    this.stopCamera();
+                }
+            }"
+            @submit="submitForm($event)"
         >
 
             @csrf
@@ -854,28 +933,72 @@
 
 
             {{-- ================================================= --}}
-            {{-- LAMPIRAN BUKTI HADIR DI KELAS --}}
+            {{-- LAMPIRAN BUKTI HADIR DI KELAS (FOTO LIVE LANGSUNG) --}}
             {{-- ================================================= --}}
 
-            <div class="rounded-2xl bg-white p-5 shadow-md sm:p-6">
+            <div id="section-lampiran-logbook" class="rounded-2xl bg-white p-5 shadow-md sm:p-6">
                 <div class="border-b border-slate-100 pb-4">
                     <h3 class="text-base font-bold text-slate-800">
-                        Lampiran Bukti Hadir di Kelas <span class="text-rose-500">*</span>
+                        Lampiran Bukti Hadir di Kelas (Foto Live) <span class="text-rose-500">*</span>
                     </h3>
-                    <p class="text-xs text-slate-500 mt-0.5">Unggah foto dokumentasi kelas atau berkas sebagai bukti otentik Anda hadir mengajar di kelas (Wajib diisi).</p>
+                    <p class="text-xs text-slate-500 mt-0.5">Ambil foto live secara langsung di dalam kelas sebagai bukti otentik Anda hadir dan mengajar.</p>
                 </div>
+
                 <div class="mt-4">
-                    <label class="block">
-                        <span class="text-sm font-semibold text-slate-700">Foto / Dokumen Bukti Mengajar <span class="text-rose-500">*</span></span>
-                        <input
-                            type="file"
-                            name="lampiran"
-                            accept="image/*,application/pdf"
-                            required
-                            class="mt-2 w-full text-sm text-slate-500 file:mr-4 file:rounded-lg file:border-0 file:bg-emerald-50 file:px-4 file:py-2.5 file:text-sm file:font-semibold file:text-emerald-700 hover:file:bg-emerald-100"
-                        >
-                        <p class="mt-1 text-xs text-slate-400">Format: JPG, PNG, WebP, PDF. Maksimal 5 MB. Wajib diunggah untuk mengirim logbook.</p>
-                    </label>
+                    <input
+                        type="file"
+                        name="lampiran"
+                        accept="image/*"
+                        x-ref="lampiranInput"
+                        class="hidden"
+                    >
+
+                    {{-- Preview Foto Tersimpan --}}
+                    <div x-show="capturedPhoto" class="mt-3">
+                        <div class="relative inline-block">
+                            <img :src="capturedPhoto" alt="Foto Bukti Mengajar" class="h-56 w-full rounded-xl object-cover shadow-md sm:w-auto sm:max-w-md">
+                            <span class="absolute left-2 top-2 rounded-full bg-emerald-600/90 px-2.5 py-1 text-xs font-bold text-white shadow">
+                                <i class="bi bi-camera-fill mr-1"></i> Foto Live Tersimpan ✓
+                            </span>
+                        </div>
+                        <div class="mt-2">
+                            <button type="button" @click="retakePhoto()" class="text-xs font-semibold text-emerald-600 hover:underline inline-flex items-center gap-1">
+                                <i class="bi bi-arrow-repeat"></i> Ambil Ulang Foto Live
+                            </button>
+                        </div>
+                    </div>
+
+                    {{-- Canvas tersembunyi untuk Capture --}}
+                    <canvas x-ref="cameraCanvasLogbook" class="hidden"></canvas>
+
+                    {{-- Video Kamera Live --}}
+                    <div x-show="cameraActive && !capturedPhoto" class="mt-3">
+                        <div class="relative overflow-hidden rounded-xl bg-black shadow-md" style="max-width: 420px;">
+                            <video x-ref="cameraVideoLogbook" autoplay playsinline muted class="w-full rounded-xl"></video>
+                            <div class="absolute inset-x-0 bottom-0 flex justify-center pb-4">
+                                <button type="button" @click="capturePhoto()"
+                                        class="flex h-14 w-14 items-center justify-center rounded-full bg-white shadow-lg transition hover:bg-emerald-50"
+                                        title="Jepret Foto Live">
+                                    <span class="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-600">
+                                        <i class="bi bi-camera-fill text-white text-lg"></i>
+                                    </span>
+                                </button>
+                            </div>
+                        </div>
+                        <button type="button" @click="stopCamera()" class="mt-2 text-xs font-medium text-slate-400 hover:text-slate-600">
+                            <i class="bi bi-x-circle"></i> Batalkan kamera
+                        </button>
+                    </div>
+
+                    {{-- Tombol Buka Kamera Live --}}
+                    <div x-show="!cameraActive && !capturedPhoto" class="mt-3">
+                        <button type="button" @click="startCamera()"
+                                class="inline-flex items-center gap-2 rounded-xl border-2 border-dashed border-emerald-400 bg-emerald-50 px-5 py-4 text-sm font-semibold text-emerald-700 transition hover:border-emerald-600 hover:bg-emerald-100">
+                            <i class="bi bi-camera-fill text-xl"></i>
+                            Buka Kamera & Ambil Foto Live Kelas
+                        </button>
+                        <p class="mt-2 text-xs text-rose-500 font-medium">* Wajib mengambil foto live di dalam kelas untuk dapat mengirim jurnal.</p>
+                    </div>
                 </div>
             </div>
 
