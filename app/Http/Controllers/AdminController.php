@@ -2,18 +2,21 @@
 
 namespace App\Http\Controllers;
 
+use App\Imports\GuruImport;
+use App\Imports\JadwalImport;
 use App\Models\JadwalPelajaran;
+use App\Models\JadwalPiket;
 use App\Models\JurnalMengajar;
 use App\Models\Kelas;
 use App\Models\Mapel;
-use App\Models\Notifikasi;
-use App\Models\PasswordResetRequest;
+use App\Models\Pengaturan;
 use App\Models\Siswa;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
+use Maatwebsite\Excel\Facades\Excel;
 
 class AdminController extends Controller
 {
@@ -22,22 +25,12 @@ class AdminController extends Controller
     // =========================================================================
     public function index()
     {
-        $jumlahGuru = User::where('role', 'guru')
-            ->where(function ($q) {
-                $q->where('status', 'aktif')->orWhereNull('status');
-            })->count();
-
-        $jumlahKelas = Kelas::where(function ($q) {
-            $q->where('status', 'aktif')->orWhereNull('status');
-        })->count();
-
-        $jumlahMapel = Mapel::where(function ($q) {
-            $q->where('status', 'aktif')->orWhereNull('status');
-        })->count();
-
+        $jumlahGuru = User::where('role', 'guru')->count();
+        $jumlahKelas = Kelas::count();
+        $jumlahMapel = Mapel::count();
+        $jumlahSiswa = Siswa::count();
         $jurnalHariIni = JurnalMengajar::whereDate('tanggal', now()->toDateString())->count();
 
-        // Data aktivitas nyata dari jurnal mengajar terbaru
         $recentJurnals = JurnalMengajar::with(['kelas', 'guru', 'mapel'])
             ->orderBy('id_jurnal', 'desc')
             ->take(5)
@@ -46,11 +39,11 @@ class AdminController extends Controller
         $aktivitasTerbaru = [];
         foreach ($recentJurnals as $j) {
             $aktivitasTerbaru[] = [
-                'waktu' => \Carbon\Carbon::parse($j->tanggal)->translatedFormat('d M Y') . ', ' . ($j->jam_mulai ? substr($j->jam_mulai, 0, 5) : '07:30'),
+                'waktu' => Carbon::parse($j->tanggal)->translatedFormat('d M Y') . ', Jam ke-' . ($j->jam_ke ?? '1'),
                 'nama_guru' => optional($j->guru)->name ?? 'Guru Pengampu',
                 'mapel' => optional($j->mapel)->nama_mapel ?? 'Mata Pelajaran',
                 'kelas' => optional($j->kelas)->nama_kelas ?? '-',
-                'status' => $j->status_validasi ?? 'Selesai',
+                'status' => $j->status_kehadiran_guru ?? 'Hadir',
             ];
         }
 
@@ -58,229 +51,68 @@ class AdminController extends Controller
             'jumlahGuru',
             'jumlahKelas',
             'jumlahMapel',
+            'jumlahSiswa',
             'jurnalHariIni',
             'aktivitasTerbaru'
         ));
     }
 
     // =========================================================================
-    // 2. CATATAN JURNAL MONITORING
-    // =========================================================================
-    public function catatanJurnal(Request $request)
-    {
-        $tanggal = $request->query('tanggal', now()->toDateString());
-        $tab = $request->query('tab', 'all');
-        $kelasId = $request->query('kelas_id');
-        $kehadiran = $request->query('kehadiran');
-        $validasi = $request->query('validasi');
-        $search = $request->query('search');
-
-        // Daftar Kelas Aktif (hanya kelas X dan XI)
-        $kelases = Kelas::where(function ($q) {
-            $q->where('status', 'aktif')->orWhereNull('status');
-        })
-        ->where('nama_kelas', 'not like', 'XII%')
-        ->where('nama_kelas', 'not like', '12%')
-        ->orderBy('nama_kelas')
-        ->get();
-
-        $totalKelas = $kelases->count();
-
-        // Daftar Guru untuk Pilihan Guru Inval / Pengganti
-        $gurus = User::where(function ($q) {
-            $q->whereIn('role', ['guru', 'piket']);
-        })
-        ->where(function ($q) {
-            $q->where('status', 'aktif')->orWhereNull('status');
-        })
-        ->orderBy('name')
-        ->get();
-
-        // 4 Statistik Real-time sesuai Tanggal
-        $kelasLapor = JurnalMengajar::whereDate('tanggal', $tanggal)->distinct('id_kelas')->count('id_kelas');
-        $guruHadir = JurnalMengajar::whereDate('tanggal', $tanggal)->where('status_kehadiran_guru', 'Hadir')->distinct('id_user')->count('id_user');
-        $guruAbsen = JurnalMengajar::whereDate('tanggal', $tanggal)->where('status_kehadiran_guru', '!=', 'Hadir')->distinct('id_user')->count('id_user');
-        $menungguValidasi = JurnalMengajar::whereDate('tanggal', $tanggal)->where('status_validasi', 'Menunggu')->count();
-
-        // Hitung badge untuk setiap tab
-        $countSemua = JurnalMengajar::whereDate('tanggal', $tanggal)->count();
-        $countBelumValidasi = JurnalMengajar::whereDate('tanggal', $tanggal)->where('status_validasi', 'Menunggu')->count();
-        $countGuruAbsen = JurnalMengajar::whereDate('tanggal', $tanggal)->where('status_kehadiran_guru', '!=', 'Hadir')->count();
-
-        // Query Jurnal
-        $query = JurnalMengajar::with(['kelas', 'guru', 'guruInval', 'mapel'])
-            ->whereDate('tanggal', $tanggal);
-
-        if ($tab === 'belum_validasi') {
-            $query->where('status_validasi', 'Menunggu');
-        } elseif ($tab === 'guru_absen') {
-            $query->where('status_kehadiran_guru', '!=', 'Hadir');
-        }
-
-        if ($kelasId && $kelasId !== 'all') {
-            $query->where('id_kelas', $kelasId);
-        }
-
-        if ($kehadiran && $kehadiran !== 'all') {
-            $query->where('status_kehadiran_guru', $kehadiran);
-        }
-
-        if ($validasi && $validasi !== 'all') {
-            $query->where('status_validasi', $validasi);
-        }
-
-        if ($search) {
-            $query->where(function ($q) use ($search) {
-                $q->where('materi', 'like', "%{$search}%")
-                  ->orWhere('keterangan', 'like', "%{$search}%")
-                  ->orWhere('catatan', 'like', "%{$search}%")
-                  ->orWhereHas('guru', function ($g) use ($search) {
-                      $g->where('name', 'like', "%{$search}%");
-                  })
-                  ->orWhereHas('mapel', function ($m) use ($search) {
-                      $m->where('nama_mapel', 'like', "%{$search}%");
-                  })
-                  ->orWhereHas('kelas', function ($k) use ($search) {
-                      $k->where('nama_kelas', 'like', "%{$search}%");
-                  });
-            });
-        }
-
-        $jurnals = $query->orderBy('jam_mulai', 'asc')->orderBy('id_jurnal', 'asc')->get();
-
-        return view('dashboard.admin.catatan-jurnal', compact(
-            'totalKelas',
-            'kelasLapor',
-            'guruHadir',
-            'guruAbsen',
-            'menungguValidasi',
-            'countSemua',
-            'countBelumValidasi',
-            'countGuruAbsen',
-            'kelases',
-            'gurus',
-            'jurnals',
-            'tanggal',
-            'tab',
-            'kelasId',
-            'kehadiran',
-            'validasi',
-            'search'
-        ));
-    }
-
-    public function validasiJurnal(Request $request, $id)
-    {
-        $jurnal = JurnalMengajar::with(['kelas', 'mapel', 'guru'])->findOrFail($id);
-        $jurnal->update([
-            'status_validasi' => 'Selesai',
-        ]);
-
-        $namaKelas = optional($jurnal->kelas)->nama_kelas ?? 'Kelas';
-        $namaMapel = optional($jurnal->mapel)->nama_mapel ?? 'Mata Pelajaran';
-        $namaGuru = optional($jurnal->guru)->name ?? 'Guru Pengampu';
-        $jamKe = $jurnal->jam_ke > 0 ? "Jam ke-{$jurnal->jam_ke}" : "Sesi Pembelajaran";
-
-        // Cari user sekretaris untuk kelas ini atau default sekretaris
-        $sekretaris = User::where('role', 'sekretaris')
-            ->where('id_kelas', $jurnal->id_kelas)
-            ->first() ?? User::where('role', 'sekretaris')
-            ->where(function ($q) use ($namaKelas) {
-                $q->where('name', 'like', "%{$namaKelas}%");
-            })->first() ?? User::where('role', 'sekretaris')->first();
-
-        Notifikasi::create([
-            'id_user' => $sekretaris ? $sekretaris->id : null,
-            'id_kelas' => $jurnal->id_kelas,
-            'id_jurnal' => $jurnal->id_jurnal,
-            'judul' => 'Jurnal KBM Divalidasi Guru Piket',
-            'pesan' => "Jurnal mengajar kelas {$namaKelas} untuk mata pelajaran {$namaMapel} ({$namaGuru} • {$jamKe}) telah divalidasi oleh Petugas Guru Piket (Admin).",
-            'tipe' => 'validasi',
-            'is_read' => false,
-        ]);
-
-        return redirect()->back()->with('success', 'Jurnal kelas ' . $namaKelas . ' berhasil divalidasi dan notifikasi terkirim ke sekretaris!');
-    }
-
-    public function invalJurnal(Request $request, $id)
-    {
-        $jurnal = JurnalMengajar::with(['kelas', 'mapel', 'guru'])->findOrFail($id);
-        $request->validate([
-            'guru_inval_id' => 'required|exists:users,id',
-            'catatan_inval' => 'nullable|string|max:200',
-        ]);
-
-        $invalUser = User::findOrFail($request->guru_inval_id);
-
-        $catatanTambahan = 'Ditugaskan guru inval: ' . $invalUser->name;
-        if ($request->catatan_inval) {
-            $catatanTambahan .= ' (' . $request->catatan_inval . ')';
-        }
-
-        $jurnal->update([
-            'guru_inval_id' => $request->guru_inval_id,
-            'catatan' => $jurnal->catatan ? $jurnal->catatan . ' | ' . $catatanTambahan : $catatanTambahan,
-        ]);
-
-        $namaKelas = optional($jurnal->kelas)->nama_kelas ?? 'Kelas';
-        $namaMapel = optional($jurnal->mapel)->nama_mapel ?? 'Mata Pelajaran';
-        $jamKe = $jurnal->jam_ke > 0 ? "Jam ke-{$jurnal->jam_ke}" : "Sesi Pembelajaran";
-
-        $sekretaris = User::where('role', 'sekretaris')
-            ->where('id_kelas', $jurnal->id_kelas)
-            ->first() ?? User::where('role', 'sekretaris')
-            ->where(function ($q) use ($namaKelas) {
-                $q->where('name', 'like', "%{$namaKelas}%");
-            })->first() ?? User::where('role', 'sekretaris')->first();
-
-        Notifikasi::create([
-            'id_user' => $sekretaris ? $sekretaris->id : null,
-            'id_kelas' => $jurnal->id_kelas,
-            'id_jurnal' => $jurnal->id_jurnal,
-            'judul' => 'Penugasan Guru Inval / Pengganti',
-            'pesan' => "Petugas Guru Piket telah menugaskan {$invalUser->name} sebagai guru inval di kelas {$namaKelas} untuk mapel {$namaMapel} ({$jamKe}).",
-            'tipe' => 'inval',
-            'is_read' => false,
-        ]);
-
-        return redirect()->back()->with('success', 'Guru Inval ' . $invalUser->name . ' berhasil ditugaskan untuk kelas ' . $namaKelas . '!');
-    }
-
-    // =========================================================================
-    // 3. DATA GURU
+    // 2. GURU (DATA GURU, CRUD, BATCH ACTIONS, IMPORT EXCEL)
     // =========================================================================
     public function guru(Request $request)
     {
         $search = $request->query('search');
 
-        $query = User::where('role', 'guru')
-                     ->where(function ($q) {
-                         $q->where('status', 'aktif')->orWhereNull('status');
-                     })
-                     ->with(['mapel', 'mapelsPengampu']);
+        $query = User::where('role', 'guru')->with('mapel');
 
         if ($search) {
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
                   ->orWhere('nip', 'like', "%{$search}%")
+                  ->orWhere('no_hp', 'like', "%{$search}%")
                   ->orWhereHas('mapel', function ($m) use ($search) {
                       $m->where('nama_mapel', 'like', "%{$search}%");
                   })
-                  ->orWhereHas('mapelsPengampu', function ($m) use ($search) {
-                      $m->where('nama_mapel', 'like', "%{$search}%");
+                  ->orWhereIn('id', function ($sub) use ($search) {
+                      $sub->select('id_user')
+                          ->from('jadwal_pelajarans')
+                          ->where('mapel', 'like', "%{$search}%");
                   });
             });
         }
 
         $users = $query->orderBy('name')->get();
 
-        $mapels = Mapel::where(function ($q) {
-            $q->where('status', 'aktif')->orWhereNull('status');
-        })->orderByRaw("CASE WHEN kategori = 'jurusan' THEN 1 ELSE 2 END")
-          ->orderBy('nama_mapel')
-          ->get();
+        // Ambil pemetaan seluruh mapel yang diajar tiap guru di jadwal pelajaran (multi-mapel)
+        $jadwalRecords = JadwalPelajaran::whereNotNull('id_user')
+            ->whereNotNull('mapel')
+            ->where('mapel', 'not like', '%istirahat%')
+            ->where('mapel', 'not like', '%upacara%')
+            ->where('mapel', 'not like', '%pembiasaan%')
+            ->select('id_user', 'mapel')
+            ->distinct()
+            ->get();
 
-        return view('dashboard.admin.guru', compact('users', 'mapels'));
+        $allMapelsByUser = [];
+        foreach ($jadwalRecords as $jr) {
+            if ($jr->mapel) {
+                $allMapelsByUser[$jr->id_user][$jr->mapel] = true;
+            }
+        }
+
+        foreach ($users as $u) {
+            $mapelList = isset($allMapelsByUser[$u->id]) ? array_keys($allMapelsByUser[$u->id]) : [];
+            if ($u->mapel && !in_array($u->mapel->nama_mapel, $mapelList)) {
+                $mapelList[] = $u->mapel->nama_mapel;
+            }
+            sort($mapelList);
+            $u->all_mapel_names = $mapelList;
+        }
+
+        $mapels = Mapel::orderBy('nama_mapel')->get();
+
+        return view('dashboard.admin.guru', compact('users', 'mapels', 'search'));
     }
 
     public function storeGuru(Request $request)
@@ -289,34 +121,16 @@ class AdminController extends Controller
             'nip' => 'nullable|string|max:30',
             'nama' => 'required|string|max:255',
             'mapel_id' => 'nullable|exists:mapels,id',
-            'no_hp' => 'nullable|string|max:20',
+            'no_hp' => 'nullable|string|max:25',
         ], [
             'nama.required' => 'Nama guru wajib diisi.',
             'mapel_id.exists' => 'Mata pelajaran yang dipilih tidak valid.',
         ]);
 
         if (!empty($validated['nip'])) {
-            $existingUser = User::where('nip', $validated['nip'])->first();
-            if ($existingUser) {
-                if ($existingUser->status === 'nonaktif') {
-                    $existingUser->update([
-                        'name' => $validated['nama'],
-                        'no_hp' => $validated['no_hp'] ?? $existingUser->no_hp,
-                        'mapel_id' => $validated['mapel_id'] ?: $existingUser->mapel_id,
-                        'status' => 'aktif',
-                        'alasan_hapus' => null,
-                    ]);
-
-                    if (!empty($validated['mapel_id'])) {
-                        DB::table('mapel_user')->updateOrInsert(
-                            ['mapel_id' => $validated['mapel_id'], 'user_id' => $existingUser->id],
-                            ['created_at' => now(), 'updated_at' => now()]
-                        );
-                    }
-
-                    return redirect()->route('dashboard.guru')->with('success', 'Guru ' . $existingUser->name . ' berhasil diaktifkan kembali!');
-                }
-                return back()->withErrors(['nip' => 'NIP sudah terdaftar dan sedang aktif.'])->withInput();
+            $existing = User::where('nip', $validated['nip'])->first();
+            if ($existing) {
+                return back()->withErrors(['nip' => 'NIP sudah terdaftar dalam sistem.'])->withInput();
             }
         }
 
@@ -328,95 +142,136 @@ class AdminController extends Controller
             $counter++;
         }
 
-        $user = User::create([
+        $defaultPassword = !empty($validated['nip']) ? $validated['nip'] : 'guru123';
+
+        User::create([
             'name' => $validated['nama'],
-            'nip' => $validated['nip'] ?: null,
             'username' => $username,
-            'email' => null,
-            'password' => Hash::make('password'),
+            'nip' => $validated['nip'] ?? null,
             'role' => 'guru',
-            'status' => 'aktif',
-            'alasan_hapus' => null,
             'no_hp' => $validated['no_hp'] ?? null,
             'mapel_id' => $validated['mapel_id'] ?: null,
+            'password' => Hash::make($defaultPassword),
         ]);
 
-        if (!empty($validated['mapel_id'])) {
-            DB::table('mapel_user')->updateOrInsert(
-                ['mapel_id' => $validated['mapel_id'], 'user_id' => $user->id],
-                ['created_at' => now(), 'updated_at' => now()]
-            );
-        }
-
-        return redirect()->route('dashboard.guru')->with('success', 'Data guru berhasil ditambahkan!');
+        return redirect()->route('dashboard.guru')->with('success', 'Data guru baru berhasil ditambahkan!');
     }
 
     public function updateGuru(Request $request, $id)
     {
-        $guru = User::where('role', 'guru')->findOrFail($id);
-        $oldName = $guru->name;
+        $user = User::where('role', 'guru')->findOrFail($id);
 
         $validated = $request->validate([
-            'nip' => 'nullable|string|max:30|unique:users,nip,' . $guru->id,
+            'nip' => 'nullable|string|max:30|unique:users,nip,' . $user->id,
             'nama' => 'required|string|max:255',
             'mapel_id' => 'nullable|exists:mapels,id',
-            'no_hp' => 'nullable|string|max:20',
-        ], [
-            'nama.required' => 'Nama guru wajib diisi.',
-            'nip.unique' => 'NIP sudah terdaftar.',
-            'mapel_id.exists' => 'Mata pelajaran yang dipilih tidak valid.',
+            'no_hp' => 'nullable|string|max:25',
         ]);
 
-        $guru->update([
+        $user->update([
             'name' => $validated['nama'],
-            'nip' => $validated['nip'] ?: null,
+            'nip' => $validated['nip'] ?? null,
             'no_hp' => $validated['no_hp'] ?? null,
             'mapel_id' => $validated['mapel_id'] ?: null,
         ]);
 
-        // Sinkronkan nama wali kelas di tabel kelas jika guru ini adalah wali kelas
-        if ($oldName !== $validated['nama']) {
-            Kelas::where('wali_kelas', $oldName)->update(['wali_kelas' => $validated['nama']]);
-        }
-
-        DB::table('mapel_user')->where('user_id', $guru->id)->delete();
-        if (!empty($validated['mapel_id'])) {
-            DB::table('mapel_user')->updateOrInsert(
-                ['mapel_id' => $validated['mapel_id'], 'user_id' => $guru->id],
-                ['created_at' => now(), 'updated_at' => now()]
-            );
-        }
-
-        return redirect()->route('dashboard.guru')->with('success', 'Data guru berhasil diperbarui!');
+        return redirect()->route('dashboard.guru')->with('success', 'Data guru ' . $user->name . ' berhasil diperbarui!');
     }
 
-    public function destroyGuru(Request $request, $id)
+    public function destroyGuru($id)
+    {
+        $user = User::where('role', 'guru')->findOrFail($id);
+        $name = $user->name;
+        $user->delete();
+
+        return redirect()->route('dashboard.guru')->with('success', 'Data guru ' . $name . ' berhasil dihapus!');
+    }
+
+    // BATCH DELETE GURU
+    public function batchDeleteGuru(Request $request)
+    {
+        $ids = $request->input('ids', []);
+        if (empty($ids) || !is_array($ids)) {
+            return back()->with('error', 'Pilih minimal satu data guru untuk dihapus.');
+        }
+
+        $count = User::where('role', 'guru')->whereIn('id', $ids)->delete();
+
+        return redirect()->route('dashboard.guru')->with('success', "{$count} data guru berhasil dihapus secara masal!");
+    }
+
+    // BATCH EDIT MAPEL GURU
+    public function batchEditGuru(Request $request)
+    {
+        $ids = $request->input('ids', []);
+        $mapelId = $request->input('mapel_id');
+
+        if (empty($ids) || !is_array($ids)) {
+            return back()->with('error', 'Pilih minimal satu data guru.');
+        }
+
+        $validated = $request->validate([
+            'mapel_id' => 'required|exists:mapels,id',
+        ]);
+
+        $mapel = Mapel::find($mapelId);
+        $count = User::where('role', 'guru')->whereIn('id', $ids)->update(['mapel_id' => $mapelId]);
+
+        return redirect()->route('dashboard.guru')->with('success', "Mata pelajaran {$mapel->nama_mapel} berhasil diterapkan ke {$count} guru!");
+    }
+
+    // IMPORT GURU (EXCEL / CSV)
+    public function importGuru(Request $request)
     {
         $request->validate([
-            'alasan' => 'required|string|max:500',
+            'file' => 'required|file|mimes:xlsx,xls,csv|max:10240',
         ], [
-            'alasan.required' => 'Alasan penghapusan/penonaktifan guru wajib diisi.',
+            'file.required' => 'Pilih file Excel (.xlsx, .xls) atau .csv terlebih dahulu.',
+            'file.mimes' => 'Format file harus berupa Excel (.xlsx, .xls) atau .csv.',
         ]);
 
-        $guru = User::where('role', 'guru')->findOrFail($id);
-        $guru->update([
-            'status' => 'nonaktif',
-            'alasan_hapus' => $request->alasan,
-        ]);
+        try {
+            $import = new GuruImport();
+            Excel::import($import, $request->file('file'));
 
-        return redirect()->route('dashboard.guru')->with('success', 'Data guru berhasil dinonaktifkan dari sistem!');
+            return redirect()->route('dashboard.guru')->with('success', "Import selesai! {$import->importedCount} data guru baru ditambahkan dan {$import->updatedCount} data diperbarui.");
+        } catch (\Throwable $e) {
+            return redirect()->route('dashboard.guru')->with('error', 'Gagal memproses file Excel: ' . $e->getMessage());
+        }
+    }
+
+    // DOWNLOAD TEMPLATE GURU
+    public function downloadTemplateGuru()
+    {
+        $filename = 'template_import_guru.csv';
+        $headers = [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
+        ];
+
+        $callback = function () {
+            $handle = fopen('php://output', 'w');
+            // Header
+            fputcsv($handle, ['nip', 'nama', 'mapel', 'no_hp']);
+            // Contoh baris
+            fputcsv($handle, ['198005122005011002', 'Budi Santoso, S.Pd', 'Pemrograman Web dan Perangkat Bergerak', '081234567890']);
+            fputcsv($handle, ['198507232010012004', 'Siti Aminah, M.Pd', 'Basis Data (Database)', '082345678901']);
+            fclose($handle);
+        };
+
+        return response()->stream($callback, 200, $headers);
     }
 
     // =========================================================================
-    // 4. DATA KELAS
+    // 3. KELAS (DATA KELAS, CRUD, BATCH DELETE)
     // =========================================================================
     public function kelas(Request $request)
     {
         $search = $request->query('search');
 
-        $query = Kelas::where(function ($q) {
-            $q->where('status', 'aktif')->orWhereNull('status');
-        });
+        $query = Kelas::withCount('siswas')
+            ->where('nama_kelas', 'not like', 'XII%')
+            ->where('nama_kelas', 'not like', '12%');
 
         if ($search) {
             $query->where(function ($q) use ($search) {
@@ -425,198 +280,192 @@ class AdminController extends Controller
             });
         }
 
-        $kelasList = $query->with('activeSiswas')->get();
+        $kelasList = $query->orderBy('nama_kelas')->get();
+        $allActiveSiswas = Siswa::with('kelas')->get();
+        $gurus = User::where('role', 'guru')->orderBy('name', 'asc')->get();
 
-        $allActiveSiswas = Siswa::with('kelas')
-            ->where(function ($q) {
-                $q->where('status', 'aktif')->orWhereNull('status');
-            })
-            ->orderBy('kelas_id')
-            ->orderBy('nama', 'asc')
-            ->get();
-
-        $gurus = User::where('role', 'guru')
-            ->where(function ($q) {
-                $q->where('status', 'aktif')->orWhereNull('status');
-            })
-            ->orderBy('name')
-            ->get();
-
-        return view('dashboard.admin.kelas', compact('kelasList', 'allActiveSiswas', 'gurus'));
+        return view('dashboard.admin.kelas', compact('kelasList', 'allActiveSiswas', 'gurus', 'search'));
     }
 
     public function storeKelas(Request $request)
     {
-        $validated = $request->validate([
-            'nama_kelas' => 'required|string|max:50',
-            'nama_guru' => 'nullable|string|max:100',
-            'jumlah_siswa' => 'nullable|integer|min:0',
-        ], [
-            'nama_kelas.required' => 'Nama kelas wajib diisi.',
-        ]);
-
-        $existingKelas = Kelas::where('nama_kelas', $validated['nama_kelas'])->first();
-
-        if ($existingKelas) {
-            if ($existingKelas->status === 'nonaktif') {
-                $existingKelas->update([
-                    'wali_kelas' => $validated['nama_guru'] ?? $existingKelas->wali_kelas,
-                    'jumlah_siswa' => $validated['jumlah_siswa'] ?? $existingKelas->jumlah_siswa,
-                    'status' => 'aktif',
-                    'alasan_hapus' => null,
-                ]);
-
-                return redirect()->route('dashboard.kelas')->with('success', 'Kelas ' . $existingKelas->nama_kelas . ' berhasil diaktifkan kembali!');
-            }
-
-            return back()->withErrors(['nama_kelas' => 'Nama kelas sudah terdaftar dan sedang aktif.'])->withInput();
+        if (preg_match('/^(XII|12)\b/i', $request->input('nama_kelas', ''))) {
+            return back()->withErrors(['nama_kelas' => 'Kelas 12 sedang PKL, hanya kelas 10 dan 11 yang dapat didaftarkan.'])->withInput();
         }
 
-        Kelas::create([
-            'nama_kelas' => $validated['nama_kelas'],
-            'wali_kelas' => $validated['nama_guru'] ?? null,
-            'jumlah_siswa' => $validated['jumlah_siswa'] ?? 0,
-            'status' => 'aktif',
-            'alasan_hapus' => null,
-        ]);
+        $waliInput = trim($request->input('wali_kelas') ?: $request->input('nama_guru') ?: '');
+        $waliName = null;
+        if (!empty($waliInput)) {
+            $guru = User::where('role', 'guru')
+                ->where(function($q) use ($waliInput) {
+                    $q->where('name', $waliInput)
+                      ->orWhere('nip', $waliInput);
+                })->first();
 
-        return redirect()->route('dashboard.kelas')->with('success', 'Data kelas berhasil ditambahkan!');
-    }
+            if (!$guru) {
+                return back()->withErrors(['wali_kelas' => 'Guru tidak ada / tidak terdaftar di data guru sekolah.'])->withInput();
+            }
+            $waliName = $guru->name;
+        }
 
-    public function updateKelas(Request $request, $id)
-    {
-        $kelas = Kelas::findOrFail($id);
+        $request->merge(['wali_kelas' => $waliName]);
 
         $validated = $request->validate([
-            'nama_kelas' => 'required|string|max:50|unique:kelas,nama_kelas,' . $id . ',id_kelas',
-            'nama_guru' => 'nullable|string|max:100',
+            'nama_kelas' => 'required|string|max:20|unique:kelas,nama_kelas',
+            'wali_kelas' => 'nullable|string|max:100',
             'jumlah_siswa' => 'nullable|integer|min:0',
         ], [
             'nama_kelas.required' => 'Nama kelas wajib diisi.',
             'nama_kelas.unique' => 'Nama kelas sudah terdaftar.',
         ]);
 
-        $kelas->update([
+        Kelas::create([
             'nama_kelas' => $validated['nama_kelas'],
-            'wali_kelas' => $validated['nama_guru'] ?? $kelas->wali_kelas,
-            'jumlah_siswa' => $validated['jumlah_siswa'] ?? $kelas->jumlah_siswa,
+            'wali_kelas' => $validated['wali_kelas'] ?? null,
+            'jumlah_siswa' => $validated['jumlah_siswa'] ?? 0,
         ]);
 
-        return redirect()->route('dashboard.kelas')->with('success', 'Data kelas berhasil diperbarui!');
+        return redirect()->route('dashboard.kelas')->with('success', 'Kelas baru berhasil ditambahkan!');
     }
 
-    public function destroyKelas(Request $request, $id)
+    public function updateKelas(Request $request, $id)
     {
-        $request->validate([
-            'alasan' => 'required|string|max:500',
-        ], [
-            'alasan.required' => 'Alasan penghapusan kelas wajib diisi.',
-        ]);
-
         $kelas = Kelas::findOrFail($id);
-        $kelas->update([
-            'status' => 'nonaktif',
-            'alasan_hapus' => $request->alasan,
+
+        if (preg_match('/^(XII|12)\b/i', $request->input('nama_kelas', ''))) {
+            return back()->withErrors(['nama_kelas' => 'Kelas 12 sedang PKL, hanya kelas 10 dan 11 yang dapat didaftarkan.'])->withInput();
+        }
+
+        $waliInput = trim($request->input('wali_kelas') ?: $request->input('nama_guru') ?: '');
+        $waliName = null;
+        if (!empty($waliInput)) {
+            $guru = User::where('role', 'guru')
+                ->where(function($q) use ($waliInput) {
+                    $q->where('name', $waliInput)
+                      ->orWhere('nip', $waliInput);
+                })->first();
+
+            if (!$guru) {
+                return back()->withErrors(['wali_kelas' => 'Guru tidak ada / tidak terdaftar di data guru sekolah.'])->withInput();
+            }
+            $waliName = $guru->name;
+        }
+
+        $request->merge(['wali_kelas' => $waliName]);
+
+        $validated = $request->validate([
+            'nama_kelas' => 'required|string|max:20|unique:kelas,nama_kelas,' . $kelas->id_kelas . ',id_kelas',
+            'wali_kelas' => 'nullable|string|max:100',
+            'jumlah_siswa' => 'nullable|integer|min:0',
         ]);
 
-        return redirect()->route('dashboard.kelas')->with('success', 'Data kelas berhasil dinonaktifkan dari sistem!');
+        $kelas->update([
+            'nama_kelas' => $validated['nama_kelas'],
+            'wali_kelas' => $validated['wali_kelas'] ?? null,
+            'jumlah_siswa' => $validated['jumlah_siswa'] ?? 0,
+        ]);
+
+        return redirect()->route('dashboard.kelas')->with('success', 'Data kelas ' . $kelas->nama_kelas . ' berhasil diperbarui!');
+    }
+
+    public function destroyKelas($id)
+    {
+        $kelas = Kelas::findOrFail($id);
+        $nama = $kelas->nama_kelas;
+        $kelas->delete();
+
+        return redirect()->route('dashboard.kelas')->with('success', 'Kelas ' . $nama . ' berhasil dihapus!');
+    }
+
+    public function batchDeleteKelas(Request $request)
+    {
+        $ids = $request->input('ids', []);
+        if (empty($ids) || !is_array($ids)) {
+            return back()->with('error', 'Pilih minimal satu kelas untuk dihapus.');
+        }
+
+        $count = Kelas::whereIn('id_kelas', $ids)->delete();
+
+        return redirect()->route('dashboard.kelas')->with('success', "{$count} data kelas berhasil dihapus masal!");
     }
 
     // =========================================================================
-    // 5. DATA SISWA
+    // 4. SISWA (DATA SISWA, CRUD, BATCH ACTIONS)
     // =========================================================================
     public function siswa(Request $request)
     {
         $search = $request->query('search');
         $kelasId = $request->query('kelas_id');
 
-        $query = Siswa::with('kelas')
-            ->where(function ($q) {
-                $q->where('status', 'aktif')->orWhereNull('status');
-            });
+        $query = Siswa::with('kelas');
 
         if ($search) {
             $query->where(function ($q) use ($search) {
                 $q->where('nama', 'like', "%{$search}%")
-                  ->orWhere('nis', 'like', "%{$search}%")
-                  ->orWhereHas('kelas', function ($kq) use ($search) {
-                      $kq->where('nama_kelas', 'like', "%{$search}%");
-                  });
+                  ->orWhere('nisn', 'like', "%{$search}%");
             });
         }
 
-        if ($kelasId && $kelasId !== 'all') {
+        if ($kelasId) {
             $query->where('kelas_id', $kelasId);
         }
 
-        $siswas = $query->orderBy('kelas_id')->orderBy('nis')->get();
-
-        $kelasList = Kelas::where(function ($q) {
-            $q->where('status', 'aktif')->orWhereNull('status');
-        })
-        ->where('nama_kelas', 'not like', 'XII%')
-        ->where('nama_kelas', 'not like', '12%')
-        ->orderBy('nama_kelas')->get();
+        $siswas = $query->orderBy('nama')->get();
+        $kelasList = Kelas::orderBy('nama_kelas')->get();
 
         return view('dashboard.admin.siswa', compact('siswas', 'kelasList', 'search', 'kelasId'));
     }
 
     public function storeSiswa(Request $request)
     {
-        $nama = $request->input('nama_siswa') ?? $request->input('nama');
-        $request->merge(['nama' => $nama]);
-
-        $validated = $request->validate([
-            'nama' => 'required|string|max:100',
-            'nis' => 'required|string|max:20',
-            'kelas_id' => 'required|exists:kelas,id_kelas',
-            'jenis_kelamin' => 'nullable|in:L,P',
-        ], [
-            'nama.required' => 'Nama siswa wajib diisi.',
-            'nis.required' => 'NIS wajib diisi.',
-            'kelas_id.required' => 'Kelas wajib dipilih.',
-            'kelas_id.exists' => 'Kelas yang dipilih tidak valid.',
-        ]);
-
-        $existingSiswa = Siswa::where('nis', $validated['nis'])->first();
-
-        if ($existingSiswa) {
-            if ($existingSiswa->status === 'nonaktif') {
-                $existingSiswa->update([
-                    'nama' => $validated['nama'],
-                    'kelas_id' => $validated['kelas_id'],
-                    'jenis_kelamin' => $validated['jenis_kelamin'] ?? $existingSiswa->jenis_kelamin ?? 'L',
-                    'status' => 'aktif',
-                    'alasan_hapus' => null,
-                ]);
-
-                $this->syncJumlahSiswa($validated['kelas_id']);
-
-                return redirect()->back()
-                    ->with('open_kelas_id', $validated['kelas_id'])
-                    ->with('success', 'Siswa ' . $existingSiswa->nama . ' (NIS: ' . $existingSiswa->nis . ') berhasil diaktifkan kembali!');
-            }
-
-            return redirect()->back()
-                ->with('open_kelas_id', $validated['kelas_id'])
-                ->withErrors(['nis' => 'NIS sudah digunakan oleh siswa aktif lain.'])
-                ->withInput();
+        if (!$request->filled('nama') && $request->filled('nama_siswa')) {
+            $request->merge(['nama' => $request->input('nama_siswa')]);
+        }
+        if (!$request->filled('nisn') && $request->filled('nis')) {
+            $request->merge(['nisn' => $request->input('nis')]);
+        }
+        if (!$request->filled('jenis_kelamin')) {
+            $request->merge(['jenis_kelamin' => 'L']);
         }
 
-        $siswa = Siswa::create([
-            'nama' => $validated['nama'],
-            'nis' => $validated['nis'],
-            'kelas_id' => $validated['kelas_id'],
-            'jenis_kelamin' => $validated['jenis_kelamin'] ?? 'L',
-            'status' => 'aktif',
-            'alasan_hapus' => null,
+        $validated = $request->validate([
+            'nisn' => 'required|string|max:30',
+            'nama' => 'required|string|max:255',
+            'kelas_id' => 'required|exists:kelas,id_kelas',
+            'jenis_kelamin' => 'required|in:L,P',
+        ], [
+            'nisn.required' => 'NISN wajib diisi.',
+            'nama.required' => 'Nama siswa wajib diisi.',
+            'kelas_id.required' => 'Pilih kelas siswa.',
         ]);
 
-        $this->syncJumlahSiswa($validated['kelas_id']);
+        $siswa = Siswa::create($validated);
+        $siswa->load('kelas');
+        $this->syncKelasJumlahSiswa($validated['kelas_id']);
 
-        return redirect()->back()
-            ->with('open_kelas_id', $validated['kelas_id'])
-            ->with('success', 'Data siswa ' . $siswa->nama . ' berhasil ditambahkan!');
+        if ($request->ajax() || $request->wantsJson() || $request->header('X-Requested-With') === 'XMLHttpRequest') {
+            return response()->json([
+                'success' => true,
+                'message' => 'Data siswa ' . $siswa->nama . ' berhasil ditambahkan!',
+                'siswa' => [
+                    'id' => $siswa->id,
+                    'nama' => $siswa->nama,
+                    'nisn' => $siswa->nisn,
+                    'nis' => $siswa->nisn,
+                    'kelas_id' => $siswa->kelas_id,
+                    'jenis_kelamin' => $siswa->jenis_kelamin ?? 'L',
+                    'nama_kelas' => $siswa->kelas->nama_kelas ?? '-',
+                ],
+            ]);
+        }
+
+        if (str_contains(url()->previous(), 'kelas') || $request->input('from_kelas')) {
+            return redirect()->route('dashboard.kelas', ['kelas_id' => $validated['kelas_id']])
+                ->with('open_kelas_id', $validated['kelas_id'])
+                ->with('success', 'Data siswa berhasil ditambahkan!');
+        }
+
+        return redirect()->route('dashboard.siswa')->with('success', 'Data siswa berhasil ditambahkan!');
     }
 
     public function updateSiswa(Request $request, $id)
@@ -624,249 +473,257 @@ class AdminController extends Controller
         $siswa = Siswa::findOrFail($id);
         $oldKelasId = $siswa->kelas_id;
 
-        $nama = $request->input('nama_siswa') ?? $request->input('nama');
-        $request->merge(['nama' => $nama]);
-
-        $validated = $request->validate([
-            'nama' => 'required|string|max:100',
-            'nis' => 'required|string|max:20|unique:siswas,nis,' . $id . ',id',
-            'kelas_id' => 'required|exists:kelas,id_kelas',
-            'jenis_kelamin' => 'nullable|in:L,P',
-        ], [
-            'nama.required' => 'Nama siswa wajib diisi.',
-            'nis.required' => 'NIS wajib diisi.',
-            'nis.unique' => 'NIS sudah digunakan oleh siswa lain.',
-            'kelas_id.required' => 'Kelas wajib dipilih.',
-        ]);
-
-        $siswa->update([
-            'nama' => $validated['nama'],
-            'nis' => $validated['nis'],
-            'kelas_id' => $validated['kelas_id'],
-            'jenis_kelamin' => $validated['jenis_kelamin'] ?? $siswa->jenis_kelamin ?? 'L',
-        ]);
-
-        $this->syncJumlahSiswa($validated['kelas_id']);
-        if ($oldKelasId != $validated['kelas_id']) {
-            $this->syncJumlahSiswa($oldKelasId);
+        if (!$request->filled('nama') && $request->filled('nama_siswa')) {
+            $request->merge(['nama' => $request->input('nama_siswa')]);
+        }
+        if (!$request->filled('nisn') && $request->filled('nis')) {
+            $request->merge(['nisn' => $request->input('nis')]);
+        }
+        if (!$request->filled('jenis_kelamin')) {
+            $request->merge(['jenis_kelamin' => $siswa->jenis_kelamin ?? 'L']);
         }
 
-        return redirect()->back()
-            ->with('open_kelas_id', $validated['kelas_id'])
-            ->with('success', 'Data siswa ' . $siswa->nama . ' berhasil diperbarui!');
+        $validated = $request->validate([
+            'nisn' => 'required|string|max:30',
+            'nama' => 'required|string|max:255',
+            'kelas_id' => 'required|exists:kelas,id_kelas',
+            'jenis_kelamin' => 'required|in:L,P',
+        ], [
+            'nisn.required' => 'NISN wajib diisi.',
+            'nama.required' => 'Nama siswa wajib diisi.',
+            'kelas_id.required' => 'Pilih kelas siswa.',
+        ]);
+
+        $siswa->update($validated);
+        $siswa->load('kelas');
+        $this->syncKelasJumlahSiswa($oldKelasId, $validated['kelas_id']);
+
+        if ($request->ajax() || $request->wantsJson() || $request->header('X-Requested-With') === 'XMLHttpRequest') {
+            return response()->json([
+                'success' => true,
+                'message' => 'Data siswa ' . $siswa->nama . ' berhasil diperbarui!',
+                'siswa' => [
+                    'id' => $siswa->id,
+                    'nama' => $siswa->nama,
+                    'nisn' => $siswa->nisn,
+                    'nis' => $siswa->nisn,
+                    'kelas_id' => $siswa->kelas_id,
+                    'jenis_kelamin' => $siswa->jenis_kelamin ?? 'L',
+                    'nama_kelas' => $siswa->kelas->nama_kelas ?? '-',
+                ],
+            ]);
+        }
+
+        if (str_contains(url()->previous(), 'kelas') || $request->input('from_kelas')) {
+            return redirect()->route('dashboard.kelas', ['kelas_id' => $validated['kelas_id']])
+                ->with('open_kelas_id', $validated['kelas_id'])
+                ->with('success', 'Data siswa ' . $siswa->nama . ' berhasil diperbarui!');
+        }
+
+        return redirect()->route('dashboard.siswa')->with('success', 'Data siswa ' . $siswa->nama . ' berhasil diperbarui!');
     }
 
-    public function destroySiswa(Request $request, $id)
+    public function destroySiswa($id)
     {
         $siswa = Siswa::findOrFail($id);
+        $nama = $siswa->nama;
         $kelasId = $siswa->kelas_id;
+        $siswa->delete();
+        $this->syncKelasJumlahSiswa($kelasId);
 
-        $request->validate([
-            'alasan' => 'required|string',
-        ], [
-            'alasan.required' => 'Alasan penghapusan siswa wajib diisi.',
-        ]);
+        if (str_contains(url()->previous(), 'kelas') || request()->input('from_kelas')) {
+            return redirect()->route('dashboard.kelas', ['kelas_id' => $kelasId])
+                ->with('open_kelas_id', $kelasId)
+                ->with('success', 'Data siswa ' . $nama . ' berhasil dihapus!');
+        }
 
-        $siswa->update([
-            'status' => 'nonaktif',
-            'alasan_hapus' => $request->alasan,
-        ]);
-
-        $this->syncJumlahSiswa($kelasId);
-
-        return redirect()->back()
-            ->with('open_kelas_id', $kelasId)
-            ->with('success', 'Siswa ' . $siswa->nama . ' berhasil dihapus dari kelas.');
+        return redirect()->route('dashboard.siswa')->with('success', 'Data siswa ' . $nama . ' berhasil dihapus!');
     }
 
-    private function syncJumlahSiswa($kelasId)
+    public function batchDeleteSiswa(Request $request)
     {
-        $count = Siswa::where('kelas_id', $kelasId)
-            ->where(function ($q) {
-                $q->where('status', 'aktif')->orWhereNull('status');
-            })->count();
+        $ids = $request->input('ids', []);
+        if (empty($ids) || !is_array($ids)) {
+            return back()->with('error', 'Pilih minimal satu siswa untuk dihapus.');
+        }
 
-        Kelas::where('id_kelas', $kelasId)->update(['jumlah_siswa' => $count]);
+        $affectedKelasIds = Siswa::whereIn('id', $ids)->pluck('kelas_id')->unique()->toArray();
+        $count = Siswa::whereIn('id', $ids)->delete();
+        $this->syncKelasJumlahSiswa(...$affectedKelasIds);
+
+        return redirect()->route('dashboard.siswa')->with('success', "{$count} data siswa berhasil dihapus masal!");
+    }
+
+    public function batchEditSiswa(Request $request)
+    {
+        $ids = $request->input('ids', []);
+        $kelasId = $request->input('kelas_id');
+
+        if (empty($ids) || !is_array($ids)) {
+            return back()->with('error', 'Pilih minimal satu siswa.');
+        }
+
+        $request->validate([
+            'kelas_id' => 'required|exists:kelas,id_kelas',
+        ]);
+
+        $kelas = Kelas::find($kelasId);
+        $oldKelasIds = Siswa::whereIn('id', $ids)->pluck('kelas_id')->unique()->toArray();
+        $count = Siswa::whereIn('id', $ids)->update(['kelas_id' => $kelasId]);
+        $this->syncKelasJumlahSiswa($kelasId, ...$oldKelasIds);
+
+        return redirect()->route('dashboard.siswa')->with('success', "{$count} siswa berhasil dipindahkan ke kelas {$kelas->nama_kelas}!");
+    }
+
+    protected function syncKelasJumlahSiswa(...$kelasIds)
+    {
+        $kelasIds = array_unique(array_filter($kelasIds));
+        foreach ($kelasIds as $kId) {
+            $kelas = Kelas::find($kId);
+            if ($kelas) {
+                $actualCount = Siswa::where('kelas_id', $kId)->count();
+                $kelas->update(['jumlah_siswa' => $actualCount]);
+            }
+        }
     }
 
     // =========================================================================
-    // 6. MATA PELAJARAN (35 Mapel, Jurusan & Biasa)
+    // 5. MAPEL (MATA PELAJARAN, CRUD, BATCH DELETE)
     // =========================================================================
     public function mapel(Request $request)
     {
         $search = $request->query('search');
-        $kategori = $request->query('kategori');
+        $kategoriFilter = $request->query('kategori');
 
-        $query = Mapel::with(['guru', 'pengampu'])->where(function ($q) {
-            $q->where('status', 'aktif')->orWhereNull('status');
-        });
-
-        if ($kategori === 'jurusan') {
-            $query->where('kategori', 'jurusan');
-        } elseif ($kategori === 'biasa' || $kategori === 'umum' || $kategori === 'pilihan') {
-            $query->whereIn('kategori', ['biasa', 'umum', 'pilihan']);
-        }
+        $query = Mapel::with('gurus');
 
         if ($search) {
             $query->where(function ($q) use ($search) {
-                $q->where('kode_mapel', 'like', "%{$search}%")
-                  ->orWhere('nama_mapel', 'like', "%{$search}%")
-                  ->orWhereHas('pengampu', function ($g) use ($search) {
-                      $g->where('name', 'like', "%{$search}%");
-                  })
-                  ->orWhereHas('guru', function ($g) use ($search) {
-                      $g->where('name', 'like', "%{$search}%");
-                  });
+                $q->where('nama_mapel', 'like', "%{$search}%")
+                  ->orWhere('kode_mapel', 'like', "%{$search}%");
             });
         }
 
-        $mapels = $query->orderByRaw("CASE WHEN kategori = 'jurusan' THEN 1 ELSE 2 END")
-                        ->orderBy('nama_mapel')
-                        ->get();
+        if ($kategoriFilter === 'jurusan') {
+            $query->where('kategori', 'jurusan');
+        } elseif ($kategoriFilter === 'biasa') {
+            $query->where(function ($q) {
+                $q->where('kategori', 'biasa')->orWhereNull('kategori');
+            });
+        }
 
-        $counts = [
-            'total' => Mapel::where(fn($q) => $q->where('status', 'aktif')->orWhereNull('status'))->count(),
-            'jurusan' => Mapel::where(fn($q) => $q->where('status', 'aktif')->orWhereNull('status'))->where('kategori', 'jurusan')->count(),
-            'biasa' => Mapel::where(fn($q) => $q->where('status', 'aktif')->orWhereNull('status'))->whereIn('kategori', ['biasa', 'umum', 'pilihan'])->count(),
-        ];
+        $mapels = $query->orderBy('nama_mapel')->get();
+        $gurus = User::where('role', 'guru')->with('mapel')->orderBy('name')->get();
 
-        $gurus = User::where('role', 'guru')
-            ->where(function ($q) {
-                $q->where('status', 'aktif')->orWhereNull('status');
-            })
-            ->orderBy('name')
+        // Ambil pemetaan guru yang mengajar mapel terkait di jadwal pelajaran (multi-mapel sesuai jadwal)
+        $jadwalTeachersByMapelId = [];
+        $jadwalTeachersByMapelName = [];
+        $allMapelsByUser = [];
+
+        $jadwalRecords = JadwalPelajaran::join('users', 'jadwal_pelajarans.id_user', '=', 'users.id')
+            ->where('jadwal_pelajarans.mapel', 'not like', '%istirahat%')
+            ->where('jadwal_pelajarans.mapel', 'not like', '%upacara%')
+            ->where('jadwal_pelajarans.mapel', 'not like', '%pembiasaan%')
+            ->select('jadwal_pelajarans.id_mapel', 'jadwal_pelajarans.mapel', 'users.id as user_id', 'users.name', 'users.nip')
+            ->distinct()
             ->get();
 
-        return view('dashboard.admin.mapel', compact('mapels', 'gurus', 'counts', 'kategori'));
-    }
-
-    protected function resolveGuruIds(Request $request, $kategori = 'biasa')
-    {
-        $guruIds = $request->input('guru_ids', []);
-        if (!is_array($guruIds)) {
-            $guruIds = array_filter([$guruIds]);
-        }
-
-        $guruNames = $request->input('guru_names', []);
-        if (is_string($guruNames)) {
-            $decoded = json_decode($guruNames, true);
-            if (is_array($decoded)) {
-                $guruNames = $decoded;
-            } elseif (strpos($guruNames, '|||') !== false) {
-                $guruNames = explode('|||', $guruNames);
-            } else {
-                $guruNames = array_map('trim', explode(',', $guruNames));
+        foreach ($jadwalRecords as $jr) {
+            $teacherData = (object) ['id' => $jr->user_id, 'name' => $jr->name, 'nip' => $jr->nip];
+            if ($jr->id_mapel) {
+                $jadwalTeachersByMapelId[$jr->id_mapel][$jr->user_id] = $teacherData;
             }
-        }
-        if (!is_array($guruNames)) {
-            $guruNames = [];
-        }
-
-        foreach ($guruNames as $name) {
-            $name = trim($name);
-            if (empty($name)) continue;
-
-            $user = User::where('name', $name)->where('role', 'guru')->first();
-            if (!$user) {
-                $user = User::whereRaw('LOWER(name) = ?', [strtolower($name)])->where('role', 'guru')->first();
-            }
-            if (!$user) {
-                $user = User::where('name', 'like', "%{$name}%")->where('role', 'guru')->first();
-            }
-
-            if (!$user) {
-                $baseUname = Str::slug($name, '_');
-                if (empty($baseUname)) {
-                    $baseUname = 'guru_' . time();
-                }
-                $uname = $baseUname;
-                $c = 1;
-                while (User::where('username', $uname)->exists()) {
-                    $uname = $baseUname . '_' . $c;
-                    $c++;
-                }
-
-                $user = User::create([
-                    'name' => $name,
-                    'username' => $uname,
-                    'role' => 'guru',
-                    'status' => 'aktif',
-                    'password' => Hash::make('password'),
-                ]);
-            }
-
-            if ($user && !in_array($user->id, $guruIds)) {
-                $guruIds[] = $user->id;
+            if ($jr->mapel) {
+                $jadwalTeachersByMapelName[$jr->mapel][$jr->user_id] = $teacherData;
+                $allMapelsByUser[$jr->user_id][$jr->mapel] = true;
             }
         }
 
-        // Mapel Jurusan maksimal 10 guru, Mapel Biasa hanya 1 guru
-        $maxGuru = ($kategori === 'jurusan') ? 10 : 1;
-        return array_slice(array_unique(array_filter($guruIds)), 0, $maxGuru);
+        foreach ($mapels as $m) {
+            $fromId = $jadwalTeachersByMapelId[$m->id] ?? [];
+            $fromName = $jadwalTeachersByMapelName[$m->nama_mapel] ?? [];
+            $byJadwal = $fromId + $fromName; // array keyed by user_id
+
+            // Gabungkan juga dengan guru yang ditautkan di users.mapel_id
+            $byMapelId = [];
+            foreach ($m->gurus as $g) {
+                $byMapelId[$g->id] = (object) ['id' => $g->id, 'name' => $g->name, 'nip' => $g->nip];
+            }
+
+            $allTeachers = array_values($byJadwal + $byMapelId);
+            usort($allTeachers, fn($a, $b) => strcmp($a->name, $b->name));
+
+            $m->all_pengampus = collect($allTeachers);
+            $m->jadwal_gurus = array_values(array_unique(array_map(fn($t) => $t->name, array_values($byJadwal))));
+        }
+
+        $counts = [
+            'total' => Mapel::count(),
+            'jurusan' => Mapel::where('kategori', 'jurusan')->count(),
+            'biasa' => Mapel::where(function ($q) {
+                $q->where('kategori', '!=', 'jurusan')->orWhereNull('kategori');
+            })->count(),
+        ];
+
+        $guruJson = $gurus->map(function ($g) use ($allMapelsByUser) {
+            $jadwalMapelNames = isset($allMapelsByUser[$g->id]) ? array_keys($allMapelsByUser[$g->id]) : [];
+            if ($g->mapel && !in_array($g->mapel->nama_mapel, $jadwalMapelNames)) {
+                $jadwalMapelNames[] = $g->mapel->nama_mapel;
+            }
+            return [
+                'id' => $g->id,
+                'name' => $g->name,
+                'nip' => $g->nip ?? '',
+                'mapel_id' => $g->mapel_id,
+                'mapel_name' => !empty($jadwalMapelNames) ? implode(', ', $jadwalMapelNames) : '',
+                'mapel_names' => $jadwalMapelNames,
+            ];
+        });
+
+        return view('dashboard.admin.mapel', compact('mapels', 'gurus', 'counts', 'search', 'guruJson'));
     }
 
     public function storeMapel(Request $request)
     {
         $validated = $request->validate([
-            'kode_mapel' => 'required|string|max:50',
-            'nama_mapel' => 'required|string|max:100',
-            'kategori' => 'required|in:jurusan,biasa,pilihan,umum',
-            'guru_ids' => 'nullable|array',
+            'kode_mapel' => 'required|string|max:30|unique:mapels,kode_mapel',
+            'nama_mapel' => 'required|string|max:255',
+            'kategori' => 'nullable|string|in:biasa,jurusan',
             'guru_id' => 'nullable|exists:users,id',
             'guru_names' => 'nullable',
-        ], [
-            'kode_mapel.required' => 'Kode mata pelajaran wajib diisi.',
-            'nama_mapel.required' => 'Nama mata pelajaran wajib diisi.',
-            'kategori.required' => 'Kategori mata pelajaran wajib dipilih.',
         ]);
-
-        if (in_array($validated['kategori'], ['umum', 'pilihan'])) {
-            $validated['kategori'] = 'biasa';
-        }
-
-        $guruIds = $this->resolveGuruIds($request, $validated['kategori']);
-        $primaryGuruId = !empty($guruIds) ? $guruIds[0] : null;
-
-        $existing = Mapel::where('kode_mapel', $validated['kode_mapel'])->first();
-
-        if ($existing) {
-            if ($existing->status === 'nonaktif') {
-                $existing->update([
-                    'nama_mapel' => $validated['nama_mapel'],
-                    'kategori' => $validated['kategori'],
-                    'guru_id' => $primaryGuruId,
-                    'status' => 'aktif',
-                    'alasan_hapus' => null,
-                ]);
-
-                if (!empty($guruIds)) {
-                    $existing->pengampu()->sync($guruIds);
-                    User::whereIn('id', $guruIds)->update(['mapel_id' => $existing->id]);
-                }
-
-                return redirect()->route('dashboard.mapel')
-                    ->with('success', 'Mata pelajaran ' . $existing->nama_mapel . ' berhasil diaktifkan kembali!');
-            }
-
-            return back()->withErrors(['kode_mapel' => 'Kode mapel sudah terdaftar dan sedang aktif.'])->withInput();
-        }
 
         $mapel = Mapel::create([
             'kode_mapel' => $validated['kode_mapel'],
             'nama_mapel' => $validated['nama_mapel'],
-            'kategori' => $validated['kategori'],
-            'guru_id' => $primaryGuruId,
-            'status' => 'aktif',
-            'alasan_hapus' => null,
+            'kategori' => $validated['kategori'] ?? 'biasa',
         ]);
 
-        if (!empty($guruIds)) {
-            $mapel->pengampu()->sync($guruIds);
-            User::whereIn('id', $guruIds)->update(['mapel_id' => $mapel->id]);
+        $assignedGuruIds = [];
+        if (!empty($validated['guru_id'])) {
+            $assignedGuruIds[] = (int) $validated['guru_id'];
+        }
+        if ($request->filled('guru_names')) {
+            $rawNames = $request->input('guru_names');
+            $names = is_array($rawNames) ? $rawNames : json_decode($rawNames, true);
+            if (!is_array($names)) {
+                $names = array_filter(array_map('trim', explode(',', (string) $rawNames)));
+            }
+            if (!empty($names)) {
+                $foundIds = User::where('role', 'guru')->whereIn('name', $names)->pluck('id')->toArray();
+                $assignedGuruIds = array_merge($assignedGuruIds, $foundIds);
+            }
         }
 
-        return redirect()->route('dashboard.mapel')
-            ->with('success', 'Mata pelajaran ' . $mapel->nama_mapel . ' berhasil ditambahkan!');
+        $assignedGuruIds = array_unique($assignedGuruIds);
+        $maxGuru = 25;
+        $assignedGuruIds = array_slice($assignedGuruIds, 0, $maxGuru);
+
+        if (!empty($assignedGuruIds)) {
+            User::whereIn('id', $assignedGuruIds)->update(['mapel_id' => $mapel->id]);
+        }
+
+        return redirect()->route('dashboard.mapel')->with('success', 'Mata pelajaran berhasil ditambahkan!');
     }
 
     public function updateMapel(Request $request, $id)
@@ -874,582 +731,751 @@ class AdminController extends Controller
         $mapel = Mapel::findOrFail($id);
 
         $validated = $request->validate([
-            'kode_mapel' => 'required|string|max:50|unique:mapels,kode_mapel,' . $id . ',id',
-            'nama_mapel' => 'required|string|max:100',
-            'kategori' => 'required|in:jurusan,biasa,pilihan,umum',
-            'guru_ids' => 'nullable|array',
+            'kode_mapel' => 'required|string|max:30|unique:mapels,kode_mapel,' . $mapel->id,
+            'nama_mapel' => 'required|string|max:255',
+            'kategori' => 'nullable|string|in:biasa,jurusan',
             'guru_id' => 'nullable|exists:users,id',
             'guru_names' => 'nullable',
-        ], [
-            'kode_mapel.required' => 'Kode mata pelajaran wajib diisi.',
-            'kode_mapel.unique' => 'Kode mapel sudah digunakan oleh mata pelajaran lain.',
-            'nama_mapel.required' => 'Nama mata pelajaran wajib diisi.',
-            'kategori.required' => 'Kategori mata pelajaran wajib dipilih.',
         ]);
 
-        if (in_array($validated['kategori'], ['umum', 'pilihan'])) {
-            $validated['kategori'] = 'biasa';
-        }
-
-        $guruIds = $this->resolveGuruIds($request, $validated['kategori']);
-        $primaryGuruId = !empty($guruIds) ? $guruIds[0] : null;
+        $kategori = $validated['kategori'] ?? $mapel->kategori ?? 'biasa';
 
         $mapel->update([
             'kode_mapel' => $validated['kode_mapel'],
             'nama_mapel' => $validated['nama_mapel'],
-            'kategori' => $validated['kategori'],
-            'guru_id' => $primaryGuruId,
+            'kategori' => $kategori,
         ]);
 
-        if (!empty($guruIds)) {
-            $mapel->pengampu()->sync($guruIds);
-            User::whereIn('id', $guruIds)->update(['mapel_id' => $mapel->id]);
-        } else {
-            $mapel->pengampu()->detach();
+        $assignedGuruIds = [];
+        if (!empty($validated['guru_id'])) {
+            $assignedGuruIds[] = (int) $validated['guru_id'];
+        }
+        if ($request->filled('guru_names')) {
+            $rawNames = $request->input('guru_names');
+            $names = is_array($rawNames) ? $rawNames : json_decode($rawNames, true);
+            if (!is_array($names)) {
+                $names = array_filter(array_map('trim', explode(',', (string) $rawNames)));
+            }
+            if (!empty($names)) {
+                $foundIds = User::where('role', 'guru')->whereIn('name', $names)->pluck('id')->toArray();
+                $assignedGuruIds = array_merge($assignedGuruIds, $foundIds);
+            }
         }
 
-        return redirect()->route('dashboard.mapel')
-            ->with('success', 'Data mata pelajaran berhasil diperbarui!');
+        $assignedGuruIds = array_unique($assignedGuruIds);
+        $maxGuru = 25;
+        $assignedGuruIds = array_slice($assignedGuruIds, 0, $maxGuru);
+
+        if (!empty($assignedGuruIds)) {
+            // Dissociate teachers no longer assigned to this mapel
+            User::where('mapel_id', $mapel->id)
+                ->whereNotIn('id', $assignedGuruIds)
+                ->update(['mapel_id' => null]);
+
+            // Associate assigned teachers
+            User::whereIn('id', $assignedGuruIds)->update(['mapel_id' => $mapel->id]);
+        } else {
+            // Remove all teachers assigned to this mapel
+            User::where('mapel_id', $mapel->id)->update(['mapel_id' => null]);
+        }
+
+        return redirect()->route('dashboard.mapel')->with('success', 'Mata pelajaran ' . $mapel->nama_mapel . ' berhasil diperbarui!');
     }
 
-    public function destroyMapel(Request $request, $id)
+    public function destroyMapel($id)
     {
         $mapel = Mapel::findOrFail($id);
+        $nama = $mapel->nama_mapel;
 
-        $request->validate([
-            'alasan' => 'required|string',
-        ], [
-            'alasan.required' => 'Alasan penghapusan mata pelajaran wajib diisi.',
-        ]);
+        // Dissociate teachers and remove related schedules safely
+        User::where('mapel_id', $mapel->id)->update(['mapel_id' => null]);
+        JadwalPelajaran::where('id_mapel', $mapel->id)->delete();
+        $mapel->delete();
 
-        $mapel->update([
-            'status' => 'nonaktif',
-            'alasan_hapus' => $request->alasan,
-        ]);
+        return redirect()->route('dashboard.mapel')->with('success', 'Mata pelajaran ' . $nama . ' berhasil dihapus!');
+    }
 
-        return redirect()->route('dashboard.mapel')
-            ->with('success', 'Mata pelajaran ' . $mapel->nama_mapel . ' berhasil dinonaktifkan.');
+    public function batchDeleteMapel(Request $request)
+    {
+        $ids = $request->input('ids', []);
+        if (empty($ids) || !is_array($ids)) {
+            return back()->with('error', 'Pilih minimal satu mata pelajaran.');
+        }
+
+        User::whereIn('mapel_id', $ids)->update(['mapel_id' => null]);
+        JadwalPelajaran::whereIn('id_mapel', $ids)->delete();
+        $count = Mapel::whereIn('id', $ids)->delete();
+
+        return redirect()->route('dashboard.mapel')->with('success', "{$count} mata pelajaran berhasil dihapus masal!");
     }
 
     // =========================================================================
-    // 7. JADWAL PELAJARAN
+    // 6. JADWAL PELAJARAN (CRUD & BATCH DELETE)
     // =========================================================================
     public function jadwal(Request $request)
     {
-        $kelases = Kelas::where(function ($q) {
-            $q->where('status', 'aktif')->orWhereNull('status');
-        })
-        ->where('nama_kelas', 'not like', 'XII%')
-        ->where('nama_kelas', 'not like', '12%')
-        ->orderBy('nama_kelas')
-        ->get();
+        $kelasId = $request->query('kelas_id') ?: $request->query('kelas');
+        $hari = $request->query('hari');
 
-        $mapels = Mapel::where(function ($q) {
-            $q->where('status', 'aktif')->orWhereNull('status');
-        })->orderByRaw("CASE WHEN kategori = 'jurusan' THEN 1 ELSE 2 END")
-          ->orderBy('nama_mapel')
-          ->get();
+        $kelasList = Kelas::orderBy('nama_kelas')->get();
+        $kelases = $kelasList;
+        $selectedKelas = $kelasList->firstWhere('id_kelas', $kelasId) ?? $kelasList->first();
+        $selectedHari = $hari ?? 'Senin';
+        $hariList = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
 
-        $gurus = User::where('role', 'guru')
-            ->where(function ($q) {
-                $q->where('status', 'aktif')->orWhereNull('status');
-            })
-            ->orderBy('name')
-            ->get();
+        $query = JadwalPelajaran::with(['kelas', 'guru', 'mapelItem']);
 
-        $selectedKelasId = $request->query('kelas_id', optional($kelases->first())->id_kelas);
-        $selectedKelas = $kelases->firstWhere('id_kelas', $selectedKelasId) ?? $kelases->first();
-
-        $hariList = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat'];
-
-        $jadwals = collect();
         if ($selectedKelas) {
-            $jadwals = JadwalPelajaran::with(['guru', 'mapelItem', 'kelas'])
-                ->where('id_kelas', $selectedKelas->id_kelas)
-                ->where(function ($q) {
-                    $q->whereIn('status', ['aktif', 'ditiadakan'])->orWhereNull('status');
-                })
-                ->orderByRaw("CASE hari 
-                    WHEN 'Senin' THEN 1 
-                    WHEN 'Selasa' THEN 2 
-                    WHEN 'Rabu' THEN 3 
-                    WHEN 'Kamis' THEN 4 
-                    WHEN 'Jumat' THEN 5 
-                    ELSE 6 END")
-                ->orderBy('jam_mulai')
-                ->orderBy('jam_ke')
-                ->get();
+            $query->where('id_kelas', $selectedKelas->id_kelas);
         }
 
-        $selectedHari = $request->query('hari', 'Senin');
+        $jadwals = $query->orderByRaw("FIELD(hari, 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu')")
+            ->orderBy('jam_mulai', 'asc')
+            ->orderBy('jam_ke', 'asc')
+            ->get();
+        $mapels = Mapel::orderBy('nama_mapel', 'asc')->get();
+        $gurus = User::where('role', 'guru')->orderBy('name', 'asc')->get();
+
+        $piketWakas = JadwalPiket::with('user')
+            ->where('tipe', 'waka')
+            ->orderByRaw("FIELD(hari, 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu')")
+            ->get();
+
+        $piketGurus = JadwalPiket::with('user')
+            ->where('tipe', 'guru')
+            ->orderByRaw("FIELD(hari, 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu')")
+            ->get();
+
+        $shiftSeninMinutes = (int) Pengaturan::getValue('shift_senin_minutes', 40);
+        $shiftJumatMinutes = (int) Pengaturan::getValue('shift_jumat_minutes', 30);
+        $isSeninMaju = (bool) Pengaturan::getValue('senin_is_maju', 0);
+        $isJumatMaju = (bool) Pengaturan::getValue('jumat_is_maju', 0);
 
         return view('dashboard.admin.jadwal', compact(
+            'jadwals',
+            'kelasList',
             'kelases',
             'mapels',
             'gurus',
+            'kelasId',
+            'hari',
             'selectedKelas',
-            'jadwals',
+            'selectedHari',
             'hariList',
-            'selectedHari'
+            'piketWakas',
+            'piketGurus',
+            'shiftSeninMinutes',
+            'shiftJumatMinutes',
+            'isSeninMaju',
+            'isJumatMaju'
         ));
     }
 
     public function storeJadwal(Request $request)
     {
+        $userId = $request->input('id_user') ?: $request->input('guru_id');
+        if (!$userId) {
+            $userId = auth()->id() ?? optional(User::where('role', 'admin')->first())->id ?? optional(User::first())->id;
+        }
+
+        $kelasId = $request->input('id_kelas') ?: $request->input('kelas_id');
+        $mapelId = $request->input('id_mapel') ?: $request->input('mapel_id');
+
+        $mapelName = $request->input('mapel');
+        if (empty($mapelName) && $mapelId) {
+            $mapelName = optional(Mapel::find($mapelId))->nama_mapel;
+        }
+        if (empty($mapelName)) {
+            $mapelName = 'Kegiatan Sekolah';
+        }
+
+        $request->merge([
+            'id_user' => $userId,
+            'id_kelas' => $kelasId,
+            'id_mapel' => $mapelId,
+            'mapel' => $mapelName,
+        ]);
+
         $validated = $request->validate([
-            'kelas_id' => 'required|exists:kelas,id_kelas',
-            'hari' => 'required|in:Senin,Selasa,Rabu,Kamis,Jumat',
-            'jam_ke' => 'nullable|integer|min:0|max:20',
-            'mapel_id' => 'required|exists:mapels,id',
-            'guru_id' => 'nullable|exists:users,id',
+            'id_user' => 'required|exists:users,id',
+            'id_kelas' => 'required|exists:kelas,id_kelas',
+            'id_mapel' => 'nullable|exists:mapels,id',
+            'hari' => 'required|in:Senin,Selasa,Rabu,Kamis,Jumat,Sabtu',
+            'jam_ke' => 'required|integer|min:0',
             'jam_mulai' => 'required',
             'jam_selesai' => 'required',
+            'mapel' => 'required|string|max:100',
         ], [
-            'kelas_id.required' => 'Pilih kelas terlebih dahulu.',
-            'hari.required' => 'Pilih hari pelaksanaan jadwal.',
-            'mapel_id.required' => 'Pilih mata pelajaran atau kegiatan.',
-            'jam_mulai.required' => 'Jam mulai wajib diisi.',
-            'jam_selesai.required' => 'Jam selesai wajib diisi.',
+            'id_kelas.required' => 'Pilih kelas jadwal.',
+            'hari.required' => 'Pilih hari pelaksanaan.',
         ]);
 
-        $mapel = Mapel::find($validated['mapel_id']);
-        $isKegiatan = $mapel && $mapel->kategori === 'kegiatan';
+        JadwalPelajaran::create($validated);
 
-        if (!$isKegiatan && empty($validated['guru_id'])) {
-            return back()->withErrors(['guru_id' => 'Pilih guru pengampu untuk mata pelajaran ini.'])->withInput();
-        }
-
-        $jamMulai = date('H:i:s', strtotime($validated['jam_mulai']));
-        $jamSelesai = date('H:i:s', strtotime($validated['jam_selesai']));
-
-        if ($request->filled('jam_ke')) {
-            $jamKe = (int) $request->jam_ke;
-        } elseif ($isKegiatan) {
-            $jamKe = 0;
-        } else {
-            $countHari = JadwalPelajaran::where('id_kelas', $validated['kelas_id'])
-                ->where('hari', $validated['hari'])
-                ->where(function ($q) {
-                    $q->whereIn('status', ['aktif', 'ditiadakan'])->orWhereNull('status');
-                })
-                ->where('jam_ke', '>', 0)
-                ->count();
-            $jamKe = $countHari + 1;
-        }
-
-        JadwalPelajaran::create([
-            'id_kelas' => $validated['kelas_id'],
-            'id_user' => $validated['guru_id'] ?? null,
-            'id_mapel' => $validated['mapel_id'],
-            'hari' => $validated['hari'],
-            'jam_ke' => $jamKe,
-            'jam_mulai' => $jamMulai,
-            'jam_selesai' => $jamSelesai,
-            'mapel' => $mapel ? $mapel->nama_mapel : 'Mata Pelajaran',
-            'status' => 'aktif',
-        ]);
-
-        $labelSesi = ($jamKe > 0) ? 'Jam Ke-' . $jamKe : ($mapel ? $mapel->nama_mapel : 'Kegiatan');
-        return redirect()->route('dashboard.jadwal', ['kelas_id' => $validated['kelas_id'], 'hari' => $validated['hari']])
-            ->with('success', 'Jadwal hari ' . $validated['hari'] . ' (' . $labelSesi . ') berhasil disimpan.');
+        return redirect()->route('dashboard.jadwal', ['kelas_id' => $kelasId, 'hari' => $validated['hari']])
+            ->with('success', 'Jadwal pelajaran berhasil ditambahkan!');
     }
 
     public function updateJadwal(Request $request, $id)
     {
         $jadwal = JadwalPelajaran::findOrFail($id);
 
-        $validated = $request->validate([
-            'kelas_id' => 'required|exists:kelas,id_kelas',
-            'hari' => 'required|in:Senin,Selasa,Rabu,Kamis,Jumat',
-            'jam_ke' => 'nullable|integer|min:0|max:20',
-            'mapel_id' => 'required|exists:mapels,id',
-            'guru_id' => 'nullable|exists:users,id',
-            'jam_mulai' => 'required',
-            'jam_selesai' => 'required',
-        ], [
-            'kelas_id.required' => 'Pilih kelas terlebih dahulu.',
-            'hari.required' => 'Pilih hari pelaksanaan jadwal.',
-            'mapel_id.required' => 'Pilih mata pelajaran atau kegiatan.',
-            'jam_mulai.required' => 'Jam mulai wajib diisi.',
-            'jam_selesai.required' => 'Jam selesai wajib diisi.',
-        ]);
-
-        $mapel = Mapel::find($validated['mapel_id']);
-        $isKegiatan = $mapel && $mapel->kategori === 'kegiatan';
-
-        if (!$isKegiatan && empty($validated['guru_id'])) {
-            return back()->withErrors(['guru_id' => 'Pilih guru pengampu untuk mata pelajaran ini.'])->withInput();
+        $userId = $request->input('id_user') ?: $request->input('guru_id');
+        if (!$userId) {
+            $userId = $jadwal->id_user ?? auth()->id() ?? optional(User::where('role', 'admin')->first())->id;
         }
 
-        $jamMulai = date('H:i:s', strtotime($validated['jam_mulai']));
-        $jamSelesai = date('H:i:s', strtotime($validated['jam_selesai']));
+        $kelasId = $request->input('id_kelas') ?: $request->input('kelas_id') ?: $jadwal->id_kelas;
+        $mapelId = $request->input('id_mapel') ?: $request->input('mapel_id') ?: $jadwal->id_mapel;
 
-        $jamKe = $request->filled('jam_ke') ? (int) $request->jam_ke : ($isKegiatan ? 0 : $jadwal->jam_ke);
+        $mapelName = $request->input('mapel');
+        if (empty($mapelName) && $mapelId) {
+            $mapelName = optional(Mapel::find($mapelId))->nama_mapel;
+        }
+        if (empty($mapelName)) {
+            $mapelName = $jadwal->mapel ?? 'Kegiatan Sekolah';
+        }
 
-        $jadwal->update([
-            'id_kelas' => $validated['kelas_id'],
-            'id_user' => $validated['guru_id'] ?? null,
-            'id_mapel' => $validated['mapel_id'],
-            'hari' => $validated['hari'],
-            'jam_ke' => $jamKe,
-            'jam_mulai' => $jamMulai,
-            'jam_selesai' => $jamSelesai,
-            'mapel' => $mapel ? $mapel->nama_mapel : $jadwal->mapel,
+        $request->merge([
+            'id_user' => $userId,
+            'id_kelas' => $kelasId,
+            'id_mapel' => $mapelId,
+            'mapel' => $mapelName,
         ]);
 
-        $labelSesi = ($jamKe > 0) ? 'Jam Ke-' . $jamKe : ($mapel ? $mapel->nama_mapel : 'Kegiatan');
-        return redirect()->route('dashboard.jadwal', ['kelas_id' => $validated['kelas_id'], 'hari' => $validated['hari']])
-            ->with('success', 'Jadwal hari ' . $validated['hari'] . ' (' . $labelSesi . ') berhasil diperbarui.');
+        $validated = $request->validate([
+            'id_user' => 'required|exists:users,id',
+            'id_kelas' => 'required|exists:kelas,id_kelas',
+            'id_mapel' => 'nullable|exists:mapels,id',
+            'hari' => 'required|in:Senin,Selasa,Rabu,Kamis,Jumat,Sabtu',
+            'jam_ke' => 'required|integer|min:0',
+            'jam_mulai' => 'required',
+            'jam_selesai' => 'required',
+            'mapel' => 'required|string|max:100',
+        ]);
+
+        $jadwal->update($validated);
+
+        return redirect()->route('dashboard.jadwal', ['kelas_id' => $kelasId, 'hari' => $validated['hari']])
+            ->with('success', 'Jadwal pelajaran berhasil diperbarui!');
     }
 
-    public function destroyJadwal(Request $request, $id)
+    public function destroyJadwal($id)
     {
         $jadwal = JadwalPelajaran::findOrFail($id);
+        $jadwal->delete();
 
-        $request->validate([
-            'alasan' => 'required|string|min:3',
-        ], [
-            'alasan.required' => 'Alasan penonaktifan jadwal wajib diisi.',
-            'alasan.min' => 'Alasan minimal 3 karakter.',
-        ]);
+        return redirect()->route('dashboard.jadwal')->with('success', 'Jadwal pelajaran berhasil dihapus!');
+    }
 
-        $jadwal->update([
-            'status' => 'nonaktif',
-            'alasan_hapus' => $request->alasan,
-        ]);
+    public function batchDeleteJadwal(Request $request)
+    {
+        $ids = $request->input('ids', []);
+        if (empty($ids) || !is_array($ids)) {
+            return back()->with('error', 'Pilih minimal satu jadwal.');
+        }
 
-        return redirect()->route('dashboard.jadwal', ['kelas_id' => $jadwal->id_kelas, 'hari' => $jadwal->hari])
-            ->with('success', 'Jadwal pelajaran hari ' . $jadwal->hari . ' (Jam Ke-' . $jadwal->jam_ke . ') berhasil dinonaktifkan.');
+        $count = JadwalPelajaran::whereIn('id_jadwal', $ids)->delete();
+
+        return redirect()->route('dashboard.jadwal')->with('success', "{$count} jadwal pelajaran berhasil dihapus masal!");
     }
 
     public function shiftTimeJadwal(Request $request)
     {
         $validated = $request->validate([
-            'kelas_id' => 'required',
             'hari' => 'required|in:Senin,Jumat',
             'mode' => 'required|in:maju,normal',
-            'minutes' => 'nullable|integer|min:15|max:120',
+            'minutes' => 'nullable|integer|min:5|max:180',
+            'kelas_id' => 'nullable',
         ]);
 
         $hari = $validated['hari'];
         $mode = $validated['mode'];
-        $defaultMinutes = ($hari === 'Jumat') ? 30 : 40;
-        $minutes = (int) ($request->minutes ?: $defaultMinutes);
+        $hariKey = strtolower($hari); // 'senin' or 'jumat'
 
-        // Tentukan daftar kelas yang dituju
-        if ($request->boolean('apply_all') || $validated['kelas_id'] === 'all') {
-            $kelasIds = Kelas::where(function ($q) {
-                $q->where('status', 'aktif')->orWhereNull('status');
-            })
-            ->where('nama_kelas', 'not like', 'XII%')
-            ->where('nama_kelas', 'not like', '12%')
-            ->pluck('id_kelas')->toArray();
-        } else {
-            $kelasIds = [(int) $validated['kelas_id']];
+        $defaultMinutes = ($hari === 'Jumat') 
+            ? (int) Pengaturan::getValue('shift_jumat_minutes', 30) 
+            : (int) Pengaturan::getValue('shift_senin_minutes', 40);
+
+        $minutes = (int) ($request->minutes ?: $defaultMinutes);
+        $isCurrentlyMaju = (bool) Pengaturan::getValue($hariKey . '_is_maju', 0);
+
+        // Guard Idempotensi: cegah pergeseran waktu berulang kali
+        if ($mode === 'maju' && $isCurrentlyMaju) {
+            return redirect()->back()->with('info', "Mode Jam Maju untuk hari {$hari} sudah aktif sebelumnya.");
         }
 
-        $keyword = $hari === 'Senin' ? '%Upacara%' : '%Pembiasaan%';
+        if ($mode === 'normal' && !$isCurrentlyMaju) {
+            return redirect()->back()->with('info', "Jadwal hari {$hari} sudah dalam status jam normal.");
+        }
 
-        foreach ($kelasIds as $kId) {
-            $kegiatan = JadwalPelajaran::where('id_kelas', $kId)
-                ->where('hari', $hari)
-                ->where('mapel', 'like', $keyword)
-                ->first();
+        // Otomatis diterapkan untuk SELURUH KELAS
+        $allKelasIds = Kelas::pluck('id_kelas')->toArray();
+        $targetKeyword = ($hari === 'Jumat') ? 'pembiasaan' : 'upacara';
 
-            $lessons = JadwalPelajaran::where('id_kelas', $kId)
-                ->where('hari', $hari)
-                ->where('status', '!=', 'nonaktif')
-                ->when($kegiatan, function ($q) use ($kegiatan) {
-                    $q->where('id_jadwal', '!=', $kegiatan->id_jadwal);
-                })
-                ->get();
+        if ($mode === 'maju') {
+            // Mode Maju: Upacara/Pembiasaan ditandai ditiadakan, sesi lain dimajukan
+            foreach ($allKelasIds as $kId) {
+                $lessons = JadwalPelajaran::where('id_kelas', $kId)
+                    ->where('hari', $hari)
+                    ->get();
 
-            if ($mode === 'maju') {
-                if ($kegiatan && $kegiatan->status !== 'ditiadakan') {
-                    $kegiatan->update(['status' => 'ditiadakan']);
-                    foreach ($lessons as $l) {
+                foreach ($lessons as $l) {
+                    $isTargetActivity = str_contains(strtolower($l->mapel), $targetKeyword);
+                    if ($isTargetActivity) {
+                        $l->update(['status' => 'ditiadakan']);
+                    } else {
                         $newStart = date('H:i:s', max(0, strtotime($l->jam_mulai) - ($minutes * 60)));
                         $newEnd = date('H:i:s', max(0, strtotime($l->jam_selesai) - ($minutes * 60)));
-                        $l->update(['jam_mulai' => $newStart, 'jam_selesai' => $newEnd]);
-                    }
-                }
-            } else { // mode === 'normal'
-                if ($kegiatan && $kegiatan->status === 'ditiadakan') {
-                    $kegiatan->update(['status' => 'aktif']);
-                    foreach ($lessons as $l) {
-                        $newStart = date('H:i:s', strtotime($l->jam_mulai) + ($minutes * 60));
-                        $newEnd = date('H:i:s', strtotime($l->jam_selesai) + ($minutes * 60));
-                        $l->update(['jam_mulai' => $newStart, 'jam_selesai' => $newEnd]);
+                        $l->update([
+                            'jam_mulai' => $newStart, 
+                            'jam_selesai' => $newEnd,
+                            'status' => 'aktif'
+                        ]);
                     }
                 }
             }
-        }
 
-        $namaKegiatan = $hari === 'Senin' ? 'Upacara Bendera' : 'Pembiasaan Jum\'at';
-        $redirectKelasId = ($validated['kelas_id'] !== 'all') ? $validated['kelas_id'] : optional(Kelas::first())->id_kelas;
-
-        if ($mode === 'maju') {
-            return redirect()->route('dashboard.jadwal', ['kelas_id' => $redirectKelasId, 'hari' => $hari])
-                ->with('success', "Mode Jam Maju Aktif: Kegiatan {$namaKegiatan} ditiadakan, seluruh jam pelajaran dimajukan {$minutes} menit (pulang lebih awal).");
+            Pengaturan::setValue($hariKey . '_is_maju', 1);
+            Pengaturan::setValue($hariKey . '_shifted_minutes', $minutes);
+            $msg = "Mode Jam Maju hari {$hari} berhasil diaktifkan untuk SELURUH KELAS ({$targetKeyword} ditiadakan, jam pelajaran dimajukan {$minutes} menit).";
         } else {
-            return redirect()->route('dashboard.jadwal', ['kelas_id' => $redirectKelasId, 'hari' => $hari])
-                ->with('success', "Mode Jam Normal Aktif: Kegiatan {$namaKegiatan} dilaksanakan, seluruh jam pelajaran telah dikembalikan ke waktu normal.");
+            // Mode Normal: Kembalikan waktu dengan menambah shifted_minutes yang tersimpan
+            $shiftedMinutes = (int) Pengaturan::getValue($hariKey . '_shifted_minutes', $minutes);
+
+            foreach ($allKelasIds as $kId) {
+                $lessons = JadwalPelajaran::where('id_kelas', $kId)
+                    ->where('hari', $hari)
+                    ->get();
+
+                foreach ($lessons as $l) {
+                    $isTargetActivity = str_contains(strtolower($l->mapel), $targetKeyword);
+                    if ($isTargetActivity) {
+                        $l->update(['status' => 'aktif']);
+                    } else {
+                        $newStart = date('H:i:s', strtotime($l->jam_mulai) + ($shiftedMinutes * 60));
+                        $newEnd = date('H:i:s', strtotime($l->jam_selesai) + ($shiftedMinutes * 60));
+                        $l->update([
+                            'jam_mulai' => $newStart, 
+                            'jam_selesai' => $newEnd,
+                            'status' => 'aktif'
+                        ]);
+                    }
+                }
+            }
+
+            Pengaturan::setValue($hariKey . '_is_maju', 0);
+            Pengaturan::setValue($hariKey . '_shifted_minutes', 0);
+            $msg = "Jadwal hari {$hari} untuk SELURUH KELAS berhasil dikembalikan ke jam normal ({$targetKeyword} dilaksanakan).";
         }
+
+        $redirectKelasId = $request->input('kelas_id') ?: optional(Kelas::first())->id_kelas;
+
+        return redirect()->route('dashboard.jadwal', ['kelas' => $redirectKelasId, 'hari' => $hari])
+            ->with('success', $msg);
     }
 
     // =========================================================================
-    // 8. MANAJEMEN USER (4 Role: Admin, Waka, Guru Piket, Sekretaris Kelas)
+    // PENGATURAN SISTEM & JAM MAJU
+    // =========================================================================
+    public function pengaturan()
+    {
+        $shiftSenin = (int) Pengaturan::getValue('shift_senin_minutes', 40);
+        $shiftJumat = (int) Pengaturan::getValue('shift_jumat_minutes', 30);
+        $isSeninMaju = (bool) Pengaturan::getValue('senin_is_maju', 0);
+        $seninShiftedMinutes = (int) Pengaturan::getValue('senin_shifted_minutes', $shiftSenin);
+        $isJumatMaju = (bool) Pengaturan::getValue('jumat_is_maju', 0);
+        $jumatShiftedMinutes = (int) Pengaturan::getValue('jumat_shifted_minutes', $shiftJumat);
+
+        $totalKelas = Kelas::count();
+
+        return view('dashboard.admin.pengaturan', compact(
+            'shiftSenin',
+            'shiftJumat',
+            'isSeninMaju',
+            'seninShiftedMinutes',
+            'isJumatMaju',
+            'jumatShiftedMinutes',
+            'totalKelas'
+        ));
+    }
+
+    public function updatePengaturan(Request $request)
+    {
+        $validated = $request->validate([
+            'shift_senin_minutes' => 'required|integer|min:5|max:180',
+            'shift_jumat_minutes' => 'required|integer|min:5|max:180',
+        ], [
+            'shift_senin_minutes.required' => 'Menit pemajuan hari Senin wajib diisi.',
+            'shift_jumat_minutes.required' => 'Menit pemajuan hari Jum\'at wajib diisi.',
+            'shift_senin_minutes.min' => 'Menit minimal adalah 5 menit.',
+            'shift_jumat_minutes.min' => 'Menit minimal adalah 5 menit.',
+        ]);
+
+        Pengaturan::setValue('shift_senin_minutes', $validated['shift_senin_minutes']);
+        Pengaturan::setValue('shift_jumat_minutes', $validated['shift_jumat_minutes']);
+
+        return redirect()->route('admin.pengaturan')->with('success', 'Pengaturan jam jadwal berhasil disimpan.');
+    }
+
+    // IMPORT JADWAL (EXCEL / CSV)
+    public function importJadwal(Request $request)
+    {
+        $request->validate([
+            'file' => 'required|file|mimes:xlsx,xls,csv|max:10240',
+        ], [
+            'file.required' => 'Pilih file Excel (.xlsx, .xls) atau .csv terlebih dahulu.',
+            'file.mimes' => 'Format file harus berupa Excel (.xlsx, .xls) atau .csv.',
+        ]);
+
+        try {
+            $import = new JadwalImport();
+            Excel::import($import, $request->file('file'));
+
+            return redirect()->route('dashboard.jadwal')->with('success', "Import selesai! {$import->importedCount} jadwal baru ditambahkan dan {$import->updatedCount} jadwal diperbarui.");
+        } catch (\Throwable $e) {
+            return redirect()->route('dashboard.jadwal')->with('error', 'Gagal memproses file Excel: ' . $e->getMessage());
+        }
+    }
+
+    // DOWNLOAD TEMPLATE JADWAL
+    public function downloadTemplateJadwal()
+    {
+        $filename = 'template_import_jadwal.csv';
+        $headers = [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
+        ];
+
+        $callback = function () {
+            $handle = fopen('php://output', 'w');
+            fputcsv($handle, ['hari', 'kelas', 'mapel', 'guru', 'jam_ke', 'jam_mulai', 'jam_selesai']);
+            fputcsv($handle, ['Senin', 'X RPL 1', 'Pemrograman Web', 'Budi Santoso, S.Pd', 1, '07:00', '08:30']);
+            fputcsv($handle, ['Senin', 'X RPL 1', 'Matematika', '198005122005011002', 2, '08:30', '10:00']);
+            fputcsv($handle, ['Selasa', 'XI RPL 2', 'Basis Data', 'Siti Aminah, M.Pd', 1, '07:00', '08:30']);
+            fclose($handle);
+        };
+
+        return response()->stream($callback, 200, $headers);
+    }
+
+    // =========================================================================
+    // 7. REKAP JURNAL MONITORING
+    // =========================================================================
+    public function rekapJurnal(Request $request)
+    {
+        $tanggal = $request->query('tanggal', now()->toDateString());
+        $kelasId = $request->query('kelas_id');
+        $kehadiran = $request->query('kehadiran', 'all');
+        $validasi = $request->query('validasi', 'all');
+        $search = $request->query('search', '');
+        $keterlambatan = $request->query('keterlambatan', 'all');
+
+        $query = JurnalMengajar::with(['kelas', 'guru', 'mapel']);
+
+        if ($tanggal) {
+            $query->whereDate('tanggal', $tanggal);
+        }
+
+        if ($kelasId && $kelasId !== 'all') {
+            $query->where('id_kelas', $kelasId);
+        }
+
+        if ($kehadiran && $kehadiran !== 'all') {
+            $query->where('status_kehadiran_guru', $kehadiran);
+        }
+
+        if ($keterlambatan === 'terlambat') {
+            $query->where('menit_keterlambatan', '>', 0);
+        } elseif ($keterlambatan === 'tepat_waktu') {
+            $query->where('menit_keterlambatan', '<=', 0)->where('status_kehadiran_guru', 'Hadir');
+        }
+
+        if ($request->filled('search')) {
+            $term = $request->query('search');
+            $query->where(function($q) use ($term) {
+                $q->where('materi', 'like', "%{$term}%")
+                  ->orWhereHas('guru', fn($g) => $g->where('name', 'like', "%{$term}%"))
+                  ->orWhereHas('mapel', fn($m) => $m->where('nama_mapel', 'like', "%{$term}%"))
+                  ->orWhereHas('kelas', fn($k) => $k->where('nama_kelas', 'like', "%{$term}%"));
+            });
+        }
+
+        $allDayJurnals = (clone $query)->orderBy('jam_ke', 'asc')->get();
+        $kelases = Kelas::orderBy('nama_kelas', 'asc')->get();
+        $totalKelas = $kelases->count();
+        $kelasLapor = JurnalMengajar::whereDate('tanggal', $tanggal)->distinct('id_kelas')->count('id_kelas');
+        $guruHadir = JurnalMengajar::whereDate('tanggal', $tanggal)->where('status_kehadiran_guru', 'Hadir')->count();
+        $guruTidakHadir = JurnalMengajar::whereDate('tanggal', $tanggal)->where('status_kehadiran_guru', '!=', 'Hadir')->count();
+        $guruTerlambat = JurnalMengajar::whereDate('tanggal', $tanggal)->where('menit_keterlambatan', '>', 0)->count();
+
+        // Info Piket Hari Ini & Waka Backup
+        $dayOfWeek = Carbon::parse($tanggal)->dayOfWeek;
+        $namaHari = match ($dayOfWeek) {
+            1 => 'Senin',
+            2 => 'Selasa',
+            3 => 'Rabu',
+            4 => 'Kamis',
+            5 => 'Jumat',
+            6 => 'Sabtu',
+            default => 'Minggu',
+        };
+        $piketGuru = JadwalPiket::with('user')->where('hari', $namaHari)->where('tipe', 'guru')->first();
+        $piketWaka = JadwalPiket::with('user')->where('hari', $namaHari)->where('tipe', 'waka')->first();
+        $allWakaUsers = JadwalPiket::where('tipe', 'waka')->with('user')->get()->pluck('user')->filter()->unique('id');
+        $backupWakas = $allWakaUsers->filter(fn($u) => !$piketWaka || $u->id !== $piketWaka->user_id);
+        if ($backupWakas->isEmpty()) {
+            $backupWakas = User::where('role', 'guru')->where('id', '!=', optional($piketWaka)->user_id)->limit(3)->get();
+        }
+
+        // Data Penugasan Piket untuk Modal Pengaturan
+        $allPiketJadwals = JadwalPiket::all()->groupBy('hari');
+
+        // Notif Approval Dispensasi Siswa
+        $requestDispensasi = \App\Models\Dispensasi::with('siswa.kelas')
+            ->whereDate('tanggal', $tanggal)
+            ->where('status_akhir', 'Pending')
+            ->get();
+
+        $tab = $request->query('tab', 'all');
+        $guruAbsen = $guruTidakHadir;
+        $menungguValidasi = 0;
+        $countSemua = $allDayJurnals->count();
+        $countBelumValidasi = 0;
+        $countGuruAbsen = $allDayJurnals->where('status_kehadiran_guru', '!=', 'Hadir')->count();
+        $jurnals = ($tab === 'guru_absen')
+            ? $allDayJurnals->where('status_kehadiran_guru', '!=', 'Hadir')
+            : $allDayJurnals;
+        $gurus = User::where('role', 'guru')->orderBy('name', 'asc')->get();
+
+        return view('dashboard.admin.rekap-jurnal', compact(
+            'jurnals',
+            'kelases',
+            'gurus',
+            'tanggal',
+            'kelasId',
+            'kehadiran',
+            'validasi',
+            'search',
+            'keterlambatan',
+            'totalKelas',
+            'kelasLapor',
+            'guruHadir',
+            'guruTidakHadir',
+            'guruTerlambat',
+            'guruAbsen',
+            'menungguValidasi',
+            'tab',
+            'countSemua',
+            'countBelumValidasi',
+            'countGuruAbsen',
+            'namaHari',
+            'piketGuru',
+            'piketWaka',
+            'backupWakas',
+            'allPiketJadwals',
+            'requestDispensasi'
+        ));
+    }
+
+    public function updatePenugasanPiket(Request $request)
+    {
+        $days = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+
+        foreach ($days as $day) {
+            $guruId = $request->input("piket.{$day}");
+            if ($guruId) {
+                JadwalPiket::updateOrCreate(
+                    ['hari' => $day, 'tipe' => 'guru'],
+                    ['user_id' => $guruId, 'keterangan' => "Petugas Piket Guru Hari {$day}"]
+                );
+            }
+
+            $wakaId = $request->input("waka.{$day}");
+            if ($wakaId) {
+                JadwalPiket::updateOrCreate(
+                    ['hari' => $day, 'tipe' => 'waka'],
+                    ['user_id' => $wakaId, 'keterangan' => "Petugas Piket Waka Hari {$day}"]
+                );
+            }
+        }
+
+        return redirect()->route('dashboard.rekap-jurnal')->with('success', 'Penugasan Guru Piket dan Waka berhasil diperbarui!');
+    }
+
+    public function catatanJurnal(Request $request)
+    {
+        return $this->rekapJurnal($request);
+    }
+
+    // =========================================================================
+    // 8. MANAJEMEN USER (ADMIN, GURU, PENGURUS KELAS)
     // =========================================================================
     public function user(Request $request)
     {
-        $roleMap = [
-            'admin' => ['label' => 'Admin', 'class' => 'bg-purple-100 text-purple-700'],
-            'waka' => ['label' => 'Waka', 'class' => 'bg-amber-100 text-amber-700'],
-            'piket' => ['label' => 'Guru Piket', 'class' => 'bg-teal-100 text-teal-700'],
-            'guru' => ['label' => 'Guru Pengajar', 'class' => 'bg-emerald-100 text-emerald-700'],
-            'sekretaris' => ['label' => 'Sekretaris Kelas', 'class' => 'bg-sky-100 text-sky-700'],
-        ];
+        $search = $request->query('search');
+        $role = $request->query('role');
 
-        // Ambil akun pengguna sistem yang dikelola di Manajemen User
-        $rawUsers = User::with(['kelas', 'mapel'])
-            ->where(function ($q) {
-                $q->where('is_system_user', true)
-                  ->orWhereIn('role', ['admin', 'waka', 'piket', 'sekretaris']);
-            })
-            ->orderBy('role')
-            ->orderBy('name')
+        $query = User::with('mapel')->whereIn('role', ['admin', 'pengurus_kelas', 'guru']);
+
+        if ($role) {
+            $query->where('role', $role);
+        }
+
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('username', 'like', "%{$search}%")
+                  ->orWhere('nip', 'like', "%{$search}%")
+                  ->orWhereHas('mapel', function ($m) use ($search) {
+                      $m->where('nama_mapel', 'like', "%{$search}%");
+                  })
+                  ->orWhereIn('id', function ($sub) use ($search) {
+                      $sub->select('id_user')
+                          ->from('jadwal_pelajarans')
+                          ->where('mapel', 'like', "%{$search}%");
+                  });
+            });
+        }
+
+        $users = $query->orderBy('name')->get();
+
+        $jadwalRecords = JadwalPelajaran::whereNotNull('id_user')
+            ->whereNotNull('mapel')
+            ->where('mapel', 'not like', '%istirahat%')
+            ->where('mapel', 'not like', '%upacara%')
+            ->where('mapel', 'not like', '%pembiasaan%')
+            ->select('id_user', 'mapel')
+            ->distinct()
             ->get();
 
-        $usersForJs = $rawUsers->map(function ($u) use ($roleMap) {
-            $r = $u->role;
-            $meta = $roleMap[$r] ?? ['label' => ucfirst($r), 'class' => 'bg-gray-100 text-gray-700'];
+        $allMapelsByUser = [];
+        foreach ($jadwalRecords as $jr) {
+            if ($jr->mapel) {
+                $allMapelsByUser[$jr->id_user][$jr->mapel] = true;
+            }
+        }
+
+        $usersForJs = $users->map(function ($u) use ($allMapelsByUser) {
+            $roleLabel = match ($u->role) {
+                'admin' => 'Admin',
+                'guru' => 'Guru Pengajar',
+                'pengurus_kelas' => 'Sekretaris Kelas',
+                default => ucfirst($u->role),
+            };
+            $roleClass = match ($u->role) {
+                'admin' => 'bg-purple-50 text-purple-700 border border-purple-200',
+                'guru' => 'bg-emerald-50 text-emerald-700 border border-emerald-200',
+                'pengurus_kelas' => 'bg-sky-50 text-sky-700 border border-sky-200',
+                default => 'bg-gray-50 text-gray-700 border border-gray-200',
+            };
+
+            $mapelList = isset($allMapelsByUser[$u->id]) ? array_keys($allMapelsByUser[$u->id]) : [];
+            if ($u->mapel && !in_array($u->mapel->nama_mapel, $mapelList)) {
+                $mapelList[] = $u->mapel->nama_mapel;
+            }
+            $namaMapel = !empty($mapelList) ? implode(', ', $mapelList) : (optional($u->mapel)->nama_mapel ?? '');
 
             return [
                 'id' => $u->id,
                 'name' => $u->name,
-                'identifier' => $u->username ?: ($u->nip ?: '-'),
-                'username' => $u->username,
-                'nip' => $u->nip,
-                'role' => $meta['label'],
-                'raw_role' => $r,
-                'phone' => $u->no_hp ?: '-',
-                'status' => $u->status ?? 'aktif',
-                'alasan_hapus' => $u->alasan_hapus ?: '',
-                'id_kelas' => $u->id_kelas,
-                'nama_kelas' => optional($u->kelas)->nama_kelas ?? '',
-                'mapel_id' => $u->mapel_id,
-                'nama_mapel' => optional($u->mapel)->nama_mapel ?? '',
-                'roleClass' => $meta['class'],
+                'username' => $u->username ?? '',
+                'identifier' => $u->username ?? $u->nip ?? '-',
+                'nip' => $u->nip ?? '',
+                'role' => $roleLabel,
+                'raw_role' => $u->role,
+                'roleClass' => $roleClass,
+                'phone' => $u->no_hp ?? '-',
+                'status' => 'aktif',
+                'nama_kelas' => '',
+                'nama_mapel' => $namaMapel,
+                'id_kelas' => '',
+                'mapel_id' => $u->mapel_id ?? '',
             ];
         });
 
-        $kelases = Kelas::where(function ($q) {
-            $q->where('status', 'aktif')->orWhereNull('status');
-        })->orderBy('nama_kelas')->get();
+        $kelasList = Kelas::orderBy('nama_kelas')->get();
+        $kelases = $kelasList;
+        $mapels = Mapel::orderBy('nama_mapel')->get();
 
-        $mapels = Mapel::where(function ($q) {
-            $q->where('status', 'aktif')->orWhereNull('status');
-        })->orderBy('nama_mapel')->get();
-
-        return view('dashboard.admin.manajemen-user', compact('usersForJs', 'kelases', 'mapels'));
+        return view('dashboard.admin.manajemen-user', compact('users', 'usersForJs', 'kelasList', 'kelases', 'mapels', 'search', 'role'));
     }
 
     public function storeUser(Request $request)
     {
+        if ($request->input('role') === 'sekretaris') {
+            $request->merge(['role' => 'pengurus_kelas']);
+        }
+
         $validated = $request->validate([
-            'role' => 'required|in:admin,waka,piket,sekretaris,guru',
-            'nama' => 'required|string|max:255',
-            'identifier' => 'nullable|string|max:100',
-            'nip' => 'nullable|string|max:30',
-            'phone' => 'nullable|string|max:20',
-            'id_kelas' => 'nullable|exists:kelas,id_kelas',
-            'mapel_id' => 'nullable|exists:mapels,id',
+            'name' => 'required|string|max:255',
+            'username' => 'required|string|max:50|unique:users,username',
+            'nip' => 'nullable|string|max:30|unique:users,nip',
+            'role' => 'required|in:admin,pengurus_kelas,guru',
             'password' => 'required|string|min:6',
+            'no_hp' => 'nullable|string|max:25',
+            'mapel_id' => 'nullable|exists:mapels,id',
         ], [
-            'nama.required' => 'Nama lengkap wajib diisi.',
-            'password.required' => 'Password wajib diisi.',
+            'username.unique' => 'Username ini sudah digunakan.',
+            'nip.unique' => 'NIP ini sudah terdaftar.',
             'password.min' => 'Password minimal 6 karakter.',
         ]);
 
-        $username = ($validated['identifier'] ?? null) ?: (($validated['nip'] ?? null) ?: Str::slug($validated['nama'], '_'));
-        $baseUsername = $username;
-        $counter = 1;
-        while (User::where('username', $username)->exists()) {
-            $username = $baseUsername . '_' . $counter;
-            $counter++;
-        }
-
         User::create([
-            'name' => $validated['nama'],
-            'username' => $username,
+            'name' => $validated['name'],
+            'username' => $validated['username'],
             'nip' => $validated['nip'] ?? null,
             'role' => $validated['role'],
-            'is_system_user' => true,
-            'id_kelas' => $validated['role'] === 'sekretaris' ? ($validated['id_kelas'] ?? null) : null,
-            'mapel_id' => $validated['role'] === 'guru' ? ($validated['mapel_id'] ?? null) : null,
-            'no_hp' => $validated['phone'] ?? null,
+            'no_hp' => $validated['no_hp'] ?? null,
+            'mapel_id' => $validated['mapel_id'] ?? null,
             'password' => Hash::make($validated['password']),
-            'status' => 'aktif',
-            'alasan_hapus' => null,
         ]);
 
-        return redirect()->route('admin.manajemen-user')->with('success', 'Akun pengguna baru (' . $validated['nama'] . ') berhasil ditambahkan ke sistem!');
+        return redirect()->route('admin.manajemen-user')->with('success', 'User baru berhasil dibuat!');
     }
 
     public function updateUser(Request $request, $id)
     {
         $user = User::findOrFail($id);
 
+        if ($request->input('role') === 'sekretaris') {
+            $request->merge(['role' => 'pengurus_kelas']);
+        }
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'role' => 'required|string',
-            'username' => 'nullable|string|max:100',
-            'phone' => 'nullable|string|max:20',
-            'nip' => 'nullable|string|max:30',
-            'id_kelas' => 'nullable|exists:kelas,id_kelas',
-            'mapel_id' => 'nullable|exists:mapels,id',
-            'status' => 'nullable|in:aktif,nonaktif',
+            'username' => 'required|string|max:50|unique:users,username,' . $user->id,
+            'nip' => 'nullable|string|max:30|unique:users,nip,' . $user->id,
+            'role' => 'required|in:admin,pengurus_kelas,guru',
             'password' => 'nullable|string|min:6',
+            'no_hp' => 'nullable|string|max:25',
+            'mapel_id' => 'nullable|exists:mapels,id',
         ]);
-
-        $reverseRoleMap = [
-            'Admin' => 'admin',
-            'Waka' => 'waka',
-            'Guru Piket' => 'piket',
-            'Guru Pengajar' => 'guru',
-            'Sekretaris Kelas' => 'sekretaris',
-            'admin' => 'admin',
-            'waka' => 'waka',
-            'piket' => 'piket',
-            'guru' => 'guru',
-            'sekretaris' => 'sekretaris',
-        ];
-
-        $rawRole = $reverseRoleMap[$validated['role']] ?? $user->role;
 
         $updateData = [
             'name' => $validated['name'],
-            'role' => $rawRole,
-            'no_hp' => $validated['phone'] ?? $user->no_hp,
-            'nip' => $validated['nip'] ?? $user->nip,
-            'id_kelas' => $rawRole === 'sekretaris' ? ($validated['id_kelas'] ?? $user->id_kelas) : null,
-            'mapel_id' => $rawRole === 'guru' ? ($validated['mapel_id'] ?? $user->mapel_id) : null,
-            'is_system_user' => true,
+            'username' => $validated['username'],
+            'nip' => $validated['nip'] ?? null,
+            'role' => $validated['role'],
+            'no_hp' => $validated['no_hp'] ?? null,
+            'mapel_id' => $validated['mapel_id'] ?? null,
         ];
-
-        if (!empty($validated['status'])) {
-            $updateData['status'] = $validated['status'];
-            if ($validated['status'] === 'aktif') {
-                $updateData['alasan_hapus'] = null;
-            }
-        }
-
-        if (!empty($validated['username'])) {
-            $updateData['username'] = $validated['username'];
-        }
 
         if (!empty($validated['password'])) {
             $updateData['password'] = Hash::make($validated['password']);
         }
 
-        $oldName = $user->name;
         $user->update($updateData);
 
-        // Sinkronisasi otomatis ke data kelas jika wali kelas
-        if ($oldName !== $validated['name']) {
-            Kelas::where('wali_kelas', $oldName)->update(['wali_kelas' => $validated['name']]);
-        }
-
-        return redirect()->route('admin.manajemen-user')->with('success', 'Informasi akun pengguna ' . $validated['name'] . ' berhasil diperbarui!');
+        return redirect()->route('admin.manajemen-user')->with('success', 'Data user ' . $user->name . ' berhasil diperbarui!');
     }
 
-    public function destroyUser(Request $request, $id)
+    public function destroyUser($id)
     {
         $user = User::findOrFail($id);
-        $alasan = $request->input('alasan', 'Dinonaktifkan oleh administrator pada Manajemen User');
+        $name = $user->name;
+        $user->delete();
 
-        $user->update([
-            'status' => 'nonaktif',
-            'alasan_hapus' => $alasan,
-        ]);
-
-        return redirect()->route('admin.manajemen-user')->with('success', 'Akun pengguna ' . $user->name . ' berhasil dinonaktifkan.');
-    }
-
-    public function restoreUser($id)
-    {
-        $user = User::findOrFail($id);
-        $user->update([
-            'status' => 'aktif',
-            'alasan_hapus' => null,
-        ]);
-
-        return redirect()->route('admin.manajemen-user')->with('success', 'Akun pengguna ' . $user->name . ' berhasil diaktifkan kembali!');
-    }
-
-    // =========================================================================
-    // 9. LAPORAN GANTI PASSWORD USER
-    // =========================================================================
-    public function terimaResetPassword(Request $request, $id)
-    {
-        $request->validate([
-            'password_baru' => 'required|min:4',
-            'catatan' => 'nullable|string',
-        ], [
-            'password_baru.required' => 'Password baru wajib diisi.',
-            'password_baru.min' => 'Password baru minimal 4 karakter.',
-        ]);
-
-        $laporan = PasswordResetRequest::findOrFail($id);
-        $user = $laporan->user ?? User::where('username', $laporan->username)->first();
-
-        if (!$user) {
-            return redirect()->back()->with('error', 'User terkait laporan ini tidak ditemukan di database.');
-        }
-
-        // Update password user di database
-        $user->update([
-            'password' => Hash::make($request->password_baru),
-        ]);
-
-        // Tandai status laporan sebagai disetujui
-        $laporan->update([
-            'status' => 'disetujui',
-            'catatan_admin' => $request->catatan ?? ('Password berhasil diubah oleh Admin pada ' . now()->translatedFormat('d M Y H:i')),
-            'handled_by' => auth()->id(),
-            'handled_at' => now(),
-        ]);
-
-        // Buat notifikasi jika kelas Notifikasi ada
-        if (class_exists(Notifikasi::class)) {
-            try {
-                Notifikasi::create([
-                    'id_user' => $user->id,
-                    'id_kelas' => $user->id_kelas ?? null,
-                    'judul' => 'Permintaan Reset Password Disetujui',
-                    'pesan' => 'Permintaan reset password Anda telah disetujui oleh Administrator. Password baru Anda telah aktif.',
-                    'tipe' => 'info',
-                    'is_read' => false,
-                ]);
-            } catch (\Throwable $e) {
-                // Abaikan jika tabel notifikasi opsional
-            }
-        }
-
-        return redirect()->back()->with('success', 'Permintaan ganti password untuk ' . $user->name . ' (' . $user->username . ') berhasil diterima dan password baru telah diaktifkan!');
-    }
-
-    public function tolakResetPassword(Request $request, $id)
-    {
-        $laporan = PasswordResetRequest::findOrFail($id);
-
-        $laporan->update([
-            'status' => 'ditolak',
-            'catatan_admin' => $request->input('catatan', 'Permintaan ditolak oleh Administrator.'),
-            'handled_by' => auth()->id(),
-            'handled_at' => now(),
-        ]);
-
-        return redirect()->back()->with('info', 'Permintaan ganti password untuk ' . $laporan->nama . ' telah ditolak.');
+        return redirect()->route('admin.manajemen-user')->with('success', 'User ' . $name . ' berhasil dihapus!');
     }
 }

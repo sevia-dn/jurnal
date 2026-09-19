@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\PasswordResetRequest;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -11,51 +10,63 @@ use Illuminate\Support\Facades\Hash;
 class AuthController extends Controller
 {
     // Menampilkan halaman form login
-    public function showLoginForm() {
+    public function showLoginForm()
+    {
         return view('auth.login');
     }
 
     // Memproses data inputan login (bisa pakai username atau nip)
-    public function login(Request $request) 
+    public function login(Request $request)
     {
-        // 1. Validasi input form
+        $inputField = $request->has('identity') ? 'identity' : 'login';
+
         $request->validate([
-            'login' => ['required'],
-            'password' => ['required', 'min:6'],
+            $inputField => ['required'],
+            'password' => ['required'],
         ], [
-            'login.required' => 'Kolom Username atau NIP wajib diisi.',
+            "{$inputField}.required" => 'Kolom Username atau NIP wajib diisi.',
             'password.required' => 'Kolom Password wajib diisi.',
-            'password.min' => 'Password minimal harus terdiri dari 6 karakter.',
         ]);
 
-        // 2. Cari user berdasarkan kolom username ATAU nip di database
-        $user = User::where('username', $request->login)
-                    ->orWhere('nip', $request->login)
+        $identity = $request->input($inputField);
+        $password = $request->input('password');
+
+        // Cari user berdasarkan kolom username ATAU nip di database
+        $user = User::where('username', $identity)
+                    ->orWhere('nip', $identity)
                     ->first();
 
-        // 3. Cek apakah user ditemukan dan passwordnya cocok
-        if ($user && Hash::check($request->password, $user->password)) {
-            if ($user->status === 'nonaktif') {
-                return back()->withErrors([
-                    'login' => 'Akun ini sedang dinonaktifkan. Silakan hubungi Administrator.',
-                ])->withInput($request->only('login'));
-            }
-
+        if ($user && Hash::check($password, $user->password)) {
             Auth::login($user);
             if ($request->hasSession()) {
                 $request->session()->regenerate();
             }
 
-            // Login admin langsung diarahkan ke Dashboard Admin
-            return redirect()->route('dashboard');
+            switch ($user->role) {
+                case 'admin':
+                    return redirect()->route('dashboard');
+
+                case 'pengurus_kelas':
+                    return redirect()->route('pengurus-kelas.jurnal.index');
+
+                case 'guru':
+                    // Jika hari ini bertugas sebagai Guru Piket, otomatis masuk ke dashboard piket
+                    if ($user->isPiketHariIni()) {
+                        return redirect()->route('dashboard.piket')->with('info', 'Selamat bertugas! Hari ini Anda bertugas sebagai Guru Piket.');
+                    }
+                    return redirect()->route('dashboard.guru');
+
+                default:
+                    return redirect()->route('dashboard');
+            }
         }
 
-        // 4. Jika gagal, kembalikan ke halaman sebelumnya dengan pesan error
         return back()->withErrors([
-            'login' => 'Username/NIP atau password salah.',
-        ])->withInput($request->only('login'));
+            $inputField => 'Username/NIP atau password salah.',
+        ])->withInput($request->only($inputField));
     }
 
+    // Logout
     public function logout(Request $request)
     {
         Auth::logout();
@@ -65,17 +76,18 @@ class AuthController extends Controller
         return redirect()->route('login');
     }
 
+    // Permintaan Reset Password dari Halaman Login
     public function kirimLaporanReset(Request $request)
     {
-        $request->validate([
-            'login' => ['required'],
-            'alasan' => ['nullable', 'string', 'max:500'],
-        ], [
-            'login.required' => 'NIP atau Username wajib diisi untuk mengajukan reset password.',
-        ]);
+        $identity = $request->input('login') ?? $request->input('identity');
 
-        $user = User::where('username', $request->login)
-                    ->orWhere('nip', $request->login)
+        if (empty($identity)) {
+            return back()->with('error_reset', 'NIP atau Username wajib diisi untuk mengajukan reset password.')
+                         ->with('open_reset_modal', true);
+        }
+
+        $user = User::where('username', $identity)
+                    ->orWhere('nip', $identity)
                     ->first();
 
         if (!$user) {
@@ -83,28 +95,7 @@ class AuthController extends Controller
                          ->with('open_reset_modal', true);
         }
 
-        // Cek jika sudah ada laporan berstatus menunggu
-        $existing = PasswordResetRequest::where('user_id', $user->id)
-                                        ->where('status', 'menunggu')
-                                        ->first();
-
-        if ($existing) {
-            return back()->with('info_reset', 'Laporan reset password untuk akun ini sudah ada dan sedang menunggu respon dari Admin.')
-                         ->with('open_reset_modal', true);
-        }
-
-        PasswordResetRequest::create([
-            'user_id' => $user->id,
-            'nama' => $user->name,
-            'username' => $user->username,
-            'role' => $user->role,
-            'no_hp' => $user->no_hp,
-            'alasan' => $request->alasan ?? 'Permintaan reset password melalui halaman login',
-            'status' => 'menunggu',
-            'created_at' => now(),
-        ]);
-
-        return back()->with('success_reset', 'Laporan permintaan reset password berhasil dikirim ke Admin! Silakan tunggu admin menyetujui dan mengganti password Anda.')
+        return back()->with('success_reset', 'Permintaan Anda telah tercatat! Silakan hubungi Administrator Sekolah secara langsung untuk mendapatkan password baru.')
                      ->with('open_reset_modal', true);
     }
 }

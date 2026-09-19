@@ -11,6 +11,7 @@ class JadwalPelajaran extends Model
 
     protected $table = 'jadwal_pelajarans';
     protected $primaryKey = 'id_jadwal';
+    public $timestamps = false;
 
     protected $fillable = [
         'id_user',
@@ -22,7 +23,6 @@ class JadwalPelajaran extends Model
         'jam_selesai',
         'mapel',
         'status',
-        'alasan_hapus',
     ];
 
     /**

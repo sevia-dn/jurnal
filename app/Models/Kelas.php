@@ -14,19 +14,10 @@ class Kelas extends Model
         'nama_kelas',
         'wali_kelas',
         'jumlah_siswa',
-        'status',
-        'alasan_hapus',
     ];
 
     public function siswas()
     {
         return $this->hasMany(Siswa::class, 'kelas_id', 'id_kelas');
-    }
-
-    public function activeSiswas()
-    {
-        return $this->hasMany(Siswa::class, 'kelas_id', 'id_kelas')->where(function ($q) {
-            $q->where('status', 'aktif')->orWhereNull('status');
-        });
     }
 }

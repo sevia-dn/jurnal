@@ -10,17 +10,21 @@ class Siswa extends Model
 
     protected $fillable = [
         'kelas_id',
+        'nisn',
         'nis',
         'nama',
         'jenis_kelamin',
-        'status',
-        'alasan_hapus',
     ];
 
-    protected $attributes = [
-        'jenis_kelamin' => 'L',
-        'status' => 'aktif',
-    ];
+    public function getNisAttribute()
+    {
+        return $this->attributes['nisn'] ?? $this->attributes['nis'] ?? null;
+    }
+
+    public function setNisAttribute($value)
+    {
+        $this->attributes['nisn'] = $value;
+    }
 
     public function kelas()
     {

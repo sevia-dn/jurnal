@@ -39,12 +39,13 @@
         </div>
     @endif
 
-    {{-- Datalist Autocomplete Guru --}}
-    <datalist id="listGuruSuggestions">
-        @foreach($gurus as $guru)
-            <option value="{{ $guru->name }}">
-        @endforeach
-    </datalist>
+    <style>
+        /* Sembunyikan segitiga/panah bawaan input browser */
+        input::-webkit-calendar-picker-indicator {
+            display: none !important;
+            -webkit-appearance: none;
+        }
+    </style>
 
     {{-- Header Halaman --}}
     <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4">
@@ -52,11 +53,11 @@
             <h1 class="text-2xl font-bold text-gray-900">Manajemen Mata Pelajaran</h1>
             <p class="text-sm text-gray-500 mt-1">Kelola seluruh mata pelajaran jurusan dan mapel biasa di sekolah.</p>
         </div>
-        <form method="GET" action="{{ route('dashboard.mapel') }}" class="flex items-center gap-2">
+        <form method="GET" action="{{ route('dashboard.mapel') }}" autocomplete="off" class="flex items-center gap-2">
             @if(request('kategori'))
                 <input type="hidden" name="kategori" value="{{ request('kategori') }}">
             @endif
-            <input type="text" name="search" value="{{ request('search') }}" placeholder="Cari kode, nama, guru..."
+            <input type="text" name="search" value="{{ request('search') }}" onkeyup="filterAndSortTableMapel(this.value)" placeholder="Cari kode, nama, guru..." autocomplete="off"
                    class="border border-gray-300 rounded-lg px-3 py-2 text-sm w-60 focus:outline-none focus:ring-2 focus:ring-emerald-400 bg-white shadow-sm">
             @if(request('search'))
                 <a href="{{ route('dashboard.mapel', ['kategori' => request('kategori')]) }}" class="text-xs text-gray-500 hover:text-red-600">Reset</a>
@@ -89,19 +90,19 @@
             Tambah Mata Pelajaran Baru
         </h2>
 
-        <form method="POST" action="{{ route('dashboard.mapel.store') }}" class="space-y-4" onsubmit="flushGuruInputBeforeSubmit('tambah')">
+        <form method="POST" action="{{ route('dashboard.mapel.store') }}" autocomplete="off" class="space-y-4" onsubmit="flushGuruInputBeforeSubmit('tambah')">
             @csrf
 
             <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div class="flex flex-col">
                     <label class="text-sm font-medium text-gray-700 mb-1">Kode Mapel <span class="text-red-500">*</span></label>
-                    <input type="text" name="kode_mapel" value="{{ old('kode_mapel') }}" required placeholder="Cth: MJ-RPL, MU-BIN"
+                    <input type="text" name="kode_mapel" value="{{ old('kode_mapel') }}" required placeholder="Cth: MJ-RPL, MU-BIN" autocomplete="off"
                            class="border border-gray-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm transition-all bg-white">
                 </div>
 
                 <div class="flex flex-col md:col-span-2">
                     <label class="text-sm font-medium text-gray-700 mb-1">Nama Mapel <span class="text-red-500">*</span></label>
-                    <input type="text" name="nama_mapel" value="{{ old('nama_mapel') }}" required placeholder="Cth: Rekayasa Perangkat Lunak (RPL)"
+                    <input type="text" name="nama_mapel" value="{{ old('nama_mapel') }}" required placeholder="Cth: Rekayasa Perangkat Lunak (RPL)" autocomplete="off"
                            class="border border-gray-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm transition-all bg-white">
                 </div>
 
@@ -109,38 +110,37 @@
                     <label class="text-sm font-medium text-gray-700 mb-1">Kategori <span class="text-red-500">*</span></label>
                     <select id="kategoriTambah" name="kategori" required onchange="handleKategoriChange('tambah')"
                             class="border border-gray-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm transition-all bg-white cursor-pointer">
-                        <option value="biasa" {{ old('kategori', 'biasa') == 'biasa' ? 'selected' : '' }}>Mapel Biasa (1 Guru Pengampu)</option>
-                        <option value="jurusan" {{ old('kategori') == 'jurusan' ? 'selected' : '' }}>Mapel Jurusan (Maksimal 10 Guru)</option>
+                        <option value="biasa" {{ old('kategori', 'biasa') == 'biasa' ? 'selected' : '' }}>Mapel Biasa</option>
+                        <option value="jurusan" {{ old('kategori') == 'jurusan' ? 'selected' : '' }}>Mapel Jurusan</option>
                     </select>
                 </div>
             </div>
 
-            {{-- Input Guru Pengampu Berbentuk Ketik Tag / Chip --}}
-            <div class="flex flex-col">
-                <div class="flex items-center justify-between mb-1.5">
-                    <label class="text-sm font-medium text-gray-700">
-                        Guru Pengampu
-                        <span id="hintGuruTambah" class="text-xs text-gray-500 font-normal">(Ketik nama guru, mapel biasa hanya diampu oleh 1 guru)</span>
-                    </label>
-                    <span class="text-xs font-semibold text-emerald-700" id="counterTambahGuru">0 / 1 Guru</span>
+            {{-- Input Guru Pengampu --}}
+            <div class="flex flex-col relative">
+                <label class="text-sm font-medium text-gray-700 mb-1.5">Guru Pengampu</label>
+
+                <div class="relative">
+                    <div class="border border-gray-300 rounded-lg p-2.5 bg-white flex flex-wrap gap-2 items-center min-h-[48px] focus-within:ring-2 focus-within:ring-emerald-500 focus-within:border-emerald-500 transition-all shadow-sm cursor-text" onclick="document.getElementById('inputKetikTambahGuru').focus()">
+                        <div id="chipsTambahGuru" class="flex flex-wrap gap-2 items-center">
+                            {{-- Tag chip akan muncul di sini --}}
+                        </div>
+                        <input type="text" id="inputKetikTambahGuru" autocomplete="off" placeholder="Ketik nama guru..."
+                               class="flex-1 min-w-[220px] text-sm outline-none px-2 py-1 text-gray-800 placeholder-gray-400 bg-transparent"
+                               oninput="handleGuruInput(this, 'tambah')"
+                               onfocus="handleGuruFocus('tambah')"
+                               onblur="handleGuruBlur('tambah')"
+                               onkeydown="handleGuruKeyDown(event, 'tambah')">
+                    </div>
+
+                    {{-- Custom Autocomplete Dropdown Menu --}}
+                    <div id="dropdownGuruTambah" class="hidden absolute left-0 right-0 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-50 max-h-72 overflow-hidden flex flex-col divide-y divide-gray-100">
+                    </div>
                 </div>
 
-                <div class="border border-gray-300 rounded-lg p-2.5 bg-white flex flex-wrap gap-2 items-center min-h-[48px] focus-within:ring-2 focus-within:ring-emerald-500 focus-within:border-emerald-500 transition-all shadow-sm">
-                    <div id="chipsTambahGuru" class="flex flex-wrap gap-2 items-center">
-                        {{-- Tag chip akan muncul di sini --}}
-                    </div>
-                    <div class="flex-1 flex items-center gap-2 min-w-[240px]">
-                        <input type="text" id="inputKetikTambahGuru" list="listGuruSuggestions" placeholder="Ketik nama guru di sini..."
-                               class="w-full text-sm outline-none px-2 py-1 text-gray-800 placeholder-gray-400 bg-transparent"
-                               onkeydown="handleGuruKeyDown(event, 'tambah')">
-                        <button type="button" onclick="addGuruFromInput('tambah')" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md text-xs font-semibold shrink-0 transition shadow-sm flex items-center gap-1">
-                            <i class="bi bi-plus-lg"></i> Tambah
-                        </button>
-                    </div>
-                </div>
                 <input type="hidden" name="guru_names" id="hiddenGuruNamesTambah" value="">
                 <p class="text-[11px] text-gray-500 mt-1 flex items-center gap-1" id="keteranganGuruTambah">
-                    <i class="bi bi-info-circle text-emerald-600"></i> Ketik nama guru (atau pilih dari saran autocomplete saat mengetik), lalu tekan Enter.
+                    <i class="bi bi-info-circle text-emerald-600"></i> Ketik nama guru, pilih dari saran atau tekan Enter.
                 </p>
             </div>
 
@@ -153,23 +153,54 @@
         </form>
     </div>
 
+    {{-- ================= FLOATING BATCH ACTION BAR ================= --}}
+    <div id="batchActionBarMapel" class="hidden mb-4 p-4 bg-emerald-50 border border-emerald-200 rounded-2xl flex flex-wrap items-center justify-between gap-3 shadow-sm transition-all">
+        <div class="flex items-center gap-2">
+            <span class="w-6 h-6 rounded-full bg-emerald-600 text-white text-xs font-bold flex items-center justify-center" id="batchBadgeMapel">0</span>
+            <span class="text-sm font-semibold text-emerald-900" id="batchTextMapel">0 mata pelajaran dipilih</span>
+        </div>
+
+        <div class="flex items-center gap-2.5 flex-wrap">
+            <button type="button" onclick="confirmBatchDeleteMapel()" class="px-3.5 py-2 text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700 rounded-xl transition shadow-2xs flex items-center gap-1.5 cursor-pointer">
+                <i class="bi bi-trash-fill"></i>
+                <span>Hapus Terpilih</span>
+            </button>
+            <button type="button" onclick="clearMapelSelections()" class="px-3 py-2 text-xs font-medium text-gray-500 hover:text-gray-700 cursor-pointer">
+                Batal
+            </button>
+        </div>
+    </div>
+
     {{-- ================= TABEL DAFTAR MAPEL ================= --}}
     <div class="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
         <div class="overflow-x-auto">
             <table class="w-full text-left border-collapse">
                 <thead class="bg-gray-50 text-gray-700 border-b border-gray-200 text-sm">
                 <tr>
+                    <th class="p-4 w-10 text-center">
+                        <input type="checkbox" id="selectAllMapel" class="rounded text-emerald-600 focus:ring-emerald-500 cursor-pointer w-4 h-4">
+                    </th>
                     <th class="p-4 w-12 text-center">No</th>
                     <th class="p-4 w-32">Kode</th>
                     <th class="p-4 w-40">Kategori</th>
-                    <th class="p-4">Nama Mapel</th>
+                    <th class="p-4">
+                        <div class="flex items-center gap-1.5">
+                            <span>Nama Mapel</span>
+                            <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800" title="Terurut otomatis A-Z">
+                                <i class="bi bi-sort-alpha-down"></i> A-Z
+                            </span>
+                        </div>
+                    </th>
                     <th class="p-4">Guru Pengampu</th>
                     <th class="p-4 text-center w-28">Aksi</th>
                 </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-100 text-sm text-gray-700">
                     @forelse($mapels as $i => $mapel)
-                        <tr class="hover:bg-emerald-50/30 transition-colors">
+                        <tr class="row-mapel-item hover:bg-emerald-50/30 transition-colors">
+                            <td class="p-4 text-center">
+                                <input type="checkbox" value="{{ $mapel->id }}" class="mapel-checkbox rounded text-emerald-600 focus:ring-emerald-500 cursor-pointer w-4 h-4" onchange="updateBatchStateMapel()">
+                            </td>
                             <td class="p-4 text-center text-gray-500">{{ $i + 1 }}</td>
                             <td class="p-4 font-mono font-medium text-emerald-800">
                                 <span class="px-2.5 py-1 bg-emerald-50 rounded border border-emerald-200 text-xs">
@@ -190,7 +221,7 @@
                             <td class="p-4 font-semibold text-gray-900">{{ $mapel->nama_mapel }}</td>
                             <td class="p-4">
                                 @php
-                                    $pengampus = $mapel->pengampu->count() > 0 ? $mapel->pengampu : ($mapel->guru ? collect([$mapel->guru]) : collect());
+                                    $pengampus = $mapel->all_pengampus ?? $mapel->gurus ?? collect();
                                 @endphp
                                 @if($pengampus->count() > 0)
                                     <div class="flex flex-wrap gap-1.5">
@@ -212,6 +243,7 @@
                                         data-nama="{{ $mapel->nama_mapel }}"
                                         data-kategori="{{ $mapel->kategori }}"
                                         data-pengampus='@json($pengampus->pluck("name"))'
+                                        data-jadwal-gurus='@json($mapel->jadwal_gurus ?? [])'
                                         onclick="handleEditMapelBtn(this)"
                                         class="text-gray-400 hover:text-amber-600 transition" title="Edit Mapel">
                                     <svg class="w-5 h-5 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -229,7 +261,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="6" class="p-8 text-center text-gray-400">
+                            <td colspan="7" class="p-8 text-center text-gray-400">
                                 <svg class="w-12 h-12 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
                                 </svg>
@@ -242,7 +274,7 @@
         </div>
         <div class="bg-gray-50 p-4 border-t border-gray-100 flex justify-between items-center text-sm text-gray-500">
             <span>Menampilkan {{ count($mapels) }} mata pelajaran</span>
-            <span class="text-xs text-gray-400">Total: 10 Jurusan (hingga 10 guru per jurusan) &bull; 25 Mapel Biasa (1 guru pengampu)</span>
+            <span class="text-xs text-gray-400">Total: {{ $counts['jurusan'] }} Mapel Jurusan &bull; {{ $counts['biasa'] }} Mapel Biasa</span>
         </div>
     </div>
 
@@ -262,51 +294,67 @@
                 </button>
             </div>
 
-            <form id="formEditMapel" method="POST" action="" class="space-y-4" onsubmit="flushGuruInputBeforeSubmit('edit')">
+            <form id="formEditMapel" method="POST" action="" autocomplete="off" class="space-y-4" onsubmit="flushGuruInputBeforeSubmit('edit')">
                 @csrf
                 @method('PUT')
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                         <label for="editMapelKode" class="mb-1 block text-sm font-medium text-gray-700">Kode Mapel <span class="text-red-500">*</span></label>
-                        <input id="editMapelKode" name="kode_mapel" type="text" required class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none transition focus:border-emerald-600 focus:ring-2 focus:ring-emerald-400">
+                        <input id="editMapelKode" name="kode_mapel" type="text" required autocomplete="off" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none transition focus:border-emerald-600 focus:ring-2 focus:ring-emerald-400">
                     </div>
                     <div>
                         <label for="editMapelKategori" class="mb-1 block text-sm font-medium text-gray-700">Kategori <span class="text-red-500">*</span></label>
                         <select id="editMapelKategori" name="kategori" required onchange="handleKategoriChange('edit')" class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-emerald-600 focus:ring-2 focus:ring-emerald-400 cursor-pointer">
-                            <option value="biasa">Mapel Biasa (1 Guru Pengampu)</option>
-                            <option value="jurusan">Mapel Jurusan (Maksimal 10 Guru)</option>
+                            <option value="biasa">Mapel Biasa</option>
+                            <option value="jurusan">Mapel Jurusan</option>
                         </select>
                     </div>
                 </div>
 
                 <div>
                     <label for="editMapelNama" class="mb-1 block text-sm font-medium text-gray-700">Nama Mapel <span class="text-red-500">*</span></label>
-                    <input id="editMapelNama" name="nama_mapel" type="text" required class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none transition focus:border-emerald-600 focus:ring-2 focus:ring-emerald-400">
+                    <input id="editMapelNama" name="nama_mapel" type="text" required autocomplete="off" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none transition focus:border-emerald-600 focus:ring-2 focus:ring-emerald-400">
                 </div>
 
-                <div>
-                    <div class="flex items-center justify-between mb-1.5">
-                        <label class="block text-sm font-medium text-gray-700">
-                            Guru Pengampu
-                            <span id="hintGuruEdit" class="text-xs text-gray-500 font-normal">(Ketik nama guru, mapel biasa hanya diampu oleh 1 guru)</span>
-                        </label>
-                        <span class="text-xs font-semibold text-emerald-700" id="counterEditGuru">0 / 1 Guru</span>
+                <div class="flex flex-col relative">
+                    <label class="block text-sm font-medium text-gray-700 mb-1.5">Guru Pengampu</label>
+
+                    {{-- Banner Rekomendasi Guru dari Jadwal Pelajaran --}}
+                    <div id="rekomendasiJadwalContainer" class="hidden mb-2.5 p-2.5 bg-purple-50 border border-purple-200 rounded-xl text-xs text-purple-900 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-2xs">
+                        <div class="flex items-center gap-2">
+                            <i class="bi bi-magic text-purple-600 text-sm"></i>
+                            <div>
+                                <span class="font-bold">Guru Pengampu di Jadwal:</span>
+                                <span id="rekomendasiJadwalNames" class="ml-1 text-purple-800"></span>
+                            </div>
+                        </div>
+                        <button type="button" onclick="applyJadwalRekomendasi()" class="px-2.5 py-1 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-[11px] font-bold transition cursor-pointer shrink-0 self-start sm:self-auto inline-flex items-center gap-1 shadow-2xs">
+                            <i class="bi bi-plus-circle"></i> Tambahkan Semua
+                        </button>
                     </div>
 
-                    <div class="border border-gray-300 rounded-lg p-2.5 bg-white flex flex-wrap gap-2 items-center min-h-[48px] focus-within:ring-2 focus-within:ring-emerald-500 focus-within:border-emerald-500 transition-all shadow-sm">
-                        <div id="chipsEditGuru" class="flex flex-wrap gap-2 items-center">
-                            {{-- Chip edit guru --}}
-                        </div>
-                        <div class="flex-1 flex items-center gap-2 min-w-[240px]">
-                            <input type="text" id="inputKetikEditGuru" list="listGuruSuggestions" placeholder="Ketik nama guru..."
-                                   class="w-full text-sm outline-none px-2 py-1 text-gray-800 placeholder-gray-400 bg-transparent"
+                    <div class="relative">
+                        <div class="border border-gray-300 rounded-lg p-2.5 bg-white flex flex-wrap gap-2 items-center min-h-[48px] focus-within:ring-2 focus-within:ring-emerald-500 focus-within:border-emerald-500 transition-all shadow-sm cursor-text" onclick="document.getElementById('inputKetikEditGuru').focus()">
+                            <div id="chipsEditGuru" class="flex flex-wrap gap-2 items-center">
+                                {{-- Chip edit guru --}}
+                            </div>
+                            <input type="text" id="inputKetikEditGuru" autocomplete="off" placeholder="Ketik nama guru..."
+                                   class="flex-1 min-w-[220px] text-sm outline-none px-2 py-1 text-gray-800 placeholder-gray-400 bg-transparent"
+                                   oninput="handleGuruInput(this, 'edit')"
+                                   onfocus="handleGuruFocus('edit')"
+                                   onblur="handleGuruBlur('edit')"
                                    onkeydown="handleGuruKeyDown(event, 'edit')">
-                            <button type="button" onclick="addGuruFromInput('edit')" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md text-xs font-semibold shrink-0 transition shadow-sm flex items-center gap-1">
-                                <i class="bi bi-plus-lg"></i> Tambah
-                            </button>
+                        </div>
+
+                        {{-- Custom Autocomplete Dropdown --}}
+                        <div id="dropdownGuruEdit" class="hidden absolute left-0 right-0 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-50 max-h-72 overflow-hidden flex flex-col divide-y divide-gray-100">
                         </div>
                     </div>
+
                     <input type="hidden" name="guru_names" id="hiddenGuruNamesEdit" value="">
+                    <p class="text-[11px] text-gray-500 mt-1 flex items-center gap-1">
+                        <i class="bi bi-info-circle text-emerald-600"></i> Ketik nama guru, pilih dari saran atau tekan Enter. (Dapat memilih lebih dari 1 guru).
+                    </p>
                 </div>
 
                 <div class="flex justify-end gap-3 border-t border-gray-100 pt-5">
@@ -340,13 +388,13 @@
                 @csrf
                 @method('DELETE')
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Alasan Penghapusan <span class="text-red-500">*</span></label>
-                    <textarea id="deleteAlasanMapel" name="alasan" rows="3" required placeholder="Tuliskan alasan menonaktifkan mata pelajaran ini..." class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 text-sm"></textarea>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Alasan Penghapusan (Opsional)</label>
+                    <textarea id="deleteAlasanMapel" name="alasan" rows="3" placeholder="Tuliskan alasan menghapus mata pelajaran ini..." class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 text-sm"></textarea>
                 </div>
                 
                 <div class="flex justify-center gap-3 pt-4">
                     <button type="button" onclick="closeModal('modalHapusMapel')" class="px-5 py-2.5 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition text-sm font-medium w-full">Batal</button>
-                    <button type="submit" class="px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-lg transition shadow-sm text-sm font-medium w-full">Ya, Nonaktifkan Mapel</button>
+                    <button type="submit" class="px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-lg transition shadow-sm text-sm font-medium w-full">Ya, Hapus Mapel</button>
                 </div>
             </form>
         </div>
@@ -355,8 +403,15 @@
 </div>
 
 <script>
+    const allGuruList = @json($guruJson ?? []);
     let guruTagsTambah = [];
     let guruTagsEdit = [];
+    let currentEditingMapelId = null;
+    let currentEditingMapelJadwalGurus = [];
+    let guruFilterTab = {
+        'tambah': 'semua',
+        'edit': 'semua'
+    };
 
     function escapeHtml(text) {
         const div = document.createElement('div');
@@ -365,30 +420,20 @@
     }
 
     function getMaxGuru(type) {
-        const isTambah = type === 'tambah';
-        const select = document.getElementById(isTambah ? 'kategoriTambah' : 'editMapelKategori');
-        const kat = select ? select.value : 'biasa';
-        return kat === 'jurusan' ? 10 : 1;
+        return 25; // Izinkan banyak guru pengampu baik mapel biasa maupun kejuruan
     }
 
     function handleKategoriChange(type) {
-        const max = getMaxGuru(type);
-        const isTambah = type === 'tambah';
-        const hint = document.getElementById(isTambah ? 'hintGuruTambah' : 'hintGuruEdit');
-        const list = isTambah ? guruTagsTambah : guruTagsEdit;
-
-        if (hint) {
-            hint.textContent = (max === 10)
-                ? '(Ketik nama guru lalu tekan Enter atau klik + Tambah, maksimal 10 guru)'
-                : '(Ketik nama guru, mapel biasa hanya diampu oleh 1 guru)';
-        }
-
-        // Jika diubah ke mapel biasa dan guru > 1, simpan hanya 1 guru pertama
-        if (max === 1 && list.length > 1) {
-            list.splice(1);
-        }
-
         renderGuruChips(type);
+    }
+
+    function setGuruFilterTab(tab, type) {
+        guruFilterTab[type] = tab;
+        const input = document.getElementById(type === 'tambah' ? 'inputKetikTambahGuru' : 'inputKetikEditGuru');
+        if (input) {
+            handleGuruInput(input, type);
+            input.focus();
+        }
     }
 
     function renderGuruChips(type) {
@@ -396,7 +441,7 @@
         const list = isTambah ? guruTagsTambah : guruTagsEdit;
         const container = document.getElementById(isTambah ? 'chipsTambahGuru' : 'chipsEditGuru');
         const hiddenInput = document.getElementById(isTambah ? 'hiddenGuruNamesTambah' : 'hiddenGuruNamesEdit');
-        const counter = document.getElementById(isTambah ? 'counterTambahGuru' : 'counterEditGuru');
+        const input = document.getElementById(isTambah ? 'inputKetikTambahGuru' : 'inputKetikEditGuru');
         const max = getMaxGuru(type);
         
         if (!container || !hiddenInput) return;
@@ -408,61 +453,224 @@
             chip.innerHTML = `
                 <i class="bi bi-person-check text-emerald-600"></i>
                 <span>${escapeHtml(name)}</span>
-                <button type="button" onclick="removeGuruChip('${type}', ${idx})" class="text-emerald-700 hover:text-red-600 transition font-bold text-sm leading-none ml-1">&times;</button>
+                <button type="button" onclick="removeGuruChip('${type}', ${idx})" class="text-emerald-700 hover:text-red-600 transition font-bold text-sm leading-none ml-1 cursor-pointer" title="Hapus guru">&times;</button>
             `;
             container.appendChild(chip);
         });
 
         hiddenInput.value = JSON.stringify(list);
-        if (counter) {
-            counter.textContent = `${list.length} / ${max} Guru`;
+
+        // Update banner rekomendasi jika di modal edit
+        if (!isTambah && currentEditingMapelJadwalGurus && currentEditingMapelJadwalGurus.length > 0) {
+            const missing = currentEditingMapelJadwalGurus.filter(jn => !list.some(n => n.toLowerCase() === jn.toLowerCase()));
+            const banner = document.getElementById('rekomendasiJadwalContainer');
+            const namesSpan = document.getElementById('rekomendasiJadwalNames');
+            if (banner && namesSpan) {
+                if (missing.length > 0) {
+                    namesSpan.textContent = missing.join(', ');
+                    banner.classList.remove('hidden');
+                } else {
+                    banner.classList.add('hidden');
+                }
+            }
+        }
+
+        if (input) {
+            if (list.length >= max) {
+                input.value = '';
+                input.placeholder = 'Batas guru pengampu tercapai';
+                input.disabled = true;
+                input.classList.add('cursor-not-allowed', 'opacity-60');
+                closeGuruDropdown(type);
+            } else {
+                input.placeholder = 'Ketik nama guru...';
+                input.disabled = false;
+                input.classList.remove('cursor-not-allowed', 'opacity-60');
+            }
         }
     }
 
-    function addGuruFromInput(type) {
-        const isTambah = type === 'tambah';
-        const input = document.getElementById(isTambah ? 'inputKetikTambahGuru' : 'inputKetikEditGuru');
-        if (!input) return;
+    function handleGuruFocus(type) {
+        const input = document.getElementById(type === 'tambah' ? 'inputKetikTambahGuru' : 'inputKetikEditGuru');
+        if (input && !input.disabled) {
+            handleGuruInput(input, type);
+        }
+    }
 
-        const name = (input.value || '').trim();
-        if (!name) return;
+    function handleGuruBlur(type) {
+        setTimeout(() => {
+            closeGuruDropdown(type);
+        }, 250);
+    }
 
-        const list = isTambah ? guruTagsTambah : guruTagsEdit;
+    function closeGuruDropdown(type) {
+        const dropdown = document.getElementById(type === 'tambah' ? 'dropdownGuruTambah' : 'dropdownGuruEdit');
+        if (dropdown) dropdown.classList.add('hidden');
+    }
+
+    function handleGuruInput(input, type) {
+        const query = (input.value || '').trim().toLowerCase();
+        const list = (type === 'tambah') ? guruTagsTambah : guruTagsEdit;
+        const dropdown = document.getElementById(type === 'tambah' ? 'dropdownGuruTambah' : 'dropdownGuruEdit');
+        const max = getMaxGuru(type);
+        const activeTab = guruFilterTab[type] || 'semua';
+        const editingId = (type === 'edit') ? currentEditingMapelId : null;
+        const jadwalList = (type === 'edit') ? currentEditingMapelJadwalGurus : [];
+
+        if (!dropdown || list.length >= max) {
+            if (dropdown) dropdown.classList.add('hidden');
+            return;
+        }
+
+        const totalBelumAdaMapel = allGuruList.filter(g => !g.mapel_name).length;
+        const totalJadwal = allGuruList.filter(g => jadwalList.some(jn => jn.toLowerCase() === g.name.toLowerCase())).length;
+
+        // Filter kandidat
+        let candidates = allGuruList.filter(g => {
+            const alreadySelected = list.some(selectedName => selectedName.toLowerCase() === g.name.toLowerCase());
+            if (alreadySelected) return false;
+
+            if (activeTab === 'belum' && g.mapel_name) return false;
+            if (activeTab === 'jadwal' && !jadwalList.some(jn => jn.toLowerCase() === g.name.toLowerCase())) return false;
+
+            if (!query) return true;
+            return g.name.toLowerCase().includes(query) || (g.nip && g.nip.toLowerCase().includes(query));
+        });
+
+        // Urutkan kandidat: 1) Dari jadwal mapel ini, 2) Belum ada mapel, 3) Alfabetis
+        candidates.sort((a, b) => {
+            const aInJadwal = jadwalList.some(jn => jn.toLowerCase() === a.name.toLowerCase()) ? 1 : 0;
+            const bInJadwal = jadwalList.some(jn => jn.toLowerCase() === b.name.toLowerCase()) ? 1 : 0;
+            if (aInJadwal !== bInJadwal) return bInJadwal - aInJadwal;
+
+            const aNoMapel = !a.mapel_name ? 1 : 0;
+            const bNoMapel = !b.mapel_name ? 1 : 0;
+            if (aNoMapel !== bNoMapel) return bNoMapel - aNoMapel;
+
+            return a.name.localeCompare(b.name);
+        });
+
+        // Tabs Header di dalam Dropdown
+        const tabsHtml = `
+            <div class="sticky top-0 bg-slate-50 border-b border-slate-200 px-3 py-2 flex items-center justify-between gap-1 text-[11px] font-semibold text-slate-600 z-10">
+                <span class="text-slate-400 text-[10px] uppercase tracking-wider font-bold">Filter:</span>
+                <div class="flex items-center gap-1">
+                    <button type="button" onmousedown="event.preventDefault(); setGuruFilterTab('semua', '${type}')" class="px-2 py-0.5 rounded-md transition cursor-pointer ${activeTab === 'semua' ? 'bg-emerald-600 text-white shadow-2xs font-bold' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-100'}">Semua</button>
+                    <button type="button" onmousedown="event.preventDefault(); setGuruFilterTab('belum', '${type}')" class="px-2 py-0.5 rounded-md transition cursor-pointer ${activeTab === 'belum' ? 'bg-emerald-600 text-white shadow-2xs font-bold' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-100'}">Belum Ada Mapel (${totalBelumAdaMapel})</button>
+                    ${(jadwalList.length > 0) ? `<button type="button" onmousedown="event.preventDefault(); setGuruFilterTab('jadwal', '${type}')" class="px-2 py-0.5 rounded-md transition cursor-pointer ${activeTab === 'jadwal' ? 'bg-purple-600 text-white shadow-2xs font-bold' : 'bg-white border border-purple-200 text-purple-700 hover:bg-purple-50'}"><i class="bi bi-star-fill text-[9px]"></i> Dari Jadwal (${totalJadwal})</button>` : ''}
+                </div>
+            </div>
+        `;
+
+        if (candidates.length === 0) {
+            dropdown.innerHTML = tabsHtml + '<div class="px-4 py-4 text-xs text-gray-400 text-center">Tidak ada guru yang sesuai filter</div>';
+            dropdown.classList.remove('hidden');
+            return;
+        }
+
+        const itemsHtml = candidates.slice(0, 15).map(g => {
+            const isJadwal = jadwalList.some(jn => jn.toLowerCase() === g.name.toLowerCase());
+            let badgeHtml = '';
+            if (isJadwal) {
+                badgeHtml = '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-800 border border-purple-200 shrink-0"><i class="bi bi-star-fill text-[9px] text-purple-600"></i> Mengajar di Jadwal</span>';
+            } else if (!g.mapel_name) {
+                badgeHtml = '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 shrink-0"><i class="bi bi-check-circle-fill text-[10px] text-emerald-600"></i> Belum ada mapel</span>';
+            } else if (editingId && g.mapel_id == editingId) {
+                badgeHtml = '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-blue-50 text-blue-700 border border-blue-200 shrink-0">Mapel Ini</span>';
+            } else {
+                badgeHtml = `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-600 border border-slate-200 shrink-0 max-w-[150px] truncate" title="Sudah mengampu: ${escapeHtml(g.mapel_name)}">Mengampu: ${escapeHtml(g.mapel_name)}</span>`;
+            }
+
+            return `
+                <button type="button" onmousedown="selectGuruSuggestion('${escapeHtml(g.name).replace(/'/g, "\\'")}', '${type}')" class="w-full text-left px-4 py-2.5 hover:bg-emerald-50 transition flex items-center justify-between text-sm group cursor-pointer border-b border-gray-50 last:border-0">
+                    <div class="flex items-center gap-2 min-w-0 pr-2">
+                        <div class="w-7 h-7 rounded-full bg-slate-100 group-hover:bg-emerald-100 text-slate-600 group-hover:text-emerald-700 flex items-center justify-center shrink-0 text-xs">
+                            <i class="bi bi-person"></i>
+                        </div>
+                        <div class="min-w-0">
+                            <div class="font-medium text-gray-800 group-hover:text-emerald-800 truncate text-xs sm:text-sm">${escapeHtml(g.name)}</div>
+                            ${g.nip ? `<div class="text-[10px] text-gray-400 font-mono">${escapeHtml(g.nip)}</div>` : ''}
+                        </div>
+                    </div>
+                    ${badgeHtml}
+                </button>
+            `;
+        }).join('');
+
+        dropdown.innerHTML = tabsHtml + `<div class="divide-y divide-gray-50 max-h-60 overflow-y-auto">${itemsHtml}</div>`;
+        dropdown.classList.remove('hidden');
+    }
+
+    function selectGuruSuggestion(name, type) {
+        const list = (type === 'tambah') ? guruTagsTambah : guruTagsEdit;
         const max = getMaxGuru(type);
 
         if (list.length >= max) {
-            if (max === 1) {
-                alert('Mapel biasa hanya dapat diampu oleh 1 guru pengampu. Hapus guru yang ada terlebih dahulu jika ingin menggantinya.');
-            } else {
-                alert('Maksimal 10 guru pengampu untuk mapel jurusan.');
-            }
+            alert('Batas maksimal guru pengampu adalah 25 guru per mata pelajaran.');
             return;
         }
 
-        if (list.some(n => n.toLowerCase() === name.toLowerCase())) {
-            alert('Guru "' + name + '" sudah ditambahkan.');
+        if (!list.some(n => n.toLowerCase() === name.toLowerCase())) {
+            list.push(name);
+        }
+
+        const input = document.getElementById(type === 'tambah' ? 'inputKetikTambahGuru' : 'inputKetikEditGuru');
+        if (input) {
             input.value = '';
-            return;
+            if (list.length < max) {
+                input.focus();
+            }
         }
 
-        list.push(name);
-        input.value = '';
+        closeGuruDropdown(type);
         renderGuruChips(type);
-        input.focus();
+    }
+
+    function applyJadwalRekomendasi() {
+        if (!currentEditingMapelJadwalGurus || currentEditingMapelJadwalGurus.length === 0) return;
+        currentEditingMapelJadwalGurus.forEach(name => {
+            if (!guruTagsEdit.some(n => n.toLowerCase() === name.toLowerCase())) {
+                guruTagsEdit.push(name);
+            }
+        });
+        renderGuruChips('edit');
+        const banner = document.getElementById('rekomendasiJadwalContainer');
+        if (banner) banner.classList.add('hidden');
+    }
+
+    function handleGuruKeyDown(event, type) {
+        const input = event.target;
+        const val = (input.value || '').trim();
+        const list = (type === 'tambah') ? guruTagsTambah : guruTagsEdit;
+
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            if (val) {
+                const match = allGuruList.find(g => g.name.toLowerCase() === val.toLowerCase())
+                    || allGuruList.find(g => !list.includes(g.name) && g.name.toLowerCase().includes(val.toLowerCase()));
+                if (match) {
+                    selectGuruSuggestion(match.name, type);
+                } else {
+                    alert(`Guru "${val}" tidak terdaftar di data guru sekolah.`);
+                }
+            }
+        } else if (event.key === 'Backspace' && !val && list.length > 0) {
+            list.pop();
+            renderGuruChips(type);
+        }
     }
 
     function flushGuruInputBeforeSubmit(type) {
         const isTambah = type === 'tambah';
         const input = document.getElementById(isTambah ? 'inputKetikTambahGuru' : 'inputKetikEditGuru');
         if (input && input.value.trim()) {
-            addGuruFromInput(type);
-        }
-    }
-
-    function handleGuruKeyDown(event, type) {
-        if (event.key === 'Enter') {
-            event.preventDefault();
-            addGuruFromInput(type);
+            const val = input.value.trim();
+            const list = isTambah ? guruTagsTambah : guruTagsEdit;
+            const match = allGuruList.find(g => g.name.toLowerCase() === val.toLowerCase());
+            if (match && !list.includes(match.name) && list.length < getMaxGuru(type)) {
+                list.push(match.name);
+                renderGuruChips(type);
+            }
         }
     }
 
@@ -470,6 +678,10 @@
         const list = type === 'tambah' ? guruTagsTambah : guruTagsEdit;
         list.splice(index, 1);
         renderGuruChips(type);
+        const input = document.getElementById(type === 'tambah' ? 'inputKetikTambahGuru' : 'inputKetikEditGuru');
+        if (input && !input.disabled) {
+            input.focus();
+        }
     }
 
     function handleEditMapelBtn(btn) {
@@ -483,10 +695,16 @@
         } catch(e) {
             guruNames = [];
         }
-        openEditMapelModal(id, kode, nama, kategori, guruNames);
+        let jadwalGurus = [];
+        try {
+            jadwalGurus = JSON.parse(btn.getAttribute('data-jadwal-gurus') || '[]');
+        } catch(e) {
+            jadwalGurus = [];
+        }
+        openEditMapelModal(id, kode, nama, kategori, guruNames, jadwalGurus);
     }
 
-    function openEditMapelModal(id, kode, nama, kategori, guruNames) {
+    function openEditMapelModal(id, kode, nama, kategori, guruNames, jadwalGurus) {
         const form = document.getElementById('formEditMapel');
         form.action = "{{ url('dashboard/mapel') }}/" + id;
         document.getElementById('editMapelKode').value = kode;
@@ -495,11 +713,12 @@
         const kat = (kategori === 'jurusan') ? 'jurusan' : 'biasa';
         document.getElementById('editMapelKategori').value = kat;
         
+        currentEditingMapelId = id;
+        currentEditingMapelJadwalGurus = Array.isArray(jadwalGurus) ? jadwalGurus : [];
+        guruFilterTab['edit'] = 'semua';
+
         guruTagsEdit = Array.isArray(guruNames) ? [...guruNames] : [];
-        if (kat === 'biasa' && guruTagsEdit.length > 1) {
-            guruTagsEdit.splice(1);
-        }
-        handleKategoriChange('edit');
+        renderGuruChips('edit');
 
         openModal('modalEditMapel');
     }
@@ -536,5 +755,98 @@
     document.addEventListener('DOMContentLoaded', function() {
         handleKategoriChange('tambah');
     });
+
+    // ================= BATCH ACTION MAPEL =================
+    const selectAllMapelEl = document.getElementById('selectAllMapel');
+    const checkboxesMapel = () => document.querySelectorAll('.mapel-checkbox');
+    const batchBarMapel = document.getElementById('batchActionBarMapel');
+    const batchBadgeMapel = document.getElementById('batchBadgeMapel');
+    const batchTextMapel = document.getElementById('batchTextMapel');
+
+    if (selectAllMapelEl) {
+        selectAllMapelEl.addEventListener('change', function() {
+            checkboxesMapel().forEach(cb => {
+                cb.checked = selectAllMapelEl.checked;
+            });
+            updateBatchStateMapel();
+        });
+    }
+
+    function updateBatchStateMapel() {
+        const selected = Array.from(checkboxesMapel()).filter(cb => cb.checked);
+        const count = selected.length;
+
+        if (count > 0) {
+            batchBarMapel.classList.remove('hidden');
+            batchBadgeMapel.innerText = count;
+            batchTextMapel.innerText = count + ' mata pelajaran dipilih';
+        } else {
+            batchBarMapel.classList.add('hidden');
+            if (selectAllMapelEl) selectAllMapelEl.checked = false;
+        }
+    }
+
+    function clearMapelSelections() {
+        checkboxesMapel().forEach(cb => cb.checked = false);
+        if (selectAllMapelEl) selectAllMapelEl.checked = false;
+        updateBatchStateMapel();
+    }
+
+    function confirmBatchDeleteMapel() {
+        const selected = Array.from(checkboxesMapel()).filter(cb => cb.checked).map(cb => cb.value);
+        if (selected.length === 0) return;
+
+        if (confirm(`Yakin ingin menghapus ${selected.length} mata pelajaran terpilih?`)) {
+            const container = document.getElementById('batchDeleteMapelContainer');
+            container.innerHTML = '';
+            selected.forEach(id => {
+                const inp = document.createElement('input');
+                inp.type = 'hidden';
+                inp.name = 'ids[]';
+                inp.value = id;
+                container.appendChild(inp);
+            });
+            document.getElementById('formBatchDeleteMapel').submit();
+        }
+    }
+
+    // Live search & sort A-Z handler
+    function filterAndSortTableMapel(term) {
+        const tableBody = document.querySelector('table tbody');
+        if (!tableBody) return;
+        const rows = Array.from(tableBody.querySelectorAll('tr.row-mapel-item'));
+        const lowerTerm = (term || '').toLowerCase().trim();
+
+        rows.forEach(row => {
+            const text = row.textContent.toLowerCase();
+            if (!lowerTerm || text.includes(lowerTerm)) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+
+        // Re-sort visible rows alphabetically by nama_mapel A-Z
+        rows.sort((a, b) => {
+            const namaA = (a.querySelector('td:nth-child(5)')?.innerText || '').trim();
+            const namaB = (b.querySelector('td:nth-child(5)')?.innerText || '').trim();
+            return namaA.localeCompare(namaB, 'id', { sensitivity: 'base' });
+        });
+
+        let visibleIndex = 1;
+        rows.forEach(row => {
+            if (row.style.display !== 'none') {
+                const noCell = row.querySelector('td:nth-child(2)');
+                if (noCell) noCell.textContent = visibleIndex;
+                visibleIndex++;
+            }
+            tableBody.appendChild(row);
+        });
+    }
 </script>
+
+<form id="formBatchDeleteMapel" action="{{ route('dashboard.mapel.batch-delete') }}" method="POST" class="hidden">
+    @csrf
+    <div id="batchDeleteMapelContainer"></div>
+</form>
 @endsection

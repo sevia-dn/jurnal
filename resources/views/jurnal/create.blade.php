@@ -1,32 +1,33 @@
 @extends('layouts.app')
 
 @section('content')
-<!-- Header Bar -->
-<div class="flex justify-between items-center mb-6">
-    <div class="flex items-center gap-3">
-        <a href="{{ route('sekretaris.jurnal.index') }}" class="p-2 rounded-xl bg-white border border-[#d6ebe3] text-[#0d6e59] hover:bg-[#eaf6f2] transition shadow-2xs">
-            <i class="bi bi-arrow-left text-lg"></i>
-        </a>
-        <div>
-            <div class="flex items-center gap-2 mb-0.5">
-                <span class="bg-[#0d6e59] text-white text-[10px] font-bold px-2 py-0.5 rounded-md">Sekretaris</span>
-            </div>
-            <h2 class="text-xl md:text-2xl font-extrabold text-[#0f3d32]">Konfirmasi Kehadiran Guru</h2>
+<!-- Header Mobile -->
+<div class="flex md:hidden justify-between items-center mb-4">
+    <div class="flex items-center gap-2">
+        <div class="bg-[#3db892] text-white p-2 rounded-xl flex items-center justify-center">
+            <i class="bi bi-mortarboard-fill text-xl"></i>
         </div>
+        <h1 class="text-xl font-bold text-[#0d6e59]">JurnalKita</h1>
     </div>
-
-    <a href="{{ route('sekretaris.notifikasi') }}" class="text-[#0d6e59] p-2.5 rounded-2xl bg-white border border-[#d6ebe3] hover:bg-[#eaf6f2] shadow-2xs transition relative flex items-center justify-center !no-underline" title="Notifikasi Sekretaris">
-        <i class="bi bi-bell text-lg"></i>
-        @if(($unreadCount ?? 0) > 0)
-            <span class="absolute -top-1 -right-1 bg-red-500 text-white text-[9px] font-extrabold w-4 h-4 rounded-full flex items-center justify-center shadow-xs">
-                {{ ($unreadCount > 9) ? '9+' : $unreadCount }}
-            </span>
-        @endif
+    <a href="{{ route('pengurus-kelas.notifikasi') }}" class="text-[#0d6e59] text-xl p-1 relative">
+        <i class="bi bi-bell"></i>
+        <span class="absolute top-1 right-1 bg-red-500 w-2 h-2 rounded-full"></span>
     </a>
 </div>
 
+<!-- Deskripsi Halaman -->
+<div class="mb-6">
+    <div class="flex items-center gap-2 mb-1">
+        <span class="bg-[#0d6e59] text-white text-[10px] font-bold px-2.5 py-0.5 rounded-md">Sekretaris</span>
+    </div>
+    <h2 class="text-2xl font-extrabold text-[#0f3d32]">Konfirmasi Kehadiran Guru</h2>
+    <p class="text-xs md:text-sm text-[#5e7e75] font-medium leading-relaxed mt-1">
+        Verifikasi kehadiran guru pengampu pada jam pelajaran yang berlangsung.
+    </p>
+</div>
+
 <!-- Form Container -->
-<form action="#" method="POST" class="space-y-5 max-w-2xl">
+<form action="#" method="POST" autocomplete="off" class="space-y-5 max-w-2xl">
     @csrf
 
     <!-- Card 1: Informasi Sesi Pelajaran -->
@@ -56,7 +57,7 @@
 
             <div>
                 <label class="block text-xs font-semibold text-gray-700 mb-1.5">Nama Guru Pengampu</label>
-                <input type="text" placeholder="Contoh: Bpk. Budi Santoso, S.Pd" class="w-full text-xs md:text-sm bg-white border border-gray-200 rounded-xl p-3 text-gray-700 focus:ring-[#0d6e59] focus:border-[#0d6e59] outline-none">
+                <input type="text" placeholder="Contoh: Bpk. Budi Santoso, S.Pd" autocomplete="off" class="w-full text-xs md:text-sm bg-white border border-gray-200 rounded-xl p-3 text-gray-700 focus:ring-[#0d6e59] focus:border-[#0d6e59] outline-none">
             </div>
         </div>
     </div>

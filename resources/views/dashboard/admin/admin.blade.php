@@ -62,14 +62,14 @@
       </a>
 
       <!-- Card 4: Jurnal -->
-      <a href="{{ route('catatan-jurnal') }}" class="block group !no-underline">
+      <a href="{{ route('dashboard.rekap-jurnal') }}" class="block group !no-underline">
         <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center gap-5 transition-all duration-300 group-hover:shadow-md group-hover:border-emerald-300 group-hover:-translate-y-1">
           <div class="w-14 h-14 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center text-2xl">
             <i class="bi bi-journal-text"></i>
           </div>
           <div>
-            <div class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">JURNAL HARI INI</div>
-            <div class="text-3xl font-bold !text-gray-800">{{ $jurnalHariIni ?? 8 }}</div>
+            <div class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">REKAP JURNAL HARI INI</div>
+            <div class="text-3xl font-bold !text-gray-800">{{ $jurnalHariIni ?? 0 }}</div>
           </div>
         </div>
       </a>
@@ -84,7 +84,7 @@
           <h2 class="text-lg font-bold text-gray-800">Aktivitas Jurnal Mengajar Terbaru</h2>
           <p class="text-xs text-gray-500 mt-0.5">Pemantauan jurnal mengajar kelas kejuruan dan umum secara berkala</p>
         </div>
-        <a href="{{ route('catatan-jurnal') }}" class="text-sm font-semibold !text-emerald-600 hover:!text-emerald-700 !no-underline transition-colors flex items-center gap-1">
+        <a href="{{ route('dashboard.rekap-jurnal') }}" class="text-sm font-semibold !text-emerald-600 hover:!text-emerald-700 !no-underline transition-colors flex items-center gap-1">
           Lihat Semua 
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
         </a>
@@ -114,10 +114,14 @@
                 </td>
                 <td class="py-4 px-6 text-sm font-semibold text-emerald-800">{{ $item['kelas'] }}</td>
                 <td class="py-4 px-6">
-                  @if($item['status'] === 'Selesai')
-                    <span class="px-3 py-1 bg-emerald-100/80 text-emerald-700 rounded-full text-xs font-bold tracking-wide">Selesai</span>
+                  @if($item['status'] === 'Hadir' || $item['status'] === 'Selesai')
+                    <span class="px-3 py-1 bg-emerald-100/80 text-emerald-700 rounded-full text-xs font-bold tracking-wide">Hadir</span>
+                  @elseif($item['status'] === 'Izin')
+                    <span class="px-3 py-1 bg-blue-100/80 text-blue-700 rounded-full text-xs font-bold tracking-wide">Izin</span>
+                  @elseif($item['status'] === 'Sakit')
+                    <span class="px-3 py-1 bg-amber-100/80 text-amber-700 rounded-full text-xs font-bold tracking-wide">Sakit</span>
                   @else
-                    <span class="px-3 py-1 bg-amber-100/80 text-amber-700 rounded-full text-xs font-bold tracking-wide">Menunggu</span>
+                    <span class="px-3 py-1 bg-rose-100/80 text-rose-700 rounded-full text-xs font-bold tracking-wide">{{ $item['status'] }}</span>
                   @endif
                 </td>
               </tr>

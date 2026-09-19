@@ -27,7 +27,7 @@
 
     <!-- Container Form -->
     <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 sm:p-8 mb-6">
-        <form action="#" method="POST" class="space-y-6">
+        <form action="#" method="POST" autocomplete="off" class="space-y-6">
             @csrf
 
             <!-- Baris 1: Role & Nama -->
@@ -45,7 +45,7 @@
 
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1.5">Nama Lengkap</label>
-                    <input type="text" name="nama" required placeholder="Masukkan nama lengkap pengguna..." class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1BA886] focus:border-[#1BA886] text-sm outline-none transition-all">
+                    <input type="text" name="nama" required autocomplete="off" placeholder="Masukkan nama lengkap pengguna..." class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1BA886] focus:border-[#1BA886] text-sm outline-none transition-all">
                 </div>
             </div>
 
@@ -53,12 +53,12 @@
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div id="email_or_username_wrap">
                     <label class="block text-sm font-medium text-gray-700 mb-1.5"> Username (atau NIP)</label>
-                    <input type="text" name="identifier" placeholder="Isi username, atau NIP sesuai role..." class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1BA886] focus:border-[#1BA886] text-sm outline-none transition-all">
+                    <input type="text" name="identifier" autocomplete="off" placeholder="Isi username, atau NIP sesuai role..." class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1BA886] focus:border-[#1BA886] text-sm outline-none transition-all">
                 </div>
 
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1.5">Nomor Handphone</label>
-                    <input type="tel" name="phone" placeholder="Contoh: 081234567890" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1BA886] focus:border-[#1BA886] text-sm outline-none transition-all">
+                    <input type="tel" name="phone" autocomplete="off" placeholder="Contoh: 081234567890" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1BA886] focus:border-[#1BA886] text-sm outline-none transition-all">
                 </div>
             </div>
 
@@ -66,19 +66,19 @@
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1.5">Password Awal</label>
-                    <input type="password" name="password" required placeholder="Buat password untuk akun ini..." class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1BA886] focus:border-[#1BA886] text-sm outline-none transition-all">
+                    <input type="password" name="password" required autocomplete="new-password" placeholder="Buat password untuk akun ini..." class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1BA886] focus:border-[#1BA886] text-sm outline-none transition-all">
                 </div>
 
                 <div id="nip_wrap" class="hidden">
                     <label class="block text-sm font-medium text-gray-700 mb-1.5">NIP (Khusus Guru PNS)</label>
-                    <input type="text" name="nip" placeholder="Masukkan 18 digit NIP..." class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1BA886] focus:border-[#1BA886] text-sm outline-none transition-all">
+                    <input type="text" name="nip" autocomplete="off" placeholder="Masukkan 18 digit NIP..." class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1BA886] focus:border-[#1BA886] text-sm outline-none transition-all">
                 </div>
             </div>
 
             <!-- Baris 4: Mapel (Full Width) -->
             <div id="mata_pelajaran_wrap" class="hidden">
                 <label class="block text-sm font-medium text-gray-700 mb-1.5">Mata Pelajaran yang Diampu</label>
-                <input type="text" name="mata_pelajaran" placeholder="Contoh: Matematika, Bahasa Indonesia" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1BA886] focus:border-[#1BA886] text-sm outline-none transition-all">
+                <input type="text" name="mata_pelajaran" autocomplete="off" placeholder="Contoh: Matematika, Bahasa Indonesia" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1BA886] focus:border-[#1BA886] text-sm outline-none transition-all">
                 <p class="text-xs text-gray-500 mt-2 flex items-center gap-1">
                     <i class="bi bi-info-circle"></i> Isi hanya untuk role guru pengajar. Pisahkan dengan koma (,) jika lebih dari satu.
                 </p>

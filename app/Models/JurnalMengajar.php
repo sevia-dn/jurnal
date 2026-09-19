@@ -11,6 +11,7 @@ class JurnalMengajar extends Model
 
     protected $table = 'jurnal_mengajars';
     protected $primaryKey = 'id_jurnal';
+    public $timestamps = false;
 
     protected $fillable = [
         'id_user',
@@ -18,8 +19,6 @@ class JurnalMengajar extends Model
         'id_mapel',
         'tanggal',
         'jam_ke',
-        'jam_mulai',
-        'jam_selesai',
         'materi',
         'keterangan',
         'jumlah_hadir',
@@ -29,8 +28,8 @@ class JurnalMengajar extends Model
         'jumlah_dispensasi',
         'jumlah_tidak_hadir',
         'status_kehadiran_guru',
-        'status_validasi',
-        'guru_inval_id',
+        'menit_keterlambatan',
+        'status_keterlambatan',
         'ada_tugas',
         'catatan',
     ];

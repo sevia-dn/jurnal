@@ -17,6 +17,7 @@ return new class extends Migration
             $table->time('jam_mulai');
             $table->time('jam_selesai');
             $table->string('mapel', 100);
+            $table->string('status', 20)->default('aktif');
         });
     }
 

@@ -10,28 +10,20 @@ class Mapel extends Model
         'kode_mapel',
         'nama_mapel',
         'kategori',
-        'guru_id',
-        'status',
-        'alasan_hapus',
     ];
-
-    protected $attributes = [
-        'status' => 'aktif',
-        'kategori' => 'umum',
-    ];
-
-    public function guru()
-    {
-        return $this->belongsTo(User::class, 'guru_id');
-    }
 
     public function gurus()
     {
         return $this->hasMany(User::class, 'mapel_id');
     }
 
-    public function pengampu()
+    public function guru()
     {
-        return $this->belongsToMany(User::class, 'mapel_user', 'mapel_id', 'user_id');
+        return $this->hasMany(User::class, 'mapel_id');
+    }
+
+    public function jadwals()
+    {
+        return $this->hasMany(JadwalPelajaran::class, 'id_mapel');
     }
 }

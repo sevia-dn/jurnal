@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
-#[Fillable(['name', 'email', 'password', 'username', 'nip', 'role', 'is_system_user', 'no_hp', 'mapel_id', 'id_kelas', 'status', 'alasan_hapus'])]
+#[Fillable(['name', 'email', 'username', 'nip', 'password', 'role', 'no_hp', 'mapel_id'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -35,18 +35,55 @@ class User extends Authenticatable
         return $this->belongsTo(Mapel::class, 'mapel_id');
     }
 
-    public function mapelPengampu()
+    public function jadwals()
     {
-        return $this->hasOne(Mapel::class, 'guru_id');
+        return $this->hasMany(JadwalPelajaran::class, 'id_user');
     }
 
-    public function mapelsPengampu()
+    public function jadwalPikets()
     {
-        return $this->belongsToMany(Mapel::class, 'mapel_user', 'user_id', 'mapel_id');
+        return $this->hasMany(JadwalPiket::class, 'user_id');
     }
 
-    public function kelas()
+    /**
+     * Cek apakah user ditugaskan sebagai Guru Piket hari ini
+     */
+    public function isPiketHariIni(): bool
     {
-        return $this->belongsTo(Kelas::class, 'id_kelas', 'id_kelas');
+        $namaHari = match (now()->dayOfWeek) {
+            1 => 'Senin',
+            2 => 'Selasa',
+            3 => 'Rabu',
+            4 => 'Kamis',
+            5 => 'Jumat',
+            6 => 'Sabtu',
+            default => 'Minggu',
+        };
+
+        return $this->jadwalPikets()
+            ->where('hari', $namaHari)
+            ->where('tipe', 'guru')
+            ->exists();
+    }
+
+    /**
+     * Cek apakah user ditugaskan sebagai Waka Piket hari ini
+     */
+    public function isWakaHariIni(): bool
+    {
+        $namaHari = match (now()->dayOfWeek) {
+            1 => 'Senin',
+            2 => 'Selasa',
+            3 => 'Rabu',
+            4 => 'Kamis',
+            5 => 'Jumat',
+            6 => 'Sabtu',
+            default => 'Minggu',
+        };
+
+        return $this->jadwalPikets()
+            ->where('hari', $namaHari)
+            ->where('tipe', 'waka')
+            ->exists();
     }
 }

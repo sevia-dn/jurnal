@@ -4,11 +4,69 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
+use App\Models\Kelas;
+use App\Models\Mapel;
+use App\Models\User;
 
 class JadwalPelajaranSeeder extends Seeder
 {
     public function run(): void
     {
+        $jsonPath = base_path('scripts/master_data.json');
+        if (file_exists($jsonPath)) {
+            $data = json_decode(file_get_contents($jsonPath), true);
+            $sessions = $data['sessions'] ?? [];
+
+            if (!empty($sessions)) {
+                $allKelases = Kelas::all()->keyBy('nama_kelas');
+                $allMapels = Mapel::all()->keyBy('nama_mapel');
+                $allGurus = User::where('role', 'guru')->get();
+
+                $guruLookup = [];
+                foreach ($allGurus as $g) {
+                    $clean = strtolower(preg_replace('/[^a-zA-Z]/', '', $g->name));
+                    $guruLookup[$clean] = $g;
+                }
+
+                $defaultAdminId = optional(User::where('role', 'admin')->first())->id ?? optional(User::first())->id;
+
+                DB::table('jadwal_pelajarans')->truncate();
+                $insertRows = [];
+
+                foreach ($sessions as $sess) {
+                    $kelasModel = $allKelases[$sess['kelas']] ?? null;
+                    if (!$kelasModel) continue;
+
+                    $mapelModel = null;
+                    if (!empty($sess['mapel']) && isset($allMapels[$sess['mapel']])) {
+                        $mapelModel = $allMapels[$sess['mapel']];
+                    }
+
+                    $guruUser = null;
+                    if (!empty($sess['guru'])) {
+                        $guruUser = $guruLookup[strtolower(preg_replace('/[^a-zA-Z]/', '', $sess['guru']))] ?? null;
+                    }
+
+                    $userId = $guruUser ? $guruUser->id : $defaultAdminId;
+
+                    $insertRows[] = [
+                        'id_user' => $userId,
+                        'id_kelas' => $kelasModel->id_kelas,
+                        'id_mapel' => $mapelModel ? $mapelModel->id : null,
+                        'hari' => $sess['hari'],
+                        'jam_ke' => $sess['jam_ke'],
+                        'jam_mulai' => $sess['jam_mulai'],
+                        'jam_selesai' => $sess['jam_selesai'],
+                        'mapel' => $sess['mapel'] ?: 'Kegiatan Sekolah',
+                    ];
+                }
+
+                foreach (array_chunk($insertRows, 100) as $chunk) {
+                    DB::table('jadwal_pelajarans')->insert($chunk);
+                }
+                return;
+            }
+        }
 
         DB::table('jadwal_pelajarans')->insert([
             // --- SENIN ---

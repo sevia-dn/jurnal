@@ -43,19 +43,56 @@
         $seninKegiatan = $jadwals->where('hari', 'Senin')->first(function($item) {
             return str_contains(strtolower($item->mapel), 'upacara');
         });
-        $isSeninMaju = $seninKegiatan && $seninKegiatan->status === 'ditiadakan';
+        $isSeninMaju = isset($isSeninMaju) ? $isSeninMaju : ($seninKegiatan && $seninKegiatan->status === 'ditiadakan');
 
         $jumatKegiatan = $jadwals->where('hari', 'Jumat')->first(function($item) {
             return str_contains(strtolower($item->mapel), 'pembiasaan');
         });
-        $isJumatMaju = $jumatKegiatan && $jumatKegiatan->status === 'ditiadakan';
+        $isJumatMaju = isset($isJumatMaju) ? $isJumatMaju : ($jumatKegiatan && $jumatKegiatan->status === 'ditiadakan');
+
+        $shiftSeninMinutes = $shiftSeninMinutes ?? 40;
+        $shiftJumatMinutes = $shiftJumatMinutes ?? 30;
     @endphp
 
-    <div class="mb-6">
-        <h1 class="text-2xl font-bold text-gray-900">Manajemen Jadwal Pelajaran</h1>
-        <p class="text-sm text-gray-500 mt-1">Kelola pembagian jam efektif, sesi Upacara & Pembiasaan Jum'at, jarak waktu jam pelajaran, dan mode jam maju.</p>
+    <div class="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900">Manajemen Jadwal</h1>
+            <p class="text-sm text-gray-500 mt-1">Kelola jadwal pelajaran 48 kelas, alokasi jam KBM, dan penugasan piket guru & waka.</p>
+        </div>
+        <div class="flex items-center gap-2.5">
+            <a href="{{ route('admin.pengaturan') }}" class="inline-flex items-center gap-1.5 px-3.5 py-2 border border-slate-300 rounded-lg text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 transition shadow-xs">
+                <i class="bi bi-gear-fill text-slate-600"></i>
+                <span>Pengaturan Jam</span>
+            </a>
+            <a href="{{ route('dashboard.jadwal.download-template') }}" class="inline-flex items-center gap-1.5 px-3.5 py-2 border border-slate-300 rounded-lg text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 transition shadow-xs">
+                <i class="bi bi-download text-emerald-600"></i>
+                <span>Unduh Format Excel</span>
+            </a>
+            <button type="button" onclick="openModal('modalImportJadwal')" class="inline-flex items-center gap-1.5 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold shadow-xs transition cursor-pointer">
+                <i class="bi bi-file-earmark-excel-fill"></i>
+                <span>Import Jadwal (Excel)</span>
+            </button>
+        </div>
     </div>
 
+    <!-- Sub-Navigasi Pill: [Jadwal Pelajaran] & [Jadwal Piket & Waka] -->
+    <div class="mb-6 flex items-center gap-2 p-1.5 bg-slate-100 rounded-2xl w-fit border border-slate-200 shadow-2xs">
+        <button type="button" onclick="switchMainScheduleTab('pelajaran')" id="mainTabBtnPelajaran" 
+                class="px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer bg-white text-emerald-800 shadow-xs">
+            <i class="bi bi-mortarboard-fill text-emerald-600"></i>
+            <span>Jadwal Pelajaran (48 Kelas)</span>
+            <span class="px-2 py-0.5 rounded-full text-[10px] bg-emerald-100 text-emerald-800 font-extrabold">{{ $kelases->count() }}</span>
+        </button>
+        <button type="button" onclick="switchMainScheduleTab('piket')" id="mainTabBtnPiket" 
+                class="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:text-slate-900 transition flex items-center gap-2 cursor-pointer">
+            <i class="bi bi-shield-check text-slate-500"></i>
+            <span>Jadwal Piket & Waka</span>
+            <span class="px-2 py-0.5 rounded-full text-[10px] bg-slate-200 text-slate-700 font-extrabold">{{ ($piketGurus->count() ?? 0) + ($piketWakas->count() ?? 0) }}</span>
+        </button>
+    </div>
+
+    <!-- Container 1: Jadwal Pelajaran (48 Kelas) -->
+    <div id="containerJadwalPelajaran" class="transition-all duration-200">
     <div class="grid gap-6 lg:grid-cols-3">
         <!-- Kolom Kiri: Form Tambah Jadwal -->
         <div class="lg:col-span-1">
@@ -87,7 +124,7 @@
                     <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
                         <div>
                             <label class="mb-1.5 block text-sm font-medium text-slate-700">Pilih Hari <span class="text-red-500">*</span></label>
-                            <select id="formAddHari" name="hari" required class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-[#155d50] focus:ring-2 focus:ring-[#155d50]/10 cursor-pointer">
+                            <select id="formAddHari" name="hari" onchange="applyScheduleTimePresets('add')" required class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-[#155d50] focus:ring-2 focus:ring-[#155d50]/10 cursor-pointer">
                                 @foreach($hariList as $hari)
                                     <option value="{{ $hari }}" {{ old('hari', $selectedHari ?? 'Senin') == $hari ? 'selected' : '' }}>{{ $hari }}</option>
                                 @endforeach
@@ -96,7 +133,7 @@
 
                         <div>
                             <label class="mb-1.5 block text-sm font-medium text-slate-700">Jam Pelajaran Ke- <span class="text-red-500">*</span></label>
-                            <select id="formAddJamKe" name="jam_ke" class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-[#155d50] focus:ring-2 focus:ring-[#155d50]/10 cursor-pointer">
+                            <select id="formAddJamKe" name="jam_ke" onchange="applyScheduleTimePresets('add')" class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-[#155d50] focus:ring-2 focus:ring-[#155d50]/10 cursor-pointer">
                                 <option value="0" {{ old('jam_ke') === '0' ? 'selected' : '' }}>Jam Ke-0 (Khusus Kegiatan / Istirahat / Upacara)</option>
                                 @for($i = 1; $i <= 13; $i++)
                                     <option value="{{ $i }}" {{ old('jam_ke') == $i ? 'selected' : '' }}>Jam Ke-{{ $i }}</option>
@@ -172,10 +209,10 @@
                             </div>
                             <div>
                                 <h3 class="text-sm font-bold text-emerald-900">Mode Jam Maju Aktif (Upacara Bendera Ditiadakan)</h3>
-                                <p class="text-xs text-emerald-700 mt-0.5">Seluruh jam pelajaran hari Senin telah dimajukan 40 menit (mulai 07:00). Jam pulang 40 menit lebih awal.</p>
+                                <p class="text-xs text-emerald-700 mt-0.5">Seluruh jam pelajaran hari Senin telah dimajukan {{ $shiftSeninMinutes }} menit (mulai 07:00). Jam pulang {{ $shiftSeninMinutes }} menit lebih awal untuk seluruh kelas.</p>
                             </div>
                         </div>
-                        <button type="button" onclick="openShiftModal('Senin', 'normal', 'Upacara Bendera')" class="inline-flex items-center gap-1.5 px-3.5 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-lg text-xs font-semibold shadow-sm transition cursor-pointer shrink-0">
+                        <button type="button" onclick="openShiftModal('Senin', 'normal', 'Upacara Bendera', {{ $shiftSeninMinutes }})" class="inline-flex items-center gap-1.5 px-3.5 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-lg text-xs font-semibold shadow-sm transition cursor-pointer shrink-0">
                             <i class="bi bi-arrow-counterclockwise"></i>
                             <span>Kembalikan Jam Normal</span>
                         </button>
@@ -191,9 +228,9 @@
                                 <p class="text-xs text-amber-700 mt-0.5">Upacara terjadwal pukul 07:00 – 07:40. Pelajaran Jam Ke-2 dimulai pukul 07:40.</p>
                             </div>
                         </div>
-                        <button type="button" onclick="openShiftModal('Senin', 'maju', 'Upacara Bendera')" class="inline-flex items-center gap-1.5 px-3.5 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-semibold shadow-sm transition cursor-pointer shrink-0">
+                        <button type="button" onclick="openShiftModal('Senin', 'maju', 'Upacara Bendera', {{ $shiftSeninMinutes }})" class="inline-flex items-center gap-1.5 px-3.5 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-semibold shadow-sm transition cursor-pointer shrink-0">
                             <i class="bi bi-lightning-charge-fill"></i>
-                            <span>Upacara Ditiadakan (Majukan Jam 40 Menit)</span>
+                            <span>Upacara Ditiadakan (Majukan Jam {{ $shiftSeninMinutes }} Menit)</span>
                         </button>
                     </div>
                 @endif
@@ -209,10 +246,10 @@
                             </div>
                             <div>
                                 <h3 class="text-sm font-bold text-emerald-900">Mode Jam Maju Aktif (Pembiasaan Jum'at Ditiadakan)</h3>
-                                <p class="text-xs text-emerald-700 mt-0.5">Seluruh jam pelajaran hari Jum'at telah dimajukan 30 menit (mulai 07:00). Jam pulang 30 menit lebih awal.</p>
+                                <p class="text-xs text-emerald-700 mt-0.5">Seluruh jam pelajaran hari Jum'at telah dimajukan {{ $shiftJumatMinutes }} menit (mulai 07:00). Jam pulang {{ $shiftJumatMinutes }} menit lebih awal untuk seluruh kelas.</p>
                             </div>
                         </div>
-                        <button type="button" onclick="openShiftModal('Jumat', 'normal', 'Pembiasaan Jum\'at')" class="inline-flex items-center gap-1.5 px-3.5 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-lg text-xs font-semibold shadow-sm transition cursor-pointer shrink-0">
+                        <button type="button" onclick="openShiftModal('Jumat', 'normal', 'Pembiasaan Jum\'at', {{ $shiftJumatMinutes }})" class="inline-flex items-center gap-1.5 px-3.5 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-lg text-xs font-semibold shadow-sm transition cursor-pointer shrink-0">
                             <i class="bi bi-arrow-counterclockwise"></i>
                             <span>Kembalikan Jam Normal</span>
                         </button>
@@ -228,9 +265,9 @@
                                 <p class="text-xs text-slate-600 mt-0.5">Ibadah / Dhuha / Senam terjadwal pukul 07:00 – 07:30. Pelajaran Jam Ke-1 dimulai pukul 07:30.</p>
                             </div>
                         </div>
-                        <button type="button" onclick="openShiftModal('Jumat', 'maju', 'Pembiasaan Jum\'at')" class="inline-flex items-center gap-1.5 px-3.5 py-2 bg-[#155d50] hover:bg-[#0b2b24] text-white rounded-lg text-xs font-semibold shadow-sm transition cursor-pointer shrink-0">
+                        <button type="button" onclick="openShiftModal('Jumat', 'maju', 'Pembiasaan Jum\'at', {{ $shiftJumatMinutes }})" class="inline-flex items-center gap-1.5 px-3.5 py-2 bg-[#155d50] hover:bg-[#0b2b24] text-white rounded-lg text-xs font-semibold shadow-sm transition cursor-pointer shrink-0">
                             <i class="bi bi-lightning-charge-fill"></i>
-                            <span>Pembiasaan Ditiadakan (Majukan Jam 30 Menit)</span>
+                            <span>Pembiasaan Ditiadakan (Majukan Jam {{ $shiftJumatMinutes }} Menit)</span>
                         </button>
                     </div>
                 @endif
@@ -300,11 +337,32 @@
                     </div>
                 </div>
 
+                <!-- Batch Action Bar Jadwal -->
+                <div id="batchActionBarJadwal" class="hidden m-4 p-4 bg-emerald-50 border border-emerald-200 rounded-2xl flex flex-wrap items-center justify-between gap-3 shadow-sm transition-all">
+                    <div class="flex items-center gap-2">
+                        <span class="w-6 h-6 rounded-full bg-emerald-600 text-white text-xs font-bold flex items-center justify-center" id="batchBadgeJadwal">0</span>
+                        <span class="text-sm font-semibold text-emerald-900" id="batchTextJadwal">0 jadwal dipilih</span>
+                    </div>
+
+                    <div class="flex items-center gap-2.5 flex-wrap">
+                        <button type="button" onclick="confirmBatchDeleteJadwal()" class="px-3.5 py-2 text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700 rounded-xl transition shadow-2xs flex items-center gap-1.5 cursor-pointer">
+                            <i class="bi bi-trash-fill"></i>
+                            <span>Hapus Terpilih</span>
+                        </button>
+                        <button type="button" onclick="clearJadwalSelections()" class="px-3 py-2 text-xs font-medium text-gray-500 hover:text-gray-700 cursor-pointer">
+                            Batal
+                        </button>
+                    </div>
+                </div>
+
                 <!-- Tabel Jadwal Pelajaran -->
                 <div class="overflow-x-auto">
                     <table class="min-w-full divide-y divide-slate-100">
                         <thead class="bg-gray-50/70">
                             <tr>
+                                <th class="px-4 py-3.5 text-center w-10">
+                                    <input type="checkbox" id="selectAllJadwal" class="rounded text-emerald-600 focus:ring-emerald-500 cursor-pointer w-4 h-4">
+                                </th>
                                 <th class="px-4 py-3.5 text-center text-xs font-bold text-slate-500 uppercase tracking-wider w-28">Sesi</th>
                                 <th class="px-5 py-3.5 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Waktu Pelaksanaan</th>
                                 <th class="px-5 py-3.5 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Mata Pelajaran / Kegiatan</th>
@@ -328,6 +386,9 @@
                                 @endphp
 
                                 <tr class="schedule-row transition {{ $isDitiadakan ? 'bg-red-50/30 opacity-75' : ($isIstirahat ? 'bg-amber-50/40 hover:bg-amber-50/80' : 'hover:bg-emerald-50/20') }}" data-hari="{{ $j->hari }}">
+                                    <td class="px-4 py-4 text-center">
+                                        <input type="checkbox" value="{{ $j->id_jadwal }}" class="jadwal-checkbox rounded text-emerald-600 focus:ring-emerald-500 cursor-pointer w-4 h-4" onchange="updateBatchStateJadwal()">
+                                    </td>
                                     <!-- Kolom Jam Ke / Sesi -->
                                     <td class="px-4 py-4 text-center">
                                         <div class="inline-flex flex-col items-center">
@@ -337,7 +398,7 @@
                                                 </span>
                                             @elseif($isIstirahat)
                                                 <span class="px-2.5 py-1 rounded-md text-xs font-bold bg-amber-100 text-amber-800 border border-amber-300 whitespace-nowrap inline-flex items-center gap-1">
-                                                    <i class="bi bi-cup-hot-fill text-amber-600"></i> Istirahat
+                                                    <i class="bi bi-cup-hot-fill text-amber-600"></i> {{ str_contains(strtolower($j->mapel), '2') ? 'Istirahat 2' : 'Istirahat 1' }}
                                                 </span>
                                             @elseif($isUpacara)
                                                 <span class="px-2.5 py-1 rounded-md text-xs font-bold bg-amber-100 text-amber-800 border border-amber-300 whitespace-nowrap inline-flex items-center gap-1">
@@ -399,7 +460,11 @@
 
                                     <!-- Kolom Guru Pengampu -->
                                     <td class="px-5 py-4">
-                                        @if($j->guru)
+                                        @if($isIstirahat)
+                                            <div class="text-xs text-amber-700 italic flex items-center gap-1 font-medium">
+                                                <i class="bi bi-cup-hot"></i> Waktu Istirahat Bersama
+                                            </div>
+                                        @elseif($j->guru)
                                             <div class="text-sm font-medium text-emerald-900">
                                                 {{ $j->guru->name }}
                                             </div>
@@ -441,7 +506,7 @@
                                 </tr>
                             @empty
                                 <tr id="rowEmptyAll">
-                                    <td colspan="5" class="px-5 py-12 text-center text-slate-400 text-sm">
+                                    <td colspan="6" class="px-5 py-12 text-center text-slate-400 text-sm">
                                         <i class="bi bi-calendar-x text-3xl mb-2 block text-slate-300"></i>
                                         Belum ada jadwal pelajaran untuk kelas ini.<br>
                                         <span class="text-xs text-slate-400">Silakan tambahkan jadwal baru menggunakan form di sebelah kiri.</span>
@@ -451,7 +516,7 @@
 
                             <!-- Row kosong jika filter hari tidak ada sesi -->
                             <tr id="rowEmptyFiltered" class="hidden">
-                                <td colspan="5" class="px-5 py-12 text-center text-slate-400 text-sm">
+                                <td colspan="6" class="px-5 py-12 text-center text-slate-400 text-sm">
                                     <i class="bi bi-calendar-minus text-3xl mb-2 block text-slate-300"></i>
                                     Belum ada jadwal pelajaran untuk hari <strong id="emptyDayName"></strong> pada kelas ini.<br>
                                     <button type="button" onclick="setAddFormDay()" class="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#155d50] text-white rounded-lg text-xs font-semibold hover:bg-[#0b2b24] transition">
@@ -471,6 +536,230 @@
             </div>
         </div>
     </div>
+    </div> <!-- Tutup containerJadwalPelajaran -->
+
+    <!-- Container 2: Jadwal Piket & Waka -->
+    <div id="containerJadwalPiket" class="hidden transition-all duration-200 space-y-6">
+        
+        <!-- Section A: Piket Waka Harian (Senin - Jumat) -->
+        <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5 border-b border-slate-100 pb-4">
+                <div>
+                    <h2 class="text-base font-bold text-gray-900 flex items-center gap-2">
+                        <i class="bi bi-shield-shaded text-emerald-600"></i>
+                        <span>Piket Pimpinan & Waka (Wakil Kepala Sekolah)</span>
+                    </h2>
+                    <p class="text-xs text-slate-500 mt-0.5">Penugasan pimpinan harian untuk monitoring kelancaran KBM dan ketertiban sekolah</p>
+                </div>
+                <span class="px-3 py-1 bg-emerald-50 text-emerald-700 text-xs font-semibold rounded-full border border-emerald-200/80 inline-flex items-center gap-1.5 self-start sm:self-auto">
+                    <i class="bi bi-calendar-check text-emerald-600"></i> Senin s.d. Jumat
+                </span>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3.5">
+                @php
+                    $hariListPiket = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat'];
+                @endphp
+                @foreach($hariListPiket as $h)
+                    @php
+                        $wakaItem = $piketWakas->firstWhere('hari', $h);
+                    @endphp
+                    <div class="rounded-xl border border-slate-200/80 bg-slate-50/50 p-4 hover:border-emerald-300 hover:bg-emerald-50/30 transition shadow-2xs">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-xs font-bold uppercase tracking-wider text-slate-500">{{ $h }}</span>
+                            <span class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
+                                Waka
+                            </span>
+                        </div>
+                        <h4 class="text-sm font-bold text-gray-900 leading-snug">
+                            {{ optional($wakaItem->user)->name ?? 'Belum Ditugaskan' }}
+                        </h4>
+                        <p class="text-[11px] text-slate-500 mt-1 flex items-center gap-1">
+                            <i class="bi bi-card-text text-slate-400"></i>
+                            <span>NIP: {{ optional($wakaItem->user)->nip ?? '-' }}</span>
+                        </p>
+                    </div>
+                @endforeach
+            </div>
+        </div>
+
+        <!-- Section B: Jadwal Piket KBM Guru (Siklus 2 Mingguan) -->
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 border-b border-slate-100 bg-white">
+                <div>
+                    <h2 class="text-base font-bold text-gray-900 flex items-center gap-2">
+                        <i class="bi bi-people-fill text-[#155d50]"></i>
+                        <span>Jadwal Petugas & Koordinator Piket KBM</span>
+                    </h2>
+                    <p class="text-xs text-slate-500 mt-0.5">Siklus 2 mingguan bergantian: Shift Pagi (07.00 - 11.00 WIB) & Shift Siang (11.00 - 15.00 WIB)</p>
+                </div>
+
+                <!-- Toggle Minggu 1 vs Minggu 2 -->
+                <div class="flex items-center gap-1.5 p-1 bg-slate-100 rounded-xl border border-slate-200 shadow-2xs self-start sm:self-auto">
+                    <button type="button" onclick="switchPiketMingguTab(1)" id="btnPiketMinggu1" class="px-3.5 py-1.5 rounded-lg text-xs font-bold bg-white text-emerald-800 border border-slate-200 shadow-2xs transition cursor-pointer">
+                        <span>Minggu 1 (Ganjil)</span>
+                    </button>
+                    <button type="button" onclick="switchPiketMingguTab(2)" id="btnPiketMinggu2" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:text-slate-900 transition cursor-pointer border border-transparent">
+                        <span>Minggu 2 (Genap)</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Tabel Piket Minggu 1 -->
+            <div id="tablePiketMinggu1" class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-slate-100">
+                    <thead class="bg-slate-50/80 text-xs font-bold text-slate-600 uppercase tracking-wider text-left">
+                        <tr>
+                            <th class="px-5 py-3.5 w-32">Hari</th>
+                            <th class="px-5 py-3.5">Petugas Piket Pagi (07.00 - 11.00)</th>
+                            <th class="px-5 py-3.5 w-64">Koordinator Pagi</th>
+                            <th class="px-5 py-3.5">Petugas Piket Siang (11.00 - 15.00)</th>
+                            <th class="px-5 py-3.5 w-64">Koordinator Siang</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100 text-sm">
+                        @foreach($hariListPiket as $h)
+                            @php
+                                $m1Gurus = $piketGurus->where('hari', $h)->filter(fn($p) => str_contains($p->keterangan, 'Minggu 1'));
+                                $pagiPetugas = $m1Gurus->filter(fn($p) => str_contains($p->keterangan, 'Petugas Piket Pagi'));
+                                $pagiKoord = $m1Gurus->first(fn($p) => str_contains($p->keterangan, 'Koordinator Piket Pagi'));
+                                $siangPetugas = $m1Gurus->filter(fn($p) => str_contains($p->keterangan, 'Petugas Piket Siang'));
+                                $siangKoord = $m1Gurus->first(fn($p) => str_contains($p->keterangan, 'Koordinator Piket Siang'));
+                            @endphp
+                            <tr class="hover:bg-slate-50/60 transition">
+                                <td class="px-5 py-4 font-bold text-gray-900 align-top">
+                                    <span class="inline-block px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-800 text-xs font-bold border border-emerald-200">
+                                        {{ $h }}
+                                    </span>
+                                </td>
+                                <td class="px-5 py-4 align-top">
+                                    <ul class="space-y-1.5">
+                                        @foreach($pagiPetugas as $pet)
+                                            <li class="flex items-center gap-2 text-xs font-medium text-gray-800">
+                                                <i class="bi bi-person-badge text-emerald-600"></i>
+                                                <span>{{ optional($pet->user)->name }}</span>
+                                            </li>
+                                        @endforeach
+                                    </ul>
+                                </td>
+                                <td class="px-5 py-4 align-top">
+                                    @if($pagiKoord)
+                                        <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-50 border border-amber-200 text-xs font-bold text-amber-900">
+                                            <i class="bi bi-star-fill text-amber-500 text-[11px]"></i>
+                                            <span>{{ optional($pagiKoord->user)->name }}</span>
+                                        </div>
+                                    @else
+                                        <span class="text-xs text-slate-400">-</span>
+                                    @endif
+                                </td>
+                                <td class="px-5 py-4 align-top">
+                                    <ul class="space-y-1.5">
+                                        @foreach($siangPetugas as $pet)
+                                            <li class="flex items-center gap-2 text-xs font-medium text-gray-800">
+                                                <i class="bi bi-person-badge text-[#155d50]"></i>
+                                                <span>{{ optional($pet->user)->name }}</span>
+                                            </li>
+                                        @endforeach
+                                    </ul>
+                                </td>
+                                <td class="px-5 py-4 align-top">
+                                    @if($siangKoord)
+                                        <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 border border-emerald-200 text-xs font-bold text-emerald-900">
+                                            <i class="bi bi-star-fill text-emerald-600 text-[11px]"></i>
+                                            <span>{{ optional($siangKoord->user)->name }}</span>
+                                        </div>
+                                    @else
+                                        <span class="text-xs text-slate-400">-</span>
+                                    @endif
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Tabel Piket Minggu 2 -->
+            <div id="tablePiketMinggu2" class="hidden overflow-x-auto">
+                <table class="min-w-full divide-y divide-slate-100">
+                    <thead class="bg-slate-50/80 text-xs font-bold text-slate-600 uppercase tracking-wider text-left">
+                        <tr>
+                            <th class="px-5 py-3.5 w-32">Hari</th>
+                            <th class="px-5 py-3.5">Petugas Piket Pagi (07.00 - 11.00)</th>
+                            <th class="px-5 py-3.5 w-64">Koordinator Pagi</th>
+                            <th class="px-5 py-3.5">Petugas Piket Siang (11.00 - 15.00)</th>
+                            <th class="px-5 py-3.5 w-64">Koordinator Siang</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100 text-sm">
+                        @foreach($hariListPiket as $h)
+                            @php
+                                $m2Gurus = $piketGurus->where('hari', $h)->filter(fn($p) => str_contains($p->keterangan, 'Minggu 2'));
+                                $pagiPetugas = $m2Gurus->filter(fn($p) => str_contains($p->keterangan, 'Petugas Piket Pagi'));
+                                $pagiKoord = $m2Gurus->first(fn($p) => str_contains($p->keterangan, 'Koordinator Piket Pagi'));
+                                $siangPetugas = $m2Gurus->filter(fn($p) => str_contains($p->keterangan, 'Petugas Piket Siang'));
+                                $siangKoord = $m2Gurus->first(fn($p) => str_contains($p->keterangan, 'Koordinator Piket Siang'));
+                            @endphp
+                            <tr class="hover:bg-slate-50/60 transition">
+                                <td class="px-5 py-4 font-bold text-gray-900 align-top">
+                                    <span class="inline-block px-2.5 py-1 rounded-lg bg-purple-50 text-purple-800 text-xs font-bold border border-purple-200">
+                                        {{ $h }}
+                                    </span>
+                                </td>
+                                <td class="px-5 py-4 align-top">
+                                    <ul class="space-y-1.5">
+                                        @foreach($pagiPetugas as $pet)
+                                            <li class="flex items-center gap-2 text-xs font-medium text-gray-800">
+                                                <i class="bi bi-person-badge text-purple-600"></i>
+                                                <span>{{ optional($pet->user)->name }}</span>
+                                            </li>
+                                        @endforeach
+                                    </ul>
+                                </td>
+                                <td class="px-5 py-4 align-top">
+                                    @if($pagiKoord)
+                                        <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-50 border border-amber-200 text-xs font-bold text-amber-900">
+                                            <i class="bi bi-star-fill text-amber-500 text-[11px]"></i>
+                                            <span>{{ optional($pagiKoord->user)->name }}</span>
+                                        </div>
+                                    @else
+                                        <span class="text-xs text-slate-400">-</span>
+                                    @endif
+                                </td>
+                                <td class="px-5 py-4 align-top">
+                                    <ul class="space-y-1.5">
+                                        @foreach($siangPetugas as $pet)
+                                            <li class="flex items-center gap-2 text-xs font-medium text-gray-800">
+                                                <i class="bi bi-person-badge text-purple-700"></i>
+                                                <span>{{ optional($pet->user)->name }}</span>
+                                            </li>
+                                        @endforeach
+                                    </ul>
+                                </td>
+                                <td class="px-5 py-4 align-top">
+                                    @if($siangKoord)
+                                        <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-purple-50 border border-purple-200 text-xs font-bold text-purple-900">
+                                            <i class="bi bi-star-fill text-purple-600 text-[11px]"></i>
+                                            <span>{{ optional($siangKoord->user)->name }}</span>
+                                        </div>
+                                    @else
+                                        <span class="text-xs text-slate-400">-</span>
+                                    @endif
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="bg-slate-50 p-4 border-t border-slate-100 flex flex-col sm:flex-row justify-between items-center text-xs text-slate-500 gap-2">
+                <span>Sumber: Jadwal Piket KBM Semester Ganjil SMKN 1 Boyolangu 2026/2027</span>
+                <span class="inline-flex items-center gap-1 text-emerald-700 font-semibold">
+                    <i class="bi bi-check-circle-fill"></i> Data Tersinkronisasi Otomatis
+                </span>
+            </div>
+        </div>
+
+    </div> <!-- Tutup containerJadwalPiket -->
 
     {{-- ================= MODAL EDIT JADWAL ================= --}}
     <div id="modalEditJadwal" class="fixed inset-0 z-50 hidden items-center justify-center overflow-y-auto bg-gray-900/50 p-4 backdrop-blur-sm">
@@ -503,7 +792,7 @@
                 <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <div>
                         <label for="editHari" class="mb-1.5 block text-sm font-medium text-gray-700">Pilih Hari <span class="text-red-500">*</span></label>
-                        <select id="editHari" name="hari" required class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-emerald-600 focus:ring-2 focus:ring-emerald-400/20 cursor-pointer">
+                        <select id="editHari" name="hari" onchange="applyScheduleTimePresets('edit')" required class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-emerald-600 focus:ring-2 focus:ring-emerald-400/20 cursor-pointer">
                             @foreach($hariList as $hari)
                                 <option value="{{ $hari }}">{{ $hari }}</option>
                             @endforeach
@@ -512,7 +801,7 @@
 
                     <div>
                         <label for="editJamKe" class="mb-1.5 block text-sm font-medium text-gray-700">Jam Pelajaran Ke- <span class="text-red-500">*</span></label>
-                        <select id="editJamKe" name="jam_ke" required class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-emerald-600 focus:ring-2 focus:ring-emerald-400/20 cursor-pointer">
+                        <select id="editJamKe" name="jam_ke" onchange="applyScheduleTimePresets('edit')" required class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-emerald-600 focus:ring-2 focus:ring-emerald-400/20 cursor-pointer">
                             <option value="0">Jam Ke-0 (Khusus Kegiatan / Istirahat / Upacara)</option>
                             @for($i = 1; $i <= 13; $i++)
                                 <option value="{{ $i }}">Jam Ke-{{ $i }}</option>
@@ -639,14 +928,28 @@
                 <input type="hidden" name="kelas_id" id="shiftKelasId" value="{{ optional($selectedKelas)->id_kelas }}">
                 <input type="hidden" name="hari" id="shiftHari" value="Senin">
                 <input type="hidden" name="mode" id="shiftMode" value="maju">
-                <input type="hidden" name="minutes" id="shiftMinutes" value="45">
 
-                <div class="bg-slate-50 border border-slate-200 rounded-lg p-3">
-                    <label class="flex items-center gap-2.5 cursor-pointer text-xs font-semibold text-slate-700">
-                        <input type="checkbox" name="apply_all" value="1" class="rounded border-slate-300 text-[#155d50] focus:ring-[#155d50] h-4 w-4">
-                        <span>Terapkan perubahan untuk SEMUA KELAS di sekolah</span>
+                <!-- Input Durasi Pemajuan Jam (Tampil saat mode maju) -->
+                <div id="containerShiftMinutes" class="space-y-1.5 p-3 rounded-lg border border-amber-200 bg-amber-50/50">
+                    <label for="shiftMinutes" class="text-xs font-bold text-amber-950 flex items-center gap-1.5">
+                        <i class="bi bi-stopwatch-fill text-amber-600"></i>
+                        <span>Durasi Pemajuan Jam (Menit)</span>
                     </label>
-                    <p class="text-[11px] text-slate-400 ml-6 mt-0.5">Jika dicentang, seluruh kelas serentak menerapkan penyesuaian jadwal ini.</p>
+                    <div class="flex items-center gap-2">
+                        <input type="number" name="minutes" id="shiftMinutes" min="5" max="180" value="40" class="w-full px-3 py-2 rounded-lg border border-amber-300 font-bold text-slate-900 focus:ring-2 focus:ring-amber-500 bg-white text-sm">
+                        <span class="text-xs font-bold text-slate-700">Menit</span>
+                    </div>
+                    <p class="text-[11px] text-amber-800/80">Jam pelajaran berikutnya akan dimajukan sesuai jumlah menit ini (Jam Ke-2 mulai 07:00).</p>
+                </div>
+
+                <div class="bg-emerald-50 border border-emerald-200 rounded-lg p-3 flex items-center gap-2.5">
+                    <div class="w-6 h-6 rounded-full bg-emerald-600 text-white flex items-center justify-center text-xs shrink-0 font-bold">
+                        <i class="bi bi-check-lg"></i>
+                    </div>
+                    <div>
+                        <div class="text-xs font-bold text-emerald-900">Otomatis Diterapkan untuk Seluruh Kelas</div>
+                        <p class="text-[11px] text-emerald-700 mt-0.5">Penyesuaian jadwal ini langsung aktif serentak ke seluruh 48 kelas di sekolah.</p>
+                    </div>
                 </div>
                 
                 <div class="flex justify-center gap-3 pt-3">
@@ -657,11 +960,81 @@
                 </div>
             </form>
         </div>
+    {{-- ================= MODAL IMPORT JADWAL (EXCEL) ================= --}}
+    <div id="modalImportJadwal" class="fixed inset-0 z-50 hidden items-center justify-center bg-gray-900/60 backdrop-blur-xs p-4">
+        <div class="bg-white rounded-2xl shadow-xl border border-gray-100 max-w-lg w-full p-6 relative animate-in fade-in zoom-in duration-150">
+            <div class="flex items-center justify-between mb-4 pb-3 border-b border-gray-100">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center">
+                        <i class="bi bi-file-earmark-excel-fill text-lg"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-base font-bold text-gray-900">Import Jadwal Pelajaran (Excel / CSV)</h3>
+                        <p class="text-xs text-gray-500">Unggah jadwal mengajar semua guru dan kelas sekaligus.</p>
+                    </div>
+                </div>
+                <button type="button" onclick="closeModal('modalImportJadwal')" class="text-gray-400 hover:text-gray-600 p-1 cursor-pointer">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+
+            <form action="{{ route('dashboard.jadwal.import') }}" method="POST" enctype="multipart/form-data" class="space-y-4">
+                @csrf
+                
+                <div class="p-4 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-600 leading-relaxed">
+                    <div class="font-bold text-slate-800 mb-1 flex items-center gap-1.5">
+                        <i class="bi bi-info-circle-fill text-emerald-600"></i>
+                        <span>Format Kolom Spreadsheet:</span>
+                    </div>
+                    <p>Pastikan baris pertama (header) memuat nama kolom berikut:</p>
+                    <div class="mt-2 font-mono bg-white p-2 rounded-lg border border-slate-200 text-slate-700 text-[11px]">
+                        hari, kelas, mapel, guru, jam_ke, jam_mulai, jam_selesai
+                    </div>
+                    <div class="mt-2 text-right">
+                        <a href="{{ route('dashboard.jadwal.download-template') }}" class="text-emerald-700 font-bold hover:underline inline-flex items-center gap-1">
+                            <i class="bi bi-download"></i> Unduh File Contoh Template (.csv)
+                        </a>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-gray-700 mb-1.5">Pilih File Jadwal <span class="text-rose-500">*</span></label>
+                    <input type="file" name="file" required accept=".xlsx,.xls,.csv"
+                           class="w-full text-xs text-gray-700 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-emerald-600 file:text-white hover:file:bg-emerald-700 file:cursor-pointer border border-gray-300 rounded-xl cursor-pointer">
+                    <span class="text-[11px] text-gray-400 mt-1 block">Mendukung format .xlsx, .xls, atau .csv (Maksimal 10 MB).</span>
+                </div>
+
+                <div class="flex justify-end gap-2.5 pt-3 border-t border-gray-100">
+                    <button type="button" onclick="closeModal('modalImportJadwal')" class="px-4 py-2.5 text-xs font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl transition cursor-pointer">
+                        Batal
+                    </button>
+                    <button type="submit" class="px-5 py-2.5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition shadow-xs flex items-center gap-1.5 cursor-pointer">
+                        <i class="bi bi-cloud-arrow-up-fill"></i>
+                        <span>Proses Import Jadwal</span>
+                    </button>
+                </div>
+            </form>
+        </div>
     </div>
 
 </div>
 
 <script>
+    function openModal(id) {
+        const modal = document.getElementById(id);
+        if (modal) {
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+    }
+
+    function closeModal(id) {
+        const modal = document.getElementById(id);
+        if (modal) {
+            modal.classList.remove('flex');
+            modal.classList.add('hidden');
+        }
+    }
     let currentSelectedHari = "{{ $selectedHari ?? 'Senin' }}";
 
     function switchHariTab(hari) {
@@ -770,16 +1143,25 @@
         }
     }
 
-    function openShiftModal(hari, mode, namaKegiatan) {
+    function openShiftModal(hari, mode, namaKegiatan, defaultMin) {
         document.getElementById('shiftHari').value = hari;
         document.getElementById('shiftMode').value = mode;
 
-        const minutes = (hari === 'Jumat') ? 30 : 40;
+        const minutes = defaultMin || ((hari === 'Jumat') ? {{ $shiftJumatMinutes }} : {{ $shiftSeninMinutes }});
         const normalRange = (hari === 'Jumat') ? '07:00 – 07:30' : '07:00 – 07:40';
         const normalStartJam1 = (hari === 'Jumat') ? '07:30' : '07:40';
 
         const minutesInput = document.getElementById('shiftMinutes');
         if (minutesInput) minutesInput.value = minutes;
+
+        const containerMinutes = document.getElementById('containerShiftMinutes');
+        if (containerMinutes) {
+            if (mode === 'maju') {
+                containerMinutes.classList.remove('hidden');
+            } else {
+                containerMinutes.classList.add('hidden');
+            }
+        }
 
         const titleEl = document.getElementById('shiftModalTitle');
         const descEl = document.getElementById('shiftModalDesc');
@@ -789,15 +1171,15 @@
 
         if (mode === 'maju') {
             titleEl.textContent = 'Aktifkan Mode Jam Maju (' + namaKegiatan + ' Ditiadakan)?';
-            descEl.innerHTML = 'Kegiatan <strong>' + namaKegiatan + '</strong> akan ditandai ditiadakan. Seluruh jam pelajaran hari ' + hari + ' otomatis <strong>dimajukan ' + minutes + ' menit</strong> (mulai pukul 07:00), dan waktu pulang siswa otomatis <strong>maju ' + minutes + ' menit lebih awal</strong>.';
-            btnEl.textContent = 'Ya, Aktifkan Jam Maju';
+            descEl.innerHTML = 'Kegiatan <strong>' + namaKegiatan + '</strong> akan ditandai ditiadakan. Seluruh jam pelajaran hari ' + hari + ' otomatis <strong>dimajukan</strong> (mulai pukul 07:00), dan waktu pulang siswa otomatis <strong>maju lebih awal</strong> untuk <strong>seluruh 48 kelas</strong>.';
+            btnEl.textContent = 'Ya, Aktifkan Jam Maju Seluruh Kelas';
             btnEl.className = 'px-5 py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg transition shadow-sm text-sm font-semibold w-full cursor-pointer';
             iconBg.className = 'w-16 h-16 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl font-bold';
             icon.className = 'bi bi-lightning-charge-fill';
         } else {
             titleEl.textContent = 'Kembalikan ke Jadwal Normal (' + namaKegiatan + ' Dilaksanakan)?';
-            descEl.innerHTML = 'Kegiatan <strong>' + namaKegiatan + '</strong> akan diaktifkan kembali pukul ' + normalRange + '. Seluruh jam pelajaran hari ' + hari + ' otomatis <strong>dikembalikan ke waktu normal</strong> (Jam Ke-1 mulai ' + normalStartJam1 + ').';
-            btnEl.textContent = 'Ya, Kembalikan ke Normal';
+            descEl.innerHTML = 'Kegiatan <strong>' + namaKegiatan + '</strong> akan diaktifkan kembali pukul ' + normalRange + '. Seluruh jam pelajaran hari ' + hari + ' otomatis <strong>dikembalikan ke waktu normal</strong> (Jam Ke-1 mulai ' + normalStartJam1 + ') untuk <strong>seluruh 48 kelas</strong>.';
+            btnEl.textContent = 'Ya, Kembalikan ke Normal Seluruh Kelas';
             btnEl.className = 'px-5 py-2.5 bg-slate-800 hover:bg-slate-900 text-white rounded-lg transition shadow-sm text-sm font-semibold w-full cursor-pointer';
             iconBg.className = 'w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl font-bold';
             icon.className = 'bi bi-arrow-counterclockwise';
@@ -887,9 +1269,115 @@
         document.body.style.overflow = 'auto'; 
     }
 
+    function switchMainScheduleTab(tab) {
+        const containerPelajaran = document.getElementById('containerJadwalPelajaran');
+        const containerPiket = document.getElementById('containerJadwalPiket');
+        const btnPelajaran = document.getElementById('mainTabBtnPelajaran');
+        const btnPiket = document.getElementById('mainTabBtnPiket');
+
+        if (!containerPelajaran || !containerPiket) return;
+
+        if (tab === 'pelajaran') {
+            containerPelajaran.classList.remove('hidden');
+            containerPiket.classList.add('hidden');
+
+            if (btnPelajaran) btnPelajaran.className = 'px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer bg-white text-emerald-800 shadow-xs';
+            if (btnPiket) btnPiket.className = 'px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:text-slate-900 transition flex items-center gap-2 cursor-pointer';
+        } else if (tab === 'piket') {
+            containerPelajaran.classList.add('hidden');
+            containerPiket.classList.remove('hidden');
+
+            if (btnPiket) btnPiket.className = 'px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer bg-white text-emerald-800 shadow-xs';
+            if (btnPelajaran) btnPelajaran.className = 'px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:text-slate-900 transition flex items-center gap-2 cursor-pointer';
+        }
+    }
+
+    function switchPiketMingguTab(minggu) {
+        const tableM1 = document.getElementById('tablePiketMinggu1');
+        const tableM2 = document.getElementById('tablePiketMinggu2');
+        const btnM1 = document.getElementById('btnPiketMinggu1');
+        const btnM2 = document.getElementById('btnPiketMinggu2');
+
+        if (!tableM1 || !tableM2) return;
+
+        if (minggu === 1) {
+            tableM1.classList.remove('hidden');
+            tableM2.classList.add('hidden');
+
+            if (btnM1) btnM1.className = 'px-3.5 py-1.5 rounded-lg text-xs font-bold bg-white text-emerald-800 border border-slate-200 shadow-2xs transition cursor-pointer';
+            if (btnM2) btnM2.className = 'px-3.5 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:text-slate-900 transition cursor-pointer border border-transparent';
+        } else {
+            tableM1.classList.add('hidden');
+            tableM2.classList.remove('hidden');
+
+            if (btnM2) btnM2.className = 'px-3.5 py-1.5 rounded-lg text-xs font-bold bg-white text-emerald-800 border border-slate-200 shadow-2xs transition cursor-pointer';
+            if (btnM1) btnM1.className = 'px-3.5 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:text-slate-900 transition cursor-pointer border border-transparent';
+        }
+    }
+
+    // ================= TIME PRESETS BY PERIOD =================
+    const SENIN_KAMIS_TIMES = {
+        1: ['07:00', '07:40'],
+        2: ['07:40', '08:20'],
+        3: ['08:20', '09:00'],
+        4: ['09:00', '09:40'],
+        5: ['10:00', '10:40'],
+        6: ['10:40', '11:20'],
+        7: ['11:20', '12:00'],
+        8: ['13:00', '13:40'],
+        9: ['13:40', '14:20'],
+        10: ['14:20', '15:00']
+    };
+    const JUMAT_TIMES = {
+        1: ['07:00', '07:30'],
+        2: ['07:30', '08:00'],
+        3: ['08:00', '08:30'],
+        4: ['08:30', '09:00'],
+        5: ['09:00', '09:30'],
+        6: ['09:50', '10:20'],
+        7: ['10:20', '10:50'],
+        8: ['10:50', '11:20'],
+        9: ['13:00', '13:30'],
+        10: ['13:30', '14:00'],
+        11: ['14:00', '14:30'],
+        12: ['14:30', '15:00'],
+        13: ['15:00', '15:30']
+    };
+
+    function applyScheduleTimePresets(context) {
+        const isEdit = (context === 'edit');
+        const hariEl = isEdit ? document.getElementById('editHari') : document.getElementById('formAddHari');
+        const jamKeEl = isEdit ? document.getElementById('editJamKe') : document.getElementById('formAddJamKe');
+        const inputMulai = isEdit ? document.getElementById('editJamMulai') : document.getElementById('formAddJamMulai');
+        const inputSelesai = isEdit ? document.getElementById('editJamSelesai') : document.getElementById('formAddJamSelesai');
+
+        if (!hariEl || !jamKeEl || !inputMulai || !inputSelesai) return;
+
+        const hari = hariEl.value;
+        const jamKe = parseInt(jamKeEl.value);
+        const times = (hari === 'Jumat') ? JUMAT_TIMES : SENIN_KAMIS_TIMES;
+
+        if (jamKe > 0 && times[jamKe]) {
+            inputMulai.value = times[jamKe][0];
+            inputSelesai.value = times[jamKe][1];
+        } else if (jamKe === 0) {
+            if (hari === 'Jumat') {
+                inputMulai.value = '09:30';
+                inputSelesai.value = '09:50';
+            } else {
+                inputMulai.value = '09:40';
+                inputSelesai.value = '10:00';
+            }
+        }
+    }
+
     // Inisialisasi tab aktif saat pertama kali dimuat
     document.addEventListener('DOMContentLoaded', function() {
         switchHariTab(currentSelectedHari);
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('tab') === 'piket' || window.location.hash === '#piket') {
+            switchMainScheduleTab('piket');
+        }
     });
 
     // Tutup modal jika klik di luar box
@@ -901,5 +1389,64 @@
         if (e.target === deleteModal) closeDeleteModal();
         if (e.target === shiftModal) closeShiftModal();
     });
+
+    // ================= BATCH ACTION JADWAL =================
+    const selectAllJadwalEl = document.getElementById('selectAllJadwal');
+    const checkboxesJadwal = () => document.querySelectorAll('.jadwal-checkbox');
+    const batchBarJadwal = document.getElementById('batchActionBarJadwal');
+    const batchBadgeJadwal = document.getElementById('batchBadgeJadwal');
+    const batchTextJadwal = document.getElementById('batchTextJadwal');
+
+    if (selectAllJadwalEl) {
+        selectAllJadwalEl.addEventListener('change', function() {
+            checkboxesJadwal().forEach(cb => {
+                cb.checked = selectAllJadwalEl.checked;
+            });
+            updateBatchStateJadwal();
+        });
+    }
+
+    function updateBatchStateJadwal() {
+        const selected = Array.from(checkboxesJadwal()).filter(cb => cb.checked);
+        const count = selected.length;
+
+        if (count > 0) {
+            batchBarJadwal.classList.remove('hidden');
+            batchBadgeJadwal.innerText = count;
+            batchTextJadwal.innerText = count + ' jadwal dipilih';
+        } else {
+            batchBarJadwal.classList.add('hidden');
+            if (selectAllJadwalEl) selectAllJadwalEl.checked = false;
+        }
+    }
+
+    function clearJadwalSelections() {
+        checkboxesJadwal().forEach(cb => cb.checked = false);
+        if (selectAllJadwalEl) selectAllJadwalEl.checked = false;
+        updateBatchStateJadwal();
+    }
+
+    function confirmBatchDeleteJadwal() {
+        const selected = Array.from(checkboxesJadwal()).filter(cb => cb.checked).map(cb => cb.value);
+        if (selected.length === 0) return;
+
+        if (confirm(`Yakin ingin menghapus ${selected.length} jadwal pelajaran terpilih?`)) {
+            const container = document.getElementById('batchDeleteJadwalContainer');
+            container.innerHTML = '';
+            selected.forEach(id => {
+                const inp = document.createElement('input');
+                inp.type = 'hidden';
+                inp.name = 'ids[]';
+                inp.value = id;
+                container.appendChild(inp);
+            });
+            document.getElementById('formBatchDeleteJadwal').submit();
+        }
+    }
 </script>
+
+<form id="formBatchDeleteJadwal" action="{{ route('dashboard.jadwal.batch-delete') }}" method="POST" class="hidden">
+    @csrf
+    <div id="batchDeleteJadwalContainer"></div>
+</form>
 @endsection

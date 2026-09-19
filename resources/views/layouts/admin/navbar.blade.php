@@ -253,7 +253,7 @@
     </div>
 
     <!-- Modal Form -->
-    <form id="formApprovePw" method="POST" action="" class="p-6 space-y-4">
+    <form id="formApprovePw" method="POST" action="" autocomplete="off" class="p-6 space-y-4">
       @csrf
 
       <!-- Info Pengguna yang Direset -->
@@ -284,6 +284,7 @@
             id="inputNewPassword" 
             required
             minlength="4"
+            autocomplete="new-password"
             placeholder="Masukkan kata sandi baru..."
             class="w-full pl-10 pr-10 py-2.5 text-sm rounded-xl border border-gray-200 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition font-mono"
           >

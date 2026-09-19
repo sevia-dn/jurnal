@@ -50,10 +50,10 @@
       <span>Jadwal Pelajaran</span>
     </a>
 
-    <!-- Catatan Jurnal -->
-    <a href="{{ route('catatan-jurnal') }}" class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors !no-underline {{ request()->routeIs('catatan-jurnal*') ? 'bg-[#1BA886] !text-white' : '!text-[#8EBEB2] hover:bg-[#1BA886]/10 hover:!text-white' }}">
+    <!-- Rekap Jurnal -->
+    <a href="{{ route('dashboard.rekap-jurnal') }}" class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors !no-underline {{ request()->routeIs('dashboard.rekap-jurnal*', 'catatan-jurnal*') ? 'bg-[#1BA886] !text-white' : '!text-[#8EBEB2] hover:bg-[#1BA886]/10 hover:!text-white' }}">
       <i class="bi bi-book text-lg"></i>
-      <span>Catatan Jurnal</span>
+      <span>Rekap Jurnal</span>
     </a>
 
     <!-- Manajemen User -->
@@ -64,7 +64,11 @@
       <span>Manajemen User</span>
     </a>
 
-    
+    <!-- Pengaturan Jadwal & Sistem -->
+    <a href="{{ route('admin.pengaturan') }}" class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors !no-underline {{ request()->routeIs('admin.pengaturan*') ? 'bg-[#1BA886] !text-white' : '!text-[#8EBEB2] hover:bg-[#1BA886]/10 hover:!text-white' }}">
+      <i class="bi bi-gear text-lg"></i>
+      <span>Pengaturan Jam</span>
+    </a>
   </nav>
 
 

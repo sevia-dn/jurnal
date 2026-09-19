@@ -18,6 +18,7 @@
             }
         }
     </script>
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 
 <body class="bg-slate-50 text-slate-800 font-sans antialiased flex h-screen overflow-hidden">
@@ -42,5 +43,41 @@
 
     </div>
 
+    {{-- Global: Matikan popup riwayat autocomplete browser di seluruh form dan input --}}
+    <script>
+        (function() {
+            function disableBrowserAutocomplete() {
+                document.querySelectorAll('form').forEach(function(f) {
+                    if (f.getAttribute('autocomplete') !== 'off') {
+                        f.setAttribute('autocomplete', 'off');
+                    }
+                });
+                document.querySelectorAll('input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"])').forEach(function(inp) {
+                    if (inp.getAttribute('autocomplete') !== 'off' && inp.getAttribute('autocomplete') !== 'new-password') {
+                        inp.setAttribute('autocomplete', 'off');
+                    }
+                });
+            }
+
+            disableBrowserAutocomplete();
+            document.addEventListener('DOMContentLoaded', disableBrowserAutocomplete);
+            ['focusin', 'pointerdown', 'mousedown'].forEach(function(evt) {
+                document.addEventListener(evt, function(e) {
+                    if (e.target && e.target.tagName === 'INPUT' && e.target.type !== 'checkbox' && e.target.type !== 'radio' && e.target.type !== 'hidden') {
+                        if (e.target.getAttribute('autocomplete') !== 'off' && e.target.getAttribute('autocomplete') !== 'new-password') {
+                            e.target.setAttribute('autocomplete', 'off');
+                        }
+                    }
+                }, true);
+            });
+
+            if (window.MutationObserver) {
+                new MutationObserver(disableBrowserAutocomplete).observe(document.documentElement, {
+                    childList: true,
+                    subtree: true
+                });
+            }
+        })();
+    </script>
 </body>
 </html>

@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('siswas', function (Blueprint $table) {
             $table->id();
             $table->foreignId('kelas_id')->constrained('kelas', 'id_kelas')->onDelete('cascade');
-            $table->string('nis')->unique();
+            $table->string('nisn')->index();
             $table->string('nama');
             $table->enum('jenis_kelamin', ['L', 'P']);
             $table->timestamps();
