@@ -22,96 +22,6 @@
     .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(16, 185, 129, 0.5); }
 </style>
 
-    <div x-data="{ hasCheckedIn: false, isWithinSchedule: true, showForm: false, statusKehadiran: 'hadir', namaGuru: '{{ auth()->user()->name ?? '' }}', nipGuru: '{{ auth()->user()->nip ?? '' }}' }" class="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-        <section class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-                <p class="text-sm font-semibold text-emerald-700">{{ now()->isoFormat('D MMMM Y') }}</p>
-                <h1 class="mt-1 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">Halaman Utama Guru</h1>
-                <p class="mt-2 text-sm text-slate-500">Selamat datang, {{ auth()->user()->name ?? 'Guru' }}. Kelola kehadiran, piket, dan logbook Anda.</p>
-            </div>
-            <div class="flex items-center gap-2">
-                @if(!empty($isWaka))
-                    <span class="rounded-full bg-purple-100 px-3 py-1.5 text-xs font-semibold text-purple-700 border border-purple-200">
-                        <i class="bi bi-shield-check me-1"></i> Waka Kesiswaan
-                    </span>
-                @endif
-                @if(!empty($isPiketActive))
-                    <span class="rounded-full bg-amber-100 px-3 py-1.5 text-xs font-semibold text-amber-800 border border-amber-300">
-                        <i class="bi bi-clock-history me-1"></i> Bertugas Piket Hari Ini
-                    </span>
-                @endif
-                <span class="w-fit rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700">SMKN 1 Boyolangu</span>
-            </div>
-        </section>
-
-        {{-- BANNER KHUSUS UNTUK WAKA JIKA ADA PENDING DISPENSASI --}}
-        @if(!empty($isWaka) && count($pendingDispensasis) > 0)
-            <section class="mt-6 rounded-2xl bg-purple-900 p-5 text-white shadow-lg sm:p-6">
-                <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                    <div class="flex items-start gap-3">
-                        <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-purple-800 text-2xl text-purple-200">
-                            <i class="bi bi-bell-fill"></i>
-                        </span>
-                        <div>
-                            <span class="inline-block rounded-full bg-purple-700 px-2.5 py-0.5 text-xs font-semibold text-purple-100">Notifikasi Approval Waka</span>
-                            <h2 class="mt-1 text-xl font-bold">Ada {{ count($pendingDispensasis) }} Pengajuan Dispensasi Menunggu Persetujuan</h2>
-                            <p class="mt-1 text-sm text-purple-200">Guru Piket telah mengirimkan pengajuan dispensasi siswa yang membutuhkan konfirmasi Anda.</p>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="mt-5 space-y-3">
-                    @foreach($pendingDispensasis as $item)
-                        <div class="flex flex-col gap-3 rounded-xl bg-purple-800/80 p-4 sm:flex-row sm:items-center sm:justify-between">
-                            <div>
-                                <p class="font-bold text-white text-base">{{ $item->nama }} <span class="text-xs font-normal text-purple-200">({{ $item->jenis_dispensasi }})</span></p>
-                                <p class="text-xs text-purple-200 mt-0.5">Alasan: {{ $item->alasan }} | Tanggal: {{ $item->tanggal ? $item->tanggal->format('d/m/Y') : '-' }}</p>
-                                <p class="text-xs text-purple-300 mt-1">Dibuat oleh: {{ $item->pembuat?->name ?? 'Guru Piket' }}</p>
-                            </div>
-                            <div class="flex items-center gap-2">
-                                <a href="{{ route('dispensasi.approval', ['token' => $item->token_approval ?? $item->id]) }}" class="inline-flex items-center gap-1.5 rounded-lg bg-emerald-500 px-4 py-2 text-xs font-semibold text-white hover:bg-emerald-600 transition shadow">
-                                    <i class="bi bi-check-circle"></i> Tinjau & Setujui
-                                </a>
-                            </div>
-                        </div>
-                    @endforeach
-                </div>
-            </section>
-        @endif
-
-        {{-- BANNER KHUSUS GURU PIKET (MODE PIKET AKTIF) --}}
-        @if(!empty($isPiketActive))
-            <section class="mt-6 rounded-2xl border-2 border-amber-300 bg-amber-50/90 p-5 shadow-sm sm:p-6" aria-labelledby="status-piket-guru">
-                <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                    <div class="flex items-start gap-3">
-                        <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-amber-200 text-2xl text-amber-800">
-                            <i class="bi bi-shield-fill-exclamation" aria-hidden="true"></i>
-                        </span>
-                        <div>
-                            <span class="rounded-full bg-amber-200 px-3 py-1 text-xs font-bold text-amber-900">MODE PIKET AKTIF</span>
-                            <h2 id="status-piket-guru" class="mt-1 text-xl font-bold text-amber-950">Anda Terjadwal Piket Hari Ini</h2>
-                            <p class="mt-1 text-sm text-amber-900 leading-relaxed">
-                                Fitur Logbook Mengajar Anda <strong>dikunci sementara</strong> selama sesi piket aktif. 
-                                Anda tidak perlu absen mengajar terpisah karena absen piket Anda sudah mencatat kehadiran hari ini.
-                            </p>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="mt-4 flex flex-wrap gap-3">
-                    <a href="{{ route('piket.dispensasi.form') }}" class="inline-flex items-center gap-2 rounded-xl bg-amber-600 px-5 py-2.5 text-sm font-bold text-white shadow hover:bg-amber-700 transition">
-                        <i class="bi bi-file-earmark-plus-fill"></i> Input Form Dispensasi Siswa
-                    </a>
-                    <a href="{{ route('piket.kehadiran') }}" class="inline-flex items-center gap-2 rounded-xl bg-white px-5 py-2.5 text-sm font-bold text-amber-900 border border-amber-300 shadow-sm hover:bg-amber-100 transition">
-                        <i class="bi bi-person-lines-fill"></i> Rekap Kehadiran Piket
-                    </a>
-                </div>
-            </section>
-        @endif
-
-        {{-- LAPOR KEHADIRAN GURU --}}
-        <section class="mt-6 rounded-2xl bg-white p-5 shadow-md sm:p-6" aria-labelledby="lapor-kehadiran-guru">
-            <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
 <div
     x-data="{
         hasCheckedIn: {{ $hasCheckedIn ? 'true' : 'false' }},
@@ -121,6 +31,7 @@
         selectedTeacherId: '{{ $user->id }}',
         nipGuru: '{{ $user->nip ?? $user->username ?? "" }}',
         statusKehadiran: 'Hadir',
+        statusAbsen: 'Hadir',
         selectedKelas: '{{ $activeJadwal->id_kelas ?? "" }}',
         selectedMapel: '{{ $activeJadwal->id_mapel ?? "" }}',
         selectedJamKe: '{{ $activeJadwal->jam_mulai ?? 1 }}',
@@ -195,7 +106,6 @@
 
     {{-- HEADER --}}
     <section class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-
         <div>
             <p class="text-sm font-semibold text-emerald-700">
                 {{ \Carbon\Carbon::now()->translatedFormat('l, d F Y') }}
@@ -210,48 +120,115 @@
             </p>
         </div>
 
-        <span class="w-fit rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700">
-            SMKN 1 Boyolangu
-        </span>
-
+        <div class="flex items-center gap-2">
+            @if(!empty($isWaka))
+                <span class="rounded-full bg-purple-100 px-3 py-1.5 text-xs font-semibold text-purple-700 border border-purple-200">
+                    <i class="bi bi-shield-check me-1"></i> Waka Kesiswaan
+                </span>
+            @endif
+            @if(!empty($isPiketActive))
+                <span class="rounded-full bg-amber-100 px-3 py-1.5 text-xs font-semibold text-amber-800 border border-amber-300">
+                    <i class="bi bi-clock-history me-1"></i> Bertugas Piket Hari Ini
+                </span>
+            @endif
+            <span class="w-fit rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700">
+                SMKN 1 Boyolangu
+            </span>
+        </div>
     </section>
 
+    {{-- BANNER KHUSUS UNTUK WAKA JIKA ADA PENDING DISPENSASI --}}
+    @if(!empty($isWaka) && count($pendingDispensasis) > 0)
+        <section class="mt-6 rounded-2xl bg-purple-900 p-5 text-white shadow-lg sm:p-6">
+            <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div class="flex items-start gap-3">
+                    <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-purple-800 text-2xl text-purple-200">
+                        <i class="bi bi-bell-fill"></i>
+                    </span>
+                    <div>
+                        <span class="inline-block rounded-full bg-purple-700 px-2.5 py-0.5 text-xs font-semibold text-purple-100">Notifikasi Approval Waka</span>
+                        <h2 class="mt-1 text-xl font-bold">Ada {{ count($pendingDispensasis) }} Pengajuan Dispensasi Menunggu Persetujuan</h2>
+                        <p class="mt-1 text-sm text-purple-200">Guru Piket telah mengirimkan pengajuan dispensasi siswa yang membutuhkan konfirmasi Anda.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-5 space-y-3">
+                @foreach($pendingDispensasis as $item)
+                    <div class="flex flex-col gap-3 rounded-xl bg-purple-800/80 p-4 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                            <p class="font-bold text-white text-base">{{ $item->nama }} <span class="text-xs font-normal text-purple-200">({{ $item->jenis_dispensasi }})</span></p>
+                            <p class="text-xs text-purple-200 mt-0.5">Alasan: {{ $item->alasan }} | Tanggal: {{ $item->tanggal ? $item->tanggal->format('d/m/Y') : '-' }}</p>
+                            <p class="text-xs text-purple-300 mt-1">Dibuat oleh: {{ $item->pembuat?->name ?? 'Guru Piket' }}</p>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <a href="{{ route('dispensasi.approval', ['token' => $item->token_approval ?? $item->id]) }}" class="inline-flex items-center gap-1.5 rounded-lg bg-emerald-500 px-4 py-2 text-xs font-semibold text-white hover:bg-emerald-600 transition shadow">
+                                <i class="bi bi-check-circle"></i> Tinjau & Setujui
+                            </a>
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+        </section>
+    @endif
+
+    {{-- BANNER KHUSUS GURU PIKET (MODE PIKET AKTIF) --}}
+    @if(!empty($isPiketActive))
+        <section class="mt-6 rounded-2xl border-2 border-amber-300 bg-amber-50/90 p-5 shadow-sm sm:p-6" aria-labelledby="status-piket-guru">
+            <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <div class="flex items-start gap-3">
+                    <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-amber-200 text-2xl text-amber-800">
+                        <i class="bi bi-shield-fill-exclamation" aria-hidden="true"></i>
+                    </span>
+                    <div>
+                        <span class="rounded-full bg-amber-200 px-3 py-1 text-xs font-bold text-amber-900">MODE PIKET AKTIF</span>
+                        <h2 id="status-piket-guru" class="mt-1 text-xl font-bold text-amber-950">Anda Terjadwal Piket Hari Ini</h2>
+                        <p class="mt-1 text-sm text-amber-900 leading-relaxed">
+                            Fitur Logbook Mengajar Anda <strong>dikunci sementara</strong> selama sesi piket aktif. 
+                            Anda tidak perlu mengisi logbook karena sesi Anda dialihkan ke piket.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-4 flex flex-wrap gap-3">
+                <a href="{{ route('piket.dispensasi.form') }}" class="inline-flex items-center gap-2 rounded-xl bg-amber-600 px-5 py-2.5 text-sm font-bold text-white shadow hover:bg-amber-700 transition">
+                    <i class="bi bi-file-earmark-plus-fill"></i> Input Form Dispensasi Siswa
+                </a>
+                <a href="{{ route('piket.kehadiran') }}" class="inline-flex items-center gap-2 rounded-xl bg-white px-5 py-2.5 text-sm font-bold text-amber-900 border border-amber-300 shadow-sm hover:bg-amber-100 transition">
+                    <i class="bi bi-person-lines-fill"></i> Rekap Kehadiran Piket
+                </a>
+            </div>
+        </section>
+    @endif
 
     {{-- ========================================================= --}}
     {{-- SECTION 1 : KEHADIRAN GURU & JADWAL MENGAJAR HARI INI --}}
     {{-- ========================================================= --}}
-
     <section
         id="section-kehadiran-guru"
         class="mt-6 rounded-2xl bg-white p-5 shadow-md sm:p-6"
         aria-labelledby="lapor-kehadiran-guru"
     >
-
         <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-
             <div class="flex items-start gap-3">
-
                 <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-xl text-emerald-700">
                     <i class="bi bi-calendar-check-fill"></i>
                 </span>
-
                 <div>
                     <p class="text-sm font-semibold text-emerald-700">
                         Presensi &amp; Jadwal Mengajar Hari Ini
                     </p>
-
                     <h2
                         id="lapor-kehadiran-guru"
                         class="mt-1 text-xl font-bold text-slate-900"
                     >
                         Jadwal Mengajar Hari Ini ({{ $hariIni }})
                     </h2>
-
                     <p class="mt-1 text-sm text-slate-500">
                         Lakukan presensi terlebih dahulu sebelum memulai kegiatan belajar mengajar di kelas.
                     </p>
                 </div>
-
             </div>
 
             <div class="flex items-center gap-2">
@@ -270,12 +247,10 @@
                     Presensi tercatat ✓
                 </span>
             </div>
-
         </div>
 
         {{-- DAFTAR JADWAL MENGAJAR HARI INI --}}
         <div class="mt-5 divide-y divide-slate-100 rounded-xl border border-slate-100 bg-slate-50/50 overflow-hidden">
-
             <div class="bg-slate-100/80 px-4 py-2.5 flex items-center justify-between">
                 <p class="text-xs font-bold uppercase tracking-wider text-slate-600">
                     Sesi Mengajar Hari {{ $hariIni }} ({{ $jadwals->count() }} Sesi Terdaftar)
@@ -294,9 +269,7 @@
                 @endphp
 
                 <div class="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between transition hover:bg-slate-100/40">
-
                     <div class="flex flex-wrap items-center gap-3 sm:gap-4">
-
                         <div class="flex flex-col items-start">
                             <span class="rounded-lg bg-emerald-100/80 px-2.5 py-1 text-xs font-bold text-emerald-800">
                                 Jam ke-{{ $jadwal->jam_mulai }} - {{ $jadwal->jam_selesai }}
@@ -333,7 +306,6 @@
                                 @endif
                             </div>
                         </div>
-
                     </div>
 
                     <div class="flex items-center gap-2">
@@ -349,41 +321,37 @@
                             <span class="rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-400 cursor-not-allowed" title="Batas waktu jam mengajar sesi ini telah terlewat ({{ $jadwal->waktu_mulai }} - {{ $jadwal->waktu_selesai }} WIB)">
                                 <i class="bi bi-lock-fill mr-1"></i>Tenggat Lewat
                             </span>
-                        @elseif($statusWaktu === 'belum_mulai')
-                            <span class="rounded-lg bg-sky-50 border border-sky-200 px-3 py-1.5 text-xs font-semibold text-sky-700 cursor-not-allowed" title="Jam mengajar sesi ini belum dimulai ({{ $jadwal->waktu_mulai }} - {{ $jadwal->waktu_selesai }} WIB)">
-                                <i class="bi bi-clock-history mr-1"></i>Belum Dimulai
-                            </span>
+                        @elseif($statusWaktu === 'berlangsung')
+                            <button
+                                type="button"
+                                @click="pilihJadwal('{{ $jadwal->id_kelas }}', '{{ $jadwal->id_mapel }}', '{{ $jadwal->jam_mulai }}', '{{ $jadwal->jam_selesai }}')"
+                                class="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3.5 py-1.5 text-xs font-bold text-white shadow-sm transition hover:bg-emerald-700 animate-bounce"
+                            >
+                                <i class="bi bi-pencil-square"></i>
+                                <span>Isi Jurnal Sekarang</span>
+                            </button>
                         @else
                             <button
                                 type="button"
-                                x-show="hasCheckedIn"
                                 @click="pilihJadwal('{{ $jadwal->id_kelas }}', '{{ $jadwal->id_mapel }}', '{{ $jadwal->jam_mulai }}', '{{ $jadwal->jam_selesai }}')"
-                                class="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white shadow-sm transition hover:bg-emerald-700"
-                                title="Gunakan sesi jadwal ini untuk mengisi logbook"
+                                class="inline-flex items-center gap-1.5 rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100"
                             >
-                                <i class="bi bi-pencil-square"></i>
-                                <span>Isi Logbook</span>
+                                <i class="bi bi-calendar-plus"></i>
+                                <span>Pilih Sesi Ini</span>
                             </button>
                         @endif
                     </div>
-
                 </div>
-
             @empty
-
-                <div class="p-8 text-center text-sm text-slate-500">
-                    <i class="bi bi-calendar-x text-3xl text-slate-300 block mb-2"></i>
-                    Tidak ada jadwal mengajar yang terdaftar untuk hari <strong>{{ $hariIni }}</strong>.
+                <div class="p-8 text-center text-sm text-slate-400">
+                    <i class="bi bi-calendar-x text-2xl mb-1 block"></i>
+                    Tidak ada jadwal mengajar terdaftar untuk hari {{ $hariIni }}.
                 </div>
-
             @endforelse
-
         </div>
-
 
         {{-- TOMBOL ABSEN --}}
         <div class="mt-5 flex flex-col gap-3 rounded-xl bg-slate-50 p-4 sm:flex-row sm:items-center sm:justify-between border border-slate-100">
-
             <p class="flex items-start gap-2 text-xs leading-relaxed text-slate-500">
                 <i class="bi bi-info-circle-fill mt-0.5 text-emerald-600"></i>
                 <span>
@@ -409,9 +377,7 @@
                 <i class="bi bi-check-circle-fill text-emerald-600"></i>
                 Presensi Hari Ini: {{ $attendance->status ?? 'Tercatat' }}
             </span>
-
         </div>
-
 
         {{-- FORM ABSEN GURU --}}
         <form
@@ -423,7 +389,6 @@
             enctype="multipart/form-data"
             class="mt-6 rounded-2xl border border-emerald-100 bg-white p-5 shadow-md sm:p-6"
             x-data="{
-                statusAbsen: 'Hadir',
                 cameraActive: false,
                 cameraStream: null,
                 capturedPhoto: null,
@@ -451,7 +416,6 @@
                     canvas.getContext('2d').drawImage(vid, 0, 0);
                     this.capturedPhoto = canvas.toDataURL('image/jpeg', 0.85);
                     this.$refs.fotoInput.value = '';
-                    // Convert dataURL to File untuk input hidden
                     fetch(this.capturedPhoto)
                         .then(r => r.blob())
                         .then(blob => {
@@ -478,118 +442,37 @@
             }"
             @submit="stopCamera()"
         >
-
             @csrf
 
             <div class="flex flex-col gap-3 border-b border-slate-100 pb-5 sm:flex-row sm:items-start sm:justify-between">
-
                 <div class="flex items-start gap-3">
-
                     <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700">
                         <i class="bi bi-clipboard2-check-fill"></i>
                     </span>
-
                     <div>
-<<<<<<< HEAD
-                        <p class="text-sm font-semibold text-emerald-700">Kehadiran Guru</p>
-                        <h2 id="lapor-kehadiran-guru" class="mt-1 text-xl font-bold text-slate-900">Lapor Kehadiran Guru</h2>
-                        <p class="mt-1 text-sm text-slate-500">Lakukan absen masuk sebelum memulai pembelajaran atau sesi piket.</p>
-                    </div>
-                </div>
-                @if(!$sudahAbsen)
-                    <span class="w-fit rounded-full bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-700">Belum absen</span>
-                @else
-                    <span class="w-fit rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700">Sudah absen</span>
-                @endif
-            </div>
-
-            <div class="mt-6 overflow-hidden rounded-xl border border-slate-200">
-                <div class="grid grid-cols-[96px_minmax(0,1fr)] border-b border-slate-100 bg-emerald-50/60 text-sm sm:grid-cols-[130px_minmax(0,1fr)_160px]">
-                    <div class="flex items-center border-r border-emerald-100 px-4 py-4 font-bold text-emerald-800">Jam 1 - 2</div>
-                    <div class="px-4 py-4"><p class="font-semibold text-slate-800">XI RPL 2 - Informatika</p><p class="mt-1 text-xs text-slate-500">07.00 - 08.20 WIB</p></div>
-                    <span class="hidden items-center justify-center text-xs font-semibold text-emerald-700 sm:flex">Jadwal aktif</span>
-                </div>
-                <div class="grid grid-cols-[96px_minmax(0,1fr)] border-b border-slate-100 text-sm sm:grid-cols-[130px_minmax(0,1fr)_160px]">
-                    <div class="flex items-center border-r border-slate-100 px-4 py-4 font-semibold text-slate-500">Jam 3 - 4</div>
-                    <div class="px-4 py-4"><p class="font-medium text-slate-700">XI RPL 1 - Informatika</p><p class="mt-1 text-xs text-slate-500">08.20 - 09.40 WIB</p></div>
-                    <span class="hidden items-center justify-center text-xs text-slate-400 sm:flex">Berikutnya</span>
-                </div>
-            </div>
-
-            <div class="mt-5 flex flex-col gap-3 rounded-xl bg-slate-50 p-4 sm:flex-row sm:items-center sm:justify-between">
-                <p class="flex items-start gap-2 text-xs leading-relaxed text-slate-500"><i class="bi bi-info-circle-fill mt-0.5 text-emerald-600" aria-hidden="true"></i><span>Data absensi masuk akan diteruskan ke monitoring Piket dan Admin.</span></p>
-                @if(!$sudahAbsen)
-                    <form action="{{ route('guru.absen-masuk') }}" method="POST" class="m-0 p-0">
-                        @csrf
-                        <button type="submit" class="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-3 text-sm font-medium text-white shadow-sm transition hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:ring-offset-2 cursor-pointer">
-                            <i class="bi bi-box-arrow-in-right" aria-hidden="true"></i>
-                            Absen Masuk / Lapor Kehadiran
-                        </button>
-                    </form>
-                @else
-                    <span class="inline-flex shrink-0 items-center gap-2 rounded-lg bg-emerald-100 px-4 py-3 text-sm font-semibold text-emerald-700">
-                        <i class="bi bi-check-circle-fill" aria-hidden="true"></i>
-                        Absen masuk tercatat ({{ substr($kehadiranHariIni?->jam_masuk ?? now()->format('H:i:s'), 0, 5) }} WIB)
-                    </span>
-                @endif
-            </div>
-        </section>
-
-        {{-- LOGBOOK MENGAJAR (DIKUNCI JIKA sedang PIKET) --}}
-        <section class="mt-8" aria-labelledby="isi-logbook">
-            <div class="flex items-center gap-3">
-                <span class="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700"><i class="bi bi-journal-text" aria-hidden="true"></i></span>
-                <div>
-                    <h2 id="isi-logbook" class="text-xl font-bold text-slate-900">Isi Logbook Mengajar</h2>
-                    <p class="mt-1 text-sm text-slate-500">Jurnal pembelajaran untuk jadwal aktif Anda.</p>
-                </div>
-            </div>
-
-            @if(!empty($isPiketActive))
-                <div class="mt-4 rounded-xl border border-amber-300 bg-amber-50 p-5 text-amber-900" role="alert">
-                    <div class="flex items-start gap-3">
-                        <i class="bi bi-lock-fill mt-0.5 text-2xl text-amber-700" aria-hidden="true"></i>
-                        <div>
-                            <p class="text-base font-bold">Logbook Mengajar Terkunci (Mode Piket Aktif)</p>
-                            <p class="mt-1 text-xs leading-relaxed text-amber-800">
-                                Karena Anda bertugas sebagai Guru Piket hari ini, sesi mengajar Anda digantikan dengan tugas piket. 
-                                Tombol dan form pengisian Logbook dikunci sampai masa tugas piket selesai.
-                            </p>
-                        </div>
-=======
-
                         <p class="text-sm font-semibold text-emerald-700">
                             Form Kehadiran Guru
                         </p>
-
                         <h3 class="mt-1 text-lg font-bold text-slate-900">
                             Lapor Presensi Kehadiran
                         </h3>
-
                         <p class="mt-1 text-sm text-slate-500">
                             Pilih status kehadiran Anda hari ini dan sertakan bukti yang diperlukan.
                         </p>
-
                     </div>
-
                 </div>
 
                 <span class="w-fit rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700">
                     Hari ini ({{ $hariIni }})
                 </span>
-
             </div>
 
-
             <div class="mt-5 grid gap-5 sm:grid-cols-2">
-
                 {{-- NAMA GURU --}}
                 <label for="nama-guru" class="block">
-
                     <span class="text-sm font-semibold text-slate-700">
                         Nama Lengkap Guru
                     </span>
-
                     <select
                         id="nama-guru"
                         name="teacher_id"
@@ -598,33 +481,24 @@
                         required
                         class="mt-2 w-full rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700"
                     >
-
                         <option value="">
                             -- Pilih Nama Guru --
                         </option>
-
                         <template x-for="t in teachers" :key="t.id">
-
                             <option
                                 :value="t.id"
                                 x-text="t.name ?? t.nama"
                                 :selected="t.id == {{ $user->id }}"
                             ></option>
-
                         </template>
-
                     </select>
-
                 </label>
-
 
                 {{-- NIP --}}
                 <label for="nip-guru" class="block">
-
                     <span class="text-sm font-semibold text-slate-700">
                         NIP / Username
                     </span>
-
                     <input
                         id="nip-guru"
                         type="text"
@@ -634,9 +508,7 @@
                         class="mt-2 w-full cursor-not-allowed rounded-lg border border-slate-200 bg-slate-100 px-4 py-3 text-sm font-medium text-slate-600"
                         placeholder="Terisi otomatis setelah guru dipilih"
                     >
-
                 </label>
-
 
                 {{-- STATUS KEHADIRAN — Hadir / Tidak Hadir --}}
                 <div class="sm:col-span-2">
@@ -672,7 +544,6 @@
                     </div>
                 </div>
 
-
                 {{-- JIKA TIDAK HADIR: ALASAN + UNGGAH SURAT IZIN RESMI --}}
                 <div x-cloak x-show="statusAbsen === 'Tidak Hadir'" class="sm:col-span-2 space-y-4">
                     <label for="alasan-kehadiran" class="block">
@@ -701,7 +572,6 @@
                         <p class="mt-1 text-xs text-slate-400">Format file: JPG, PNG, PDF. Maksimal 5 MB.</p>
                     </label>
                 </div>
-
 
                 {{-- JIKA HADIR: FOTO LIVE KAMERA --}}
                 <div x-cloak x-show="statusAbsen === 'Hadir'" class="sm:col-span-2">
@@ -753,13 +623,10 @@
                         </button>
                     </div>
                 </div>
-
             </div>
-
 
             {{-- TOMBOL SUBMIT ABSEN --}}
             <div class="mt-6 flex justify-end gap-3 border-t border-slate-100 pt-5">
-
                 <button
                     type="button"
                     @click="showForm = false; stopCamera()"
@@ -774,45 +641,48 @@
                 >
                     Kirim Laporan Kehadiran
                 </button>
-
             </div>
-
         </form>
-
     </section>
-
 
     {{-- ========================================================= --}}
     {{-- SECTION 2 : JURNAL PEMBELAJARAN (LOGBOOK) --}}
     {{-- ========================================================= --}}
-
     <section
         id="form-logbook-section"
         class="mt-8"
         aria-labelledby="logbook-pembelajaran"
     >
-
         <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-
             <div>
-
                 <h2
                     id="logbook-pembelajaran"
                     class="text-xl font-bold text-slate-900"
                 >
                     Jurnal Pembelajaran (Logbook)
                 </h2>
-
                 <p class="text-sm text-slate-500">
                     Catat materi yang diajarkan dan rekap presensi kehadiran siswa hari ini.
                 </p>
-
             </div>
-
         </div>
 
-        {{-- PERINGATAN WAJIB ABSEN TERLEBIH DAHULU --}}
-        @if(!$hasCheckedIn)
+        {{-- PERINGATAN GURU PIKET (MODE PIKET AKTIF) --}}
+        @if(!empty($isPiketActive))
+            <div class="mt-4 rounded-xl border border-amber-300 bg-amber-50 p-5 text-amber-900" role="alert">
+                <div class="flex items-start gap-3">
+                    <i class="bi bi-lock-fill mt-0.5 text-2xl text-amber-700" aria-hidden="true"></i>
+                    <div>
+                        <p class="text-base font-bold">Logbook Mengajar Terkunci (Mode Piket Aktif)</p>
+                        <p class="mt-1 text-xs leading-relaxed text-amber-800">
+                            Karena Anda bertugas sebagai Guru Piket hari ini, sesi mengajar Anda digantikan dengan tugas piket. 
+                            Tombol dan form pengisian Logbook dikunci sampai masa tugas piket selesai.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        @elseif(!$hasCheckedIn)
+            {{-- PERINGATAN WAJIB ABSEN TERLEBIH DAHULU --}}
             <div class="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-5 shadow-sm sm:p-6">
                 <div class="flex items-start gap-4">
                     <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-xl text-amber-700">
@@ -840,11 +710,10 @@
             </div>
         @endif
 
-
         {{-- FORM LOGBOOK --}}
         <form
             x-cloak
-            x-show="hasCheckedIn"
+            x-show="hasCheckedIn && !{{ !empty($isPiketActive) ? 'true' : 'false' }}"
             action="{{ route('guru.jurnal.store') }}"
             method="POST"
             enctype="multipart/form-data"
@@ -929,12 +798,10 @@
             }"
             @submit="submitForm($event)"
         >
-
             @csrf
 
             {{-- DATA JURNAL --}}
             <div class="rounded-2xl bg-white p-5 shadow-md sm:p-6">
-
                 <div class="border-b border-slate-100 pb-4 mb-5">
                     <h3 class="text-base font-bold text-slate-800">
                         Data Kelas & Mata Pelajaran
@@ -945,7 +812,6 @@
                 </div>
 
                 <div class="grid gap-5 sm:grid-cols-2">
-
                     {{-- NAMA GURU (AUTO-FILLED) --}}
                     <label class="block">
                         <span class="text-sm font-semibold text-slate-700">
@@ -1049,7 +915,6 @@
                                 class="mt-2 w-full rounded-lg border border-slate-200 px-3 py-3 text-sm text-slate-700 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100"
                             >
                         </label>
->>>>>>> dev
                     </div>
 
                     {{-- TUGAS --}}
@@ -1084,35 +949,12 @@
                             class="mt-2 w-full rounded-lg border border-slate-200 px-4 py-3 text-sm text-slate-700 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100"
                         >
                     </label>
-
                 </div>
-            @else
-                <div x-show="!hasCheckedIn" class="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-amber-900" role="alert">
-                    <div class="flex items-start gap-3"><i class="bi bi-lock-fill mt-0.5 text-amber-700" aria-hidden="true"></i><div><p class="text-sm font-bold">Silakan Absen Masuk Terlebih Dahulu</p><p class="mt-1 text-xs leading-relaxed text-amber-800">Form logbook akan terbuka setelah kehadiran guru tercatat pada jadwal aktif.</p></div></div>
-                </div>
-
-<<<<<<< HEAD
-                <form x-cloak
-                        x-show="hasCheckedIn && isWithinSchedule"
-                        action="{{ route('guru.riwayat') }}"
-                        method="GET"
-                        class="mt-4 space-y-6"
-                        @submit.prevent="window.location.href='{{ route('guru.riwayat') }}'">
-                    <div class="rounded-2xl bg-white p-5 shadow-md sm:p-6">
-                        <div class="grid gap-5 sm:grid-cols-2">
-                            <label class="block"><span class="text-sm font-semibold text-slate-700">Mata Pelajaran</span><input type="text" value="Informatika" readonly class="mt-2 w-full cursor-not-allowed rounded-lg border border-slate-200 bg-slate-100 px-4 py-3 text-sm font-medium text-slate-600 outline-none"></label>
-                            <label class="block"><span class="text-sm font-semibold text-slate-700">Kelas</span><input type="text" value="XI RPL 2" readonly class="mt-2 w-full cursor-not-allowed rounded-lg border border-slate-200 bg-slate-100 px-4 py-3 text-sm font-medium text-slate-600 outline-none"></label>
-                            <label class="block"><span class="text-sm font-semibold text-slate-700">Jam Pelajaran</span><input type="text" value="Jam ke 1-2" readonly class="mt-2 w-full cursor-not-allowed rounded-lg border border-slate-200 bg-slate-100 px-4 py-3 text-sm font-medium text-slate-600 outline-none"></label>
-                            <label class="block sm:col-span-2"><span class="text-sm font-semibold text-slate-700">Materi / Pembahasan</span><input type="text" placeholder="Contoh: Pengenalan struktur data array" class="mt-2 w-full rounded-lg border border-slate-200 px-4 py-3 text-sm text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-emerald-600 focus:ring-4 focus:ring-emerald-100"></label>
-                        </div>
-=======
             </div>
-
 
             {{-- ================================================= --}}
             {{-- LAMPIRAN BUKTI HADIR DI KELAS (FOTO LIVE LANGSUNG) --}}
             {{-- ================================================= --}}
-
             <div id="section-lampiran-logbook" class="rounded-2xl bg-white p-5 shadow-md sm:p-6">
                 <div class="border-b border-slate-100 pb-4">
                     <h3 class="text-base font-bold text-slate-800">
@@ -1179,13 +1021,10 @@
                 </div>
             </div>
 
-
             {{-- ================================================= --}}
-            {{-- PRESENSI KEHADIRAN SISWA (LANGSUNG TAMPIL DENGAN SCROLL MANDIRI) --}}
+            {{-- PRESENSI KEHADIRAN SISWA --}}
             {{-- ================================================= --}}
-
             <div class="rounded-2xl bg-white p-5 shadow-md sm:p-6">
-
                 <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 pb-4 mb-4">
                     <div>
                         <h3 class="text-base font-bold text-slate-800">
@@ -1209,20 +1048,9 @@
                         <span class="inline-flex items-center gap-1 rounded-full bg-rose-50 px-2.5 py-1 text-xs font-semibold text-rose-700">
                             <span class="h-2 w-2 rounded-full bg-rose-500"></span> A = Alpa
                         </span>
->>>>>>> dev
                     </div>
+                </div>
 
-<<<<<<< HEAD
-                    <button type="submit"
-                            class="flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 px-5 py-3.5 text-sm font-medium text-white shadow-sm transition hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:ring-offset-2">
-                        <i class="bi bi-send-fill" aria-hidden="true"></i>
-                        Kirim Logbook
-                    </button>
-                </form>
-            @endif
-        </section>
-    </div>
-=======
                 {{-- INFO KELAS TERPILIH --}}
                 <div x-show="!selectedKelas" class="rounded-xl border border-dashed border-slate-200 bg-slate-50 p-6 text-center text-xs text-slate-500">
                     <i class="bi bi-info-circle text-lg text-slate-400 block mb-1"></i>
@@ -1234,14 +1062,11 @@
                     x-show="selectedKelas"
                     class="max-h-80 overflow-y-auto pr-1 space-y-2.5 custom-scrollbar border border-slate-100 rounded-xl p-3 bg-slate-50/60"
                 >
-
                     @forelse($siswas as $siswa)
-
                         <div
                             x-show="selectedKelas == '{{ $siswa->kelas_id }}'"
                             class="flex flex-col gap-2 rounded-xl border border-slate-200/80 bg-white p-3.5 sm:flex-row sm:items-center sm:justify-between shadow-xs transition hover:border-emerald-300"
                         >
-
                             <div class="min-w-0 flex-1">
                                 <p class="text-sm font-bold text-slate-800 truncate">
                                     {{ $siswa->nama }}
@@ -1305,34 +1130,24 @@
                                     </span>
                                 </label>
                             </div>
-
                         </div>
-
                     @empty
-
                         <div class="p-6 text-center text-xs text-slate-400">
                             Belum ada data siswa terdaftar.
                         </div>
-
                     @endforelse
-
                 </div>
-
             </div>
-
 
             {{-- CATATAN --}}
             <div class="rounded-2xl bg-white p-5 shadow-md sm:p-6">
-
                 <label
                     for="catatan-khusus"
                     class="block"
                 >
-
                     <span class="text-sm font-semibold text-slate-700">
                         Catatan Khusus / Hambatan Kelas (Opsional)
                     </span>
-
                     <textarea
                         id="catatan-khusus"
                         name="catatan"
@@ -1340,29 +1155,20 @@
                         placeholder="Tulis catatan penting atau kendala selama pembelajaran berlangsung..."
                         class="mt-2 w-full resize-none rounded-lg border border-slate-200 px-4 py-3 text-sm text-slate-700 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100"
                     ></textarea>
-
                 </label>
-
             </div>
-
 
             {{-- SUBMIT --}}
             <button
                 type="submit"
                 class="flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-5 py-3.5 text-sm font-bold text-white shadow-sm transition hover:bg-emerald-700"
             >
-
                 <i class="bi bi-send-fill"></i>
-
                 Kirim Logbook &amp; Presensi Siswa
-
             </button>
-
         </form>
-
     </section>
 
 </div>
->>>>>>> dev
 
 @endsection

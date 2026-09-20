@@ -49,21 +49,14 @@
                     }
                 @endphp
                 <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#DFFAF3] text-xs font-bold text-[#0D6B5A]">
-<<<<<<< HEAD
                     {{ $inisial }}
                 </span>
                 <div class="min-w-0">
                     <p class="truncate text-sm font-semibold text-white">{{ $namaUser }}</p>
                     <p class="truncate text-[11px] text-[#AEE5D4]">{{ $roleLabel }}</p>
-=======
-                    {{ $initials }}
-                </span>
-                <div class="min-w-0">
-                    <p class="truncate text-sm font-semibold text-white">{{ Auth::user()->name }}</p>
-                    <p class="truncate text-[11px] text-[#AEE5D4]">Guru Pengajar</p>
->>>>>>> dev
                 </div>
             </div>
+        </div>
 
 <form action="{{ route('logout') }}" method="POST" class="m-0 p-0">
     @csrf

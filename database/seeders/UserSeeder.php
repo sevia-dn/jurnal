@@ -20,7 +20,7 @@ class UserSeeder extends Seeder
                 'email' => 'admin1@jurnalkita.local',
                 'password' => Hash::make('admin123'),
                 'role' => 'admin',
-                'is_waka' => true
+                'is_waka' => false,
             ]
         );
 
@@ -30,9 +30,11 @@ class UserSeeder extends Seeder
             [
                 'name' => 'Betti Sulisyowati S.Pd',
                 'nip' => '198501012010011002',
+                'no_hp' => null,
                 'email' => 'bettisulisyowati@jurnalkita.local',
                 'password' => Hash::make('betii123'),
                 'role' => 'piket',
+                'is_waka' => false,
             ]
         );
 
@@ -42,10 +44,11 @@ class UserSeeder extends Seeder
             [
                 'name' => 'Fajar Siswanto S.Pd',
                 'nip' => '198501012010011003',
+                'no_hp' => null,
                 'email' => 'fajarsiswanto@jurnalkita.local',
                 'password' => Hash::make('fajar123'),
                 'role' => 'waka',
-                'is_waka' => true
+                'is_waka' => true,
             ]
         );
 
@@ -55,9 +58,11 @@ class UserSeeder extends Seeder
             [
                 'name' => 'XI Rekayasa Perangkat Lunak 2',
                 'nip' => null,
+                'no_hp' => null,
                 'email' => 'xirekayasaperangkatlunak2@jurnalkita.local',
                 'password' => Hash::make('xirekayasa2'),
                 'role' => 'pengurus_kelas',
+                'is_waka' => false,
             ]
         );
 
@@ -165,17 +170,21 @@ class UserSeeder extends Seeder
                     'name' => $guru['name'],
                     'username' => $guru['username'],
                     'nip' => $guru['nip'],
+                    'no_hp' => null,
                     'password' => Hash::make($guru['password']),
                     'role' => 'guru',
+                    'is_waka' => false,
                 ]);
             } else {
                 User::create([
                     'name' => $guru['name'],
                     'username' => $guru['username'],
                     'nip' => $guru['nip'],
+                    'no_hp' => null,
                     'email' => $guru['username'].'@jurnalkita.local',
                     'password' => Hash::make($guru['password']),
                     'role' => 'guru',
+                    'is_waka' => false,
                 ]);
             }
         }
