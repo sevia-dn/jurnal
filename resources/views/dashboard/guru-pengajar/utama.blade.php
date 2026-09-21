@@ -24,10 +24,10 @@
 
 <div
     x-data="{
-        selectedKelas: '{{ $activeJadwal->id_kelas ?? "" }}',
-        selectedMapel: '{{ $activeJadwal->id_mapel ?? "" }}',
-        selectedJamKe: '{{ $activeJadwal->jam_mulai ?? 1 }}',
-        selectedJamSelesai: '{{ $activeJadwal->jam_selesai ?? ($activeJadwal->jam_mulai ?? 1) }}',
+        selectedKelas: '',
+        selectedMapel: '',
+        selectedJamKe: '',
+        selectedJamSelesai: '',
         searchSiswa: '',
         liveClock: '{{ $currentFullTime ?? \Carbon\Carbon::now("Asia/Jakarta")->format("H:i:s") }}',
 
@@ -91,7 +91,6 @@
 
         <span class="inline-flex items-center gap-1.5 rounded-lg bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-800 border border-emerald-200 shadow-xs">
             <span class="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
-            <span class="hidden sm:inline">Waktu Server:</span>
             <strong x-text="liveClock + ' WIB'" class="font-mono text-emerald-950 font-bold"></strong>
         </span>
     </section>
@@ -100,96 +99,109 @@
     {{-- SECTION : JADWAL MENGAJAR GURU HARI INI --}}
     {{-- ========================================================= --}}
     <section class="mt-5 rounded-2xl bg-white p-4 shadow-sm border border-slate-100 sm:p-5">
-        <div class="flex items-center justify-between mb-3">
+        <div class="flex items-center justify-between mb-3.5">
             <div class="flex items-center gap-2">
                 <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100 text-base text-emerald-700">
                     <i class="bi bi-calendar-week-fill"></i>
                 </span>
-                <h2 class="text-base font-bold text-slate-900">
+                <h2 class="text-sm sm:text-base font-bold text-slate-900">
                     Jadwal Mengajar Hari Ini ({{ $hariIni }})
                 </h2>
             </div>
-            <span class="text-xs font-semibold text-slate-500">
+            <span class="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-bold text-slate-600">
                 {{ $jadwals->count() }} Sesi
             </span>
         </div>
 
-        <div class="divide-y divide-slate-100 rounded-xl border border-slate-100 bg-slate-50/50 overflow-hidden">
+        <div class="space-y-3">
             @forelse($jadwals ?? [] as $jadwal)
                 @php
                     $isFilled = $jadwal->is_filled;
                     $statusWaktu = $jadwal->status_waktu;
+                    $isOngoing = ($statusWaktu === 'berlangsung' && !$isFilled);
                 @endphp
 
-                <div class="flex flex-col gap-2.5 p-3.5 sm:flex-row sm:items-center sm:justify-between transition hover:bg-slate-100/50">
-                    <div class="flex flex-wrap items-center gap-3">
-                        <div class="flex flex-col items-start">
-                            <span class="rounded-lg bg-emerald-100/90 px-2 py-0.5 text-xs font-bold text-emerald-800">
+                <div class="rounded-xl border transition p-3.5 sm:p-4 {{ $isOngoing ? 'border-emerald-500 bg-emerald-50/40 ring-1 ring-emerald-300 shadow-sm' : 'border-slate-200/80 bg-white hover:border-emerald-200' }}">
+                    
+                    {{-- Baris Atas: Jam Pelajaran & Status --}}
+                    <div class="flex items-center justify-between gap-2 border-b border-slate-100 pb-2.5 mb-2.5">
+                        <div class="flex items-center gap-2">
+                            <span class="inline-flex items-center rounded-lg px-2 py-0.5 text-xs font-bold {{ $isOngoing ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-800' }}">
                                 Jam ke-{{ $jadwal->jam_mulai }} - {{ $jadwal->jam_selesai }}
                             </span>
-                            <span class="mt-0.5 text-[11px] font-medium text-slate-500 font-mono">
+                            <span class="text-xs font-semibold text-slate-500 font-mono">
                                 {{ $jadwal->waktu_mulai }} - {{ $jadwal->waktu_selesai }}
                             </span>
                         </div>
 
+                        {{-- Status Badge --}}
                         <div>
-                            <h3 class="text-sm font-bold text-slate-900">
-                                {{ $jadwal->kelas->nama_kelas ?? 'Kelas' }}
-                                <span class="text-slate-300 font-normal mx-1">|</span>
-                                {{ $jadwal->mapel->nama_mapel ?? 'Mata Pelajaran' }}
-                            </h3>
-
-                            <div class="mt-0.5 flex items-center gap-2">
-                                @if($isFilled)
-                                    <span class="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700 border border-emerald-200">
-                                        <i class="bi bi-check-circle-fill"></i> Jurnal Terisi
-                                    </span>
-                                @elseif($statusWaktu === 'lewat')
-                                    <span class="inline-flex items-center gap-1 rounded-md bg-rose-50 px-2 py-0.5 text-[10px] font-semibold text-rose-700 border border-rose-200">
-                                        <i class="bi bi-clock-history"></i> Lewat Jam Mengajar
-                                    </span>
-                                @elseif($statusWaktu === 'berlangsung')
-                                    <span class="inline-flex items-center gap-1 rounded-md bg-emerald-500 px-2 py-0.5 text-[10px] font-bold text-white shadow-xs">
-                                        <span class="h-1.5 w-1.5 rounded-full bg-white animate-ping"></span> Sedang Berlangsung
-                                    </span>
-                                @else
-                                    <span class="inline-flex items-center gap-1 rounded-md bg-sky-50 px-2 py-0.5 text-[10px] font-semibold text-sky-700 border border-sky-200">
-                                        <i class="bi bi-hourglass-split"></i> Akan Datang
-                                    </span>
-                                @endif
-                            </div>
+                            @if($isFilled)
+                                <span class="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-0.5 text-[10px] font-bold text-emerald-800 border border-emerald-200">
+                                    <i class="bi bi-check-circle-fill text-emerald-600"></i> Terisi
+                                </span>
+                            @elseif($statusWaktu === 'berlangsung')
+                                <span class="inline-flex items-center gap-1 rounded-full bg-emerald-600 px-2.5 py-0.5 text-[10px] font-bold text-white shadow-xs">
+                                    <span class="h-1.5 w-1.5 rounded-full bg-white animate-ping"></span> Berlangsung
+                                </span>
+                            @elseif($statusWaktu === 'lewat')
+                                <span class="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-0.5 text-[10px] font-medium text-slate-500">
+                                    <i class="bi bi-clock-history"></i> Terlewat
+                                </span>
+                            @else
+                                <span class="inline-flex items-center gap-1 rounded-full bg-sky-50 px-2.5 py-0.5 text-[10px] font-semibold text-sky-700 border border-sky-200">
+                                    <i class="bi bi-hourglass-split"></i> Akan Datang
+                                </span>
+                            @endif
                         </div>
                     </div>
 
-                    <div class="flex items-center gap-2 self-end sm:self-center">
-                        @if($isFilled)
-                            <a href="{{ route('guru.riwayat') }}"
-                               class="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-50">
-                                <i class="bi bi-eye"></i>
-                                <span>Lihat</span>
-                            </a>
-                        @elseif($statusWaktu === 'lewat')
-                            <span class="rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-400 cursor-not-allowed">
-                                <i class="bi bi-lock-fill mr-1"></i>Tenggat Lewat
-                            </span>
-                        @elseif($statusWaktu === 'belum_mulai')
-                            <span class="rounded-lg bg-sky-50 border border-sky-200 px-2.5 py-1 text-xs font-semibold text-sky-700 cursor-not-allowed">
-                                <i class="bi bi-clock-history mr-1"></i>Belum Dimulai
-                            </span>
-                        @else
-                            <button
-                                type="button"
-                                @click="pilihJadwal('{{ $jadwal->id_kelas }}', '{{ $jadwal->id_mapel }}', '{{ $jadwal->jam_mulai }}', '{{ $jadwal->jam_selesai }}')"
-                                class="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white shadow-xs transition hover:bg-emerald-700"
-                            >
-                                <i class="bi bi-pencil-square"></i>
-                                <span>Isi Logbook</span>
-                            </button>
-                        @endif
+                    {{-- Baris Tengah: Kelas & Mapel + Tombol Aksi --}}
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                        <div class="min-w-0 flex-1">
+                            <div class="flex items-center gap-2">
+                                <span class="inline-flex items-center rounded-md bg-emerald-100/70 px-2.5 py-0.5 text-xs font-bold text-emerald-800 border border-emerald-200 shrink-0">
+                                    {{ $jadwal->kelas->nama_kelas ?? 'Kelas' }}
+                                </span>
+                                <h3 class="text-xs sm:text-sm font-bold text-slate-900 truncate">
+                                    {{ $jadwal->mapel->nama_mapel ?? 'Mata Pelajaran' }}
+                                </h3>
+                            </div>
+                        </div>
+
+                        {{-- Tombol Aksi --}}
+                        <div class="shrink-0 flex items-center justify-end">
+                            @if($isFilled)
+                                <a href="{{ route('guru.riwayat') }}"
+                                   class="w-full sm:w-auto text-center inline-flex items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3.5 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50">
+                                    <i class="bi bi-eye"></i>
+                                    <span>Lihat Jurnal</span>
+                                </a>
+                            @elseif($statusWaktu === 'lewat')
+                                <span class="w-full sm:w-auto text-center rounded-lg bg-slate-50 border border-slate-200/60 px-3 py-1.5 text-xs font-medium text-slate-400 cursor-not-allowed">
+                                    <i class="bi bi-lock-fill mr-1"></i>Tenggat Lewat
+                                </span>
+                            @elseif($statusWaktu === 'belum_mulai')
+                                <span class="w-full sm:w-auto text-center rounded-lg bg-sky-50/70 border border-sky-200/60 px-3 py-1.5 text-xs font-semibold text-sky-700 cursor-not-allowed">
+                                    <i class="bi bi-clock-history mr-1"></i>Belum Dimulai
+                                </span>
+                            @else
+                                <button
+                                    type="button"
+                                    @click="pilihJadwal('{{ $jadwal->id_kelas }}', '{{ $jadwal->id_mapel }}', '{{ $jadwal->jam_mulai }}', '{{ $jadwal->jam_selesai }}')"
+                                    class="w-full sm:w-auto text-center inline-flex items-center justify-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-2 text-xs font-bold text-white shadow-xs transition hover:bg-emerald-700"
+                                >
+                                    <i class="bi bi-pencil-square"></i>
+                                    <span>Isi Logbook</span>
+                                </button>
+                            @endif
+                        </div>
                     </div>
+
                 </div>
             @empty
-                <div class="p-6 text-center text-xs text-slate-400">
+                <div class="p-8 text-center text-xs text-slate-400 bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                    <i class="bi bi-calendar-x text-2xl text-slate-300 block mb-1"></i>
                     Tidak ada jadwal mengajar terdaftar untuk hari {{ $hariIni }}.
                 </div>
             @endforelse
@@ -294,7 +306,7 @@
                         <i class="bi bi-journal-text"></i>
                     </span>
                     <h3 class="text-base font-bold text-slate-800">
-                        Data Kelas &amp; Mata Pelajaran
+                        Isi logbook &amp; jurnal mengajar
                     </h3>
                 </div>
 
@@ -397,7 +409,8 @@
                             class="mt-1.5 w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-700 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100"
                         >
                             <option value="Tidak">Tidak Ada Tugas</option>
-                            <option value="Ya">Ya, Ada Tugas</option>
+                            <option value="Ya">Ada Tugas</option>
+                            <option value="Ya">Ada Tugas luar</option>
                         </select>
                     </label>
 
@@ -547,18 +560,35 @@
 
                     {{-- LIST SISWA SCROLLABLE --}}
                     <div class="max-h-80 overflow-y-auto p-3 space-y-2 custom-scrollbar">
+                        @php
+                            $nomorAbsen = 0;
+                            $prevKelasId = null;
+                        @endphp
                         @forelse($siswas as $siswa)
+                            @php
+                                if ($prevKelasId !== $siswa->kelas_id) {
+                                    $prevKelasId = $siswa->kelas_id;
+                                    $nomorAbsen = 1;
+                                } else {
+                                    $nomorAbsen++;
+                                }
+                            @endphp
                             <div
                                 x-show="selectedKelas == '{{ $siswa->kelas_id }}' && matchesSearch('{{ strtolower($siswa->nama) }}', '{{ strtolower($siswa->nis ?? '') }}')"
                                 class="flex flex-col gap-2 rounded-xl border border-slate-200/70 bg-white p-3 sm:flex-row sm:items-center sm:justify-between shadow-2xs transition hover:border-emerald-300"
                             >
-                                <div class="min-w-0 flex-1">
-                                    <p class="text-xs font-bold text-slate-800 truncate">
-                                        {{ $siswa->nama }}
-                                    </p>
-                                    <p class="text-[11px] text-slate-400">
-                                        NIS: {{ $siswa->nis ?? '-' }} | {{ $siswa->jenis_kelamin }}
-                                    </p>
+                                <div class="flex items-center gap-2.5 min-w-0 flex-1">
+                                    <span class="flex h-6 min-w-6 px-1.5 items-center justify-center rounded-full bg-emerald-50 text-[11px] font-bold text-emerald-800 border border-emerald-200/80">
+                                        {{ $nomorAbsen }}
+                                    </span>
+                                    <div class="min-w-0 flex-1">
+                                        <p class="text-xs font-bold text-slate-800 truncate">
+                                            {{ $siswa->nama }}
+                                        </p>
+                                        <p class="text-[11px] text-slate-400">
+                                            No. Absen: {{ $nomorAbsen }} | NIS: {{ $siswa->nis ?? '-' }} | {{ $siswa->jenis_kelamin }}
+                                        </p>
+                                    </div>
                                 </div>
 
                                 {{-- PILIHAN STATUS H, S, I, A, D --}}

@@ -83,6 +83,8 @@
                         name="keyword"
                         value="{{ $keyword ?? '' }}"
                         placeholder="Cari mapel, kelas, atau materi..."
+                        @input="if ($event.target.value.trim() === '' && '{{ $keyword ?? '' }}' !== '') { $el.form.submit(); }"
+                        @search="if ($event.target.value.trim() === '') { $el.form.submit(); }"
                         class="w-full rounded-lg border border-slate-200 bg-slate-50/60 py-2 pl-9 pr-3 text-xs text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-emerald-600 focus:bg-white focus:ring-2 focus:ring-emerald-100 sm:text-sm"
                     >
                 </div>
@@ -216,6 +218,19 @@
                         </div>
 
                         <div class="shrink-0 self-end sm:self-start">
+                            @php
+                                $tidakHadirList = $jurnal->absensis
+                                    ->where('status', '!=', 'Hadir')
+                                    ->map(function($a) {
+                                        return [
+                                            'nama' => $a->siswa->nama ?? 'Siswa',
+                                            'nis' => $a->siswa->nis ?? '-',
+                                            'status' => $a->status,
+                                            'catatan' => $a->catatan ?? '',
+                                        ];
+                                    })
+                                    ->values();
+                            @endphp
                             <button
                                 type="button"
                                 @click="openDetail(@js([
@@ -235,6 +250,7 @@
                                     'jumlahIzin' => $jurnal->jumlah_izin ?? 0,
                                     'jumlahAlpa' => $jurnal->jumlah_alpa ?? 0,
                                     'jumlahDispensasi' => $jurnal->jumlah_dispensasi ?? 0,
+                                    'tidakHadirList' => $tidakHadirList,
                                     'adaTugas' => $jurnal->ada_tugas ? 'Ya' : 'Tidak',
                                     'lampiran' => $jurnal->lampiran ? asset('storage/' . $jurnal->lampiran) : '',
                                 ]))"
@@ -333,49 +349,90 @@
                             </div>
                         </div>
 
-                        {{-- Catatan --}}
-                        <template x-if="detail.catatan">
-                            <div>
-                                <p class="text-xs font-bold text-slate-700">Catatan Khusus</p>
-                                <div class="mt-1 rounded-xl border border-amber-100 bg-amber-50 p-3">
-                                    <p class="text-xs leading-relaxed text-amber-800 whitespace-pre-line" x-text="detail.catatan"></p>
-                                </div>
+                        {{-- Catatan Khusus / Hambatan Pembelajaran --}}
+                        <div>
+                            <p class="text-xs font-bold text-slate-700">Catatan Khusus / Hambatan</p>
+                            <div class="mt-1 rounded-xl p-3 border" :class="detail.catatan ? 'border-amber-200 bg-amber-50/80 text-amber-900' : 'border-slate-100 bg-slate-50 text-slate-400'">
+                                <p class="text-xs leading-relaxed whitespace-pre-line" x-text="detail.catatan ? detail.catatan : 'Tidak ada catatan khusus / kendala.'"></p>
                             </div>
-                        </template>
+                        </div>
 
                         {{-- Tugas --}}
                         <div class="flex items-center gap-2 rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 text-xs text-slate-600">
                             <i class="bi bi-clipboard-check text-slate-500"></i>
                             <span>Status Tugas:</span>
-                            <strong class="text-slate-800" x-text="detail.adaTugas === 'Ya' ? 'Ada Tugas' : 'Tidak Ada Tugas'"></strong>
+                            <strong class="text-slate-800" x-text="detail.adaTugas === 'Ya' ? 'Ada Tugas Diberikan' : 'Tidak Ada Tugas'"></strong>
                         </div>
 
                         {{-- Rekap Kehadiran Siswa --}}
-                        <div class="rounded-xl border border-emerald-100 bg-emerald-50/60 p-3">
-                            <p class="text-xs font-bold uppercase tracking-wider text-emerald-800">Rekap Presensi Siswa</p>
-                            <div class="mt-2 flex flex-wrap gap-1.5 text-xs font-bold">
-                                <span class="rounded-full bg-emerald-100 px-2.5 py-0.5 text-emerald-800">
-                                    <span x-text="detail.jumlahHadir"></span> Hadir
-                                </span>
-                                <template x-if="parseInt(detail.jumlahSakit) > 0">
-                                    <span class="rounded-full bg-amber-100 px-2.5 py-0.5 text-amber-800">
-                                        <span x-text="detail.jumlahSakit"></span> Sakit
+                        <div class="rounded-xl border border-emerald-100 bg-emerald-50/60 p-3.5 space-y-3">
+                            <div>
+                                <p class="text-xs font-bold uppercase tracking-wider text-emerald-800">Rekap Presensi Siswa</p>
+                                <div class="mt-2 flex flex-wrap gap-1.5 text-xs font-bold">
+                                    <span class="rounded-full bg-emerald-100 px-2.5 py-0.5 text-emerald-800">
+                                        <span x-text="detail.jumlahHadir"></span> Hadir
                                     </span>
+                                    <template x-if="parseInt(detail.jumlahSakit) > 0">
+                                        <span class="rounded-full bg-amber-100 px-2.5 py-0.5 text-amber-800">
+                                            <span x-text="detail.jumlahSakit"></span> Sakit
+                                        </span>
+                                    </template>
+                                    <template x-if="parseInt(detail.jumlahIzin) > 0">
+                                        <span class="rounded-full bg-blue-100 px-2.5 py-0.5 text-blue-800">
+                                            <span x-text="detail.jumlahIzin"></span> Izin
+                                        </span>
+                                    </template>
+                                    <template x-if="parseInt(detail.jumlahAlpa) > 0">
+                                        <span class="rounded-full bg-rose-100 px-2.5 py-0.5 text-rose-800">
+                                            <span x-text="detail.jumlahAlpa"></span> Alpa
+                                        </span>
+                                    </template>
+                                    <template x-if="parseInt(detail.jumlahDispensasi) > 0">
+                                        <span class="rounded-full bg-indigo-100 px-2.5 py-0.5 text-indigo-800">
+                                            <span x-text="detail.jumlahDispensasi"></span> Dispensasi
+                                        </span>
+                                    </template>
+                                </div>
+                            </div>
+
+                            {{-- DAFTAR SISWA TIDAK MASUK (S, I, A, D) --}}
+                            <div class="border-t border-emerald-200/60 pt-2.5">
+                                <p class="text-[11px] font-bold text-slate-700 mb-1.5 flex items-center gap-1">
+                                    <i class="bi bi-person-x-fill text-slate-500"></i>
+                                    <span>Siswa tidak hadir:</span>
+                                </p>
+
+                                <template x-if="detail.tidakHadirList && detail.tidakHadirList.length > 0">
+                                    <div class="space-y-1.5 max-h-40 overflow-y-auto custom-scrollbar pr-1">
+                                        <template x-for="(siswa, idx) in detail.tidakHadirList" :key="idx">
+                                            <div class="flex items-center justify-between rounded-lg bg-white border border-slate-200/80 px-2.5 py-1.5 text-xs shadow-2xs">
+                                                <div class="min-w-0 flex-1 pr-2">
+                                                    <span class="font-bold text-slate-800" x-text="siswa.nama"></span><br>
+                                                    <span class="text-[10px] text-slate-400 ml-1" x-text="'(NIS: ' + (siswa.nis || '-') + ')'"></span>
+                                                    <template x-if="siswa.catatan">
+                                                        <p class="text-[10px] text-slate-500 italic" x-text="'Ket: ' + siswa.catatan"></p>
+                                                    </template>
+                                                </div>
+                                                <span
+                                                    class="shrink-0 rounded-md px-2 py-0.5 text-[10px] font-bold"
+                                                    :class="{
+                                                        'bg-amber-100 text-amber-800 border border-amber-200': siswa.status === 'Sakit',
+                                                        'bg-blue-100 text-blue-800 border border-blue-200': siswa.status === 'Izin',
+                                                        'bg-rose-100 text-rose-800 border border-rose-200': siswa.status === 'Alpa',
+                                                        'bg-indigo-100 text-indigo-800 border border-indigo-200': siswa.status === 'Dispensasi',
+                                                    }"
+                                                    x-text="siswa.status === 'Sakit' ? 'Sakit (S)' : (siswa.status === 'Izin' ? 'Izin (I)' : (siswa.status === 'Alpa' ? 'Alpa (A)' : (siswa.status === 'Dispensasi' ? 'Dispensasi (D)' : siswa.status)))"
+                                                ></span>
+                                            </div>
+                                        </template>
+                                    </div>
                                 </template>
-                                <template x-if="parseInt(detail.jumlahIzin) > 0">
-                                    <span class="rounded-full bg-blue-100 px-2.5 py-0.5 text-blue-800">
-                                        <span x-text="detail.jumlahIzin"></span> Izin
-                                    </span>
-                                </template>
-                                <template x-if="parseInt(detail.jumlahAlpa) > 0">
-                                    <span class="rounded-full bg-rose-100 px-2.5 py-0.5 text-rose-800">
-                                        <span x-text="detail.jumlahAlpa"></span> Alpa
-                                    </span>
-                                </template>
-                                <template x-if="parseInt(detail.jumlahDispensasi) > 0">
-                                    <span class="rounded-full bg-indigo-100 px-2.5 py-0.5 text-indigo-800">
-                                        <span x-text="detail.jumlahDispensasi"></span> Dispensasi
-                                    </span>
+
+                                <template x-if="!detail.tidakHadirList || detail.tidakHadirList.length === 0">
+                                    <p class="text-[11px] text-emerald-700 font-medium flex items-center gap-1 bg-white/70 rounded-lg p-2 border border-emerald-100">
+                                        <i class="bi bi-check-circle-fill text-emerald-600"></i>
+                                        <span>Semua siswa hadir di kelas (Nihil).</span>
+                                    </p>
                                 </template>
                             </div>
                         </div>

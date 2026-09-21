@@ -155,6 +155,7 @@ class GuruController extends Controller
 
         // Siswa dikirim ke view untuk daftar presensi di kelas terpilih
         $siswas = Siswa::with('kelas')
+            ->orderBy('kelas_id')
             ->orderBy('nama')
             ->get();
 
