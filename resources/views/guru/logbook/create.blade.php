@@ -44,12 +44,57 @@
         </div>
     </div>
 
+    <!-- Kebijakan Batas Waktu Pengisian Jurnal (Dari Admin) -->
+    @if($isModeLos)
+        <div class="mb-5 rounded-xl border border-amber-200 bg-amber-50/80 p-3.5 flex items-center justify-between text-xs shadow-xs">
+            <div class="flex items-center gap-2.5 text-amber-950">
+                <div class="w-7 h-7 rounded-lg bg-amber-500 text-white flex items-center justify-center text-sm font-bold shrink-0">
+                    <i class="bi bi-unlock-fill"></i>
+                </div>
+                <div>
+                    <span class="font-bold text-amber-900">Mode Bebas / Susulan Aktif:</span> Batas waktu dibuka oleh Admin. Anda dapat mengisi logbook untuk <strong>Hari Ini</strong> atau <strong>Kemarin (H-1)</strong>.
+                </div>
+            </div>
+            <span class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300 shrink-0">
+                Susulan H-1 Diizinkan
+            </span>
+        </div>
+    @elseif($tenggatOpsi === 'hari_ini')
+        <div class="mb-5 rounded-xl border border-teal-200 bg-teal-50/80 p-3.5 flex items-center justify-between text-xs shadow-xs">
+            <div class="flex items-center gap-2.5 text-teal-950">
+                <div class="w-7 h-7 rounded-lg bg-teal-600 text-white flex items-center justify-center text-sm font-bold shrink-0">
+                    <i class="bi bi-calendar-check"></i>
+                </div>
+                <div>
+                    <span class="font-bold text-teal-900">Kebijakan Hari Ini:</span> Bebas jam mengajar, pengisian wajib diselesaikan pada hari yang sama sebelum pukul 23:59 WIB.
+                </div>
+            </div>
+            <span class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-teal-100 text-teal-900 border border-teal-300 shrink-0">
+                Wajib Hari Ini
+            </span>
+        </div>
+    @else
+        <div class="mb-5 rounded-xl border border-emerald-200 bg-emerald-50/80 p-3.5 flex items-center justify-between text-xs shadow-xs">
+            <div class="flex items-center gap-2.5 text-emerald-950">
+                <div class="w-7 h-7 rounded-lg bg-emerald-600 text-white flex items-center justify-center text-sm font-bold shrink-0">
+                    <i class="bi bi-clock-history"></i>
+                </div>
+                <div>
+                    <span class="font-bold text-emerald-900">Kebijakan Jam Mengajar:</span> Pengisian jurnal hanya dapat dilakukan saat jam mengajar berlangsung (toleransi 60 menit setelah selesai).
+                </div>
+            </div>
+            <span class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-900 border border-emerald-300 shrink-0">
+                Tenggat Ketat
+            </span>
+        </div>
+    @endif
+
     <!-- Jadwal Mengajar Hari Ini & Indikator Keterlambatan -->
     <div class="mb-6 bg-white border border-[#DCEBE5] rounded-2xl p-4 sm:p-5 shadow-xs">
         <div class="flex items-center justify-between mb-3 border-b border-slate-100 pb-2.5">
             <h3 class="text-xs md:text-sm font-bold text-[#0f3d32] flex items-center gap-2">
                 <i class="bi bi-calendar-check text-[#0d6e59]"></i>
-                <span>Jadwal Mengajar Anda Hari Ini ({{ $namaHari ?? 'Hari Ini' }})</span>
+                <span>Jadwal Mengajar Anda ({{ $namaHari ?? 'Hari Ini' }}, {{ $targetDate->translatedFormat('d M Y') }})</span>
             </h3>
             <span class="text-[11px] text-slate-400">Tenggat toleransi: 15 menit awal sesi</span>
         </div>
@@ -80,6 +125,10 @@
                                 <span class="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-slate-200 text-slate-700">
                                     Belum Dimulai
                                 </span>
+                            @elseif($js['statusWaktu'] === 'Susulan (H-1)')
+                                <span class="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-sky-100 text-sky-800 border border-sky-300">
+                                    Susulan H-1
+                                </span>
                             @else
                                 <span class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
                                     <i class="bi bi-check-circle-fill"></i> Tepat Waktu
@@ -102,12 +151,40 @@
         <!-- Layout Grid: Card 1 & Card 2 -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
             
-            <!-- Card 1: Detail Kelas -->
+            <!-- Card 1: Detail Kelas & Tanggal -->
             <div class="bg-white p-4 md:p-6 rounded-2xl border-l-4 border-[#0d6e59] shadow-sm flex flex-col justify-between">
                 <div>
                     <h3 class="font-bold text-sm md:text-base text-[#0f3d32] mb-4">Detail Sesi Mengajar</h3>
 
                     <div class="space-y-4">
+                        <!-- Tanggal Mengajar -->
+                        <div>
+                            <label class="block text-xs md:text-sm font-semibold text-gray-700 mb-1">Tanggal Mengajar <span class="text-rose-500">*</span></label>
+                            @if($isModeLos)
+                                <div class="relative">
+                                    <select name="tanggal" onchange="window.location.href='{{ route('guru.logbook.create') }}?tanggal=' + this.value + '&kelas_id={{ $selectedKelasId }}'" class="w-full text-xs md:text-sm bg-amber-50/60 border border-amber-300 rounded-xl p-2.5 md:p-3 pr-8 text-slate-800 font-bold appearance-none outline-none focus:border-amber-500">
+                                        <option value="{{ now()->toDateString() }}" {{ $targetDate->equalTo(\Carbon\Carbon::today()) ? 'selected' : '' }}>
+                                            Hari Ini ({{ now()->translatedFormat('d F Y') }})
+                                        </option>
+                                        <option value="{{ now()->subDay()->toDateString() }}" {{ $targetDate->equalTo(\Carbon\Carbon::yesterday()) ? 'selected' : '' }}>
+                                            Kemarin / Susulan H-1 ({{ now()->subDay()->translatedFormat('d F Y') }})
+                                        </option>
+                                    </select>
+                                    <i class="bi bi-calendar-date absolute right-3 top-3.5 text-xs text-amber-700 pointer-events-none"></i>
+                                </div>
+                                <p class="text-[11px] text-amber-800 mt-1"><i class="bi bi-info-circle"></i> Mode Bebas aktif: Anda dapat memilih mengisi hari ini atau kemarin (H-1).</p>
+                            @else
+                                <div class="flex items-center justify-between p-2.5 md:p-3 bg-slate-100 border border-slate-200 rounded-xl text-xs md:text-sm text-slate-700 font-semibold">
+                                    <div class="flex items-center gap-2">
+                                        <i class="bi bi-calendar-check text-[#0d6e59]"></i>
+                                        <span>{{ $targetDate->translatedFormat('d F Y') }} (Hari Ini)</span>
+                                    </div>
+                                    <span class="text-[10px] bg-slate-200 text-slate-600 px-2 py-0.5 rounded-md font-bold">Hari Ini</span>
+                                </div>
+                                <input type="hidden" name="tanggal" value="{{ now()->toDateString() }}">
+                            @endif
+                        </div>
+
                         <!-- Kelas -->
                         <div>
                             <label class="block text-xs md:text-sm font-semibold text-gray-700 mb-1">Kelas <span class="text-rose-500">*</span></label>

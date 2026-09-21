@@ -9,11 +9,13 @@ use App\Models\JadwalPiket;
 use App\Models\JurnalMengajar;
 use App\Models\Kelas;
 use App\Models\Mapel;
+use App\Models\PasswordResetRequest;
 use App\Models\Pengaturan;
 use App\Models\Siswa;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Maatwebsite\Excel\Facades\Excel;
@@ -1087,6 +1089,9 @@ class AdminController extends Controller
         $isJumatMaju = (bool) Pengaturan::getValue('jumat_is_maju', 0);
         $jumatShiftedMinutes = (int) Pengaturan::getValue('jumat_shifted_minutes', $shiftJumat);
 
+        $tenggatStatus = (int) Pengaturan::getValue('tenggat_status', 1);
+        $tenggatOpsi = (string) Pengaturan::getValue('tenggat_opsi', 'terbatas_jam');
+
         $totalKelas = Kelas::count();
 
         return view('dashboard.admin.pengaturan', compact(
@@ -1096,12 +1101,31 @@ class AdminController extends Controller
             'seninShiftedMinutes',
             'isJumatMaju',
             'jumatShiftedMinutes',
+            'tenggatStatus',
+            'tenggatOpsi',
             'totalKelas'
         ));
     }
 
     public function updatePengaturan(Request $request)
     {
+        // Pengaturan Kebijakan Tenggat Waktu Pengisian Jurnal
+        if ($request->has('tenggat_form') || $request->has('tenggat_opsi') || $request->input('action_type') === 'tenggat') {
+            $validated = $request->validate([
+                'tenggat_opsi' => 'required|in:terbatas_jam,hari_ini,los',
+            ], [
+                'tenggat_opsi.required' => 'Pilihan opsi kebijakan tenggat waktu wajib ditentukan.',
+                'tenggat_opsi.in' => 'Pilihan opsi kebijakan tidak valid.',
+            ]);
+
+            $status = $request->boolean('tenggat_status') ? 1 : 0;
+            Pengaturan::setValue('tenggat_status', $status);
+            Pengaturan::setValue('tenggat_opsi', $validated['tenggat_opsi']);
+
+            return redirect()->route('admin.pengaturan')->with('success', 'Kebijakan tenggat waktu pengisian jurnal berhasil diperbarui.');
+        }
+
+        // Pengaturan Durasi Jam Maju
         $validated = $request->validate([
             'shift_senin_minutes' => 'required|integer|min:5|max:180',
             'shift_jumat_minutes' => 'required|integer|min:5|max:180',
@@ -1115,7 +1139,7 @@ class AdminController extends Controller
         Pengaturan::setValue('shift_senin_minutes', $validated['shift_senin_minutes']);
         Pengaturan::setValue('shift_jumat_minutes', $validated['shift_jumat_minutes']);
 
-        return redirect()->route('admin.pengaturan')->with('success', 'Pengaturan jam jadwal berhasil disimpan.');
+        return redirect()->route('admin.pengaturan')->with('success', 'Pengaturan durasi pemajuan jam berhasil disimpan.');
     }
 
     // IMPORT JADWAL (EXCEL / CSV)
@@ -1164,53 +1188,51 @@ class AdminController extends Controller
     // =========================================================================
     public function rekapJurnal(Request $request)
     {
+        $periode = $request->query('periode', 'harian');
         $tanggal = $request->query('tanggal', now()->toDateString());
+        $bulan = (int) $request->query('bulan', now()->month);
+        $tahun = (int) $request->query('tahun', max(2026, now()->year));
+        if ($tahun < 2026) {
+            $tahun = 2026;
+        }
+        $guruId = $request->query('guru_id');
         $kelasId = $request->query('kelas_id');
         $kehadiran = $request->query('kehadiran', 'all');
         $validasi = $request->query('validasi', 'all');
         $search = $request->query('search', '');
         $keterlambatan = $request->query('keterlambatan', 'all');
+        $tab = $request->query('tab', 'jurnal');
 
-        $query = JurnalMengajar::with(['kelas', 'guru', 'mapel']);
-
-        if ($tanggal) {
-            $query->whereDate('tanggal', $tanggal);
+        // Jika user sengaja memilih bulan dan tidak mengubah tanggal, atau klik filter bulanan
+        if ($request->has('bulan') && !$request->has('tanggal')) {
+            $periode = 'bulanan';
         }
 
-        if ($kelasId && $kelasId !== 'all') {
-            $query->where('id_kelas', $kelasId);
+        // Hitung distribusi hari dalam bulan terpilih (untuk menghitung sesi terjadwal & sesi kosong bulanan)
+        $daysCount = ['Senin' => 0, 'Selasa' => 0, 'Rabu' => 0, 'Kamis' => 0, 'Jumat' => 0, 'Sabtu' => 0];
+        try {
+            $startOfMonth = Carbon::createFromDate($tahun, $bulan, 1)->startOfMonth();
+            $endOfMonth = $startOfMonth->copy()->endOfMonth();
+            for ($d = $startOfMonth->copy(); $d->lte($endOfMonth); $d->addDay()) {
+                $h = match ($d->dayOfWeek) {
+                    1 => 'Senin', 2 => 'Selasa', 3 => 'Rabu', 4 => 'Kamis', 5 => 'Jumat', 6 => 'Sabtu', default => null
+                };
+                if ($h && isset($daysCount[$h])) {
+                    $daysCount[$h]++;
+                }
+            }
+        } catch (\Exception $e) {
+            $startOfMonth = now()->startOfMonth();
+            $endOfMonth = now()->endOfMonth();
         }
 
-        if ($kehadiran && $kehadiran !== 'all') {
-            $query->where('status_kehadiran_guru', $kehadiran);
+        // Info Hari untuk tanggal terpilih
+        try {
+            $dayOfWeek = Carbon::parse($tanggal)->dayOfWeek;
+        } catch (\Exception $e) {
+            $tanggal = now()->toDateString();
+            $dayOfWeek = Carbon::parse($tanggal)->dayOfWeek;
         }
-
-        if ($keterlambatan === 'terlambat') {
-            $query->where('menit_keterlambatan', '>', 0);
-        } elseif ($keterlambatan === 'tepat_waktu') {
-            $query->where('menit_keterlambatan', '<=', 0)->where('status_kehadiran_guru', 'Hadir');
-        }
-
-        if ($request->filled('search')) {
-            $term = $request->query('search');
-            $query->where(function($q) use ($term) {
-                $q->where('materi', 'like', "%{$term}%")
-                  ->orWhereHas('guru', fn($g) => $g->where('name', 'like', "%{$term}%"))
-                  ->orWhereHas('mapel', fn($m) => $m->where('nama_mapel', 'like', "%{$term}%"))
-                  ->orWhereHas('kelas', fn($k) => $k->where('nama_kelas', 'like', "%{$term}%"));
-            });
-        }
-
-        $allDayJurnals = (clone $query)->orderBy('jam_ke', 'asc')->get();
-        $kelases = Kelas::orderBy('nama_kelas', 'asc')->get();
-        $totalKelas = $kelases->count();
-        $kelasLapor = JurnalMengajar::whereDate('tanggal', $tanggal)->distinct('id_kelas')->count('id_kelas');
-        $guruHadir = JurnalMengajar::whereDate('tanggal', $tanggal)->where('status_kehadiran_guru', 'Hadir')->count();
-        $guruTidakHadir = JurnalMengajar::whereDate('tanggal', $tanggal)->where('status_kehadiran_guru', '!=', 'Hadir')->count();
-        $guruTerlambat = JurnalMengajar::whereDate('tanggal', $tanggal)->where('menit_keterlambatan', '>', 0)->count();
-
-        // Info Piket Hari Ini & Waka Backup
-        $dayOfWeek = Carbon::parse($tanggal)->dayOfWeek;
         $namaHari = match ($dayOfWeek) {
             1 => 'Senin',
             2 => 'Selasa',
@@ -1220,6 +1242,144 @@ class AdminController extends Controller
             6 => 'Sabtu',
             default => 'Minggu',
         };
+
+        // Query Jurnal Mengajar (Riwayat Mengajar yang sudah lalu)
+        $query = JurnalMengajar::with(['kelas', 'guru', 'mapel']);
+
+        $hasExplicitTanggal = $request->filled('tanggal');
+        $hasSearch = $request->filled('search');
+
+        if ($periode === 'bulanan') {
+            $query->whereYear('tanggal', $tahun)->whereMonth('tanggal', $bulan);
+        } elseif ($hasExplicitTanggal) {
+            $query->whereDate('tanggal', $tanggal);
+        } elseif (!$hasSearch) {
+            $query->whereDate('tanggal', $tanggal);
+        }
+
+        if ($guruId && $guruId !== 'all') {
+            $query->where('id_user', $guruId);
+        }
+
+        if ($kelasId && $kelasId !== 'all') {
+            $query->where('id_kelas', $kelasId);
+        }
+
+        if ($keterlambatan === 'terlambat') {
+            $query->where('menit_keterlambatan', '>', 0);
+        } elseif ($keterlambatan === 'tepat_waktu') {
+            $query->where('menit_keterlambatan', '<=', 0);
+        }
+
+        if ($request->filled('search')) {
+            $term = trim($request->query('search'));
+            $query->where(function($q) use ($term) {
+                $q->where('materi', 'like', "%{$term}%")
+                  ->orWhere('tanggal', 'like', "%{$term}%")
+                  ->orWhereHas('guru', fn($g) => $g->where('name', 'like', "%{$term}%"))
+                  ->orWhereHas('mapel', fn($m) => $m->where('nama_mapel', 'like', "%{$term}%"))
+                  ->orWhereHas('kelas', fn($k) => $k->where('nama_kelas', 'like', "%{$term}%"));
+            });
+        }
+
+        $allJurnals = (clone $query)->orderBy('tanggal', 'desc')->orderBy('jam_ke', 'asc')->get();
+        $jurnals = $allJurnals;
+
+        $kelases = Kelas::orderBy('nama_kelas', 'asc')->get();
+        $totalKelas = $kelases->count();
+        $gurus = User::where('role', 'guru')->orderBy('name', 'asc')->get();
+
+        // Hitung statistik sesi terjadwal, terisi, dan sesi kosong
+        $jadwalQuery = JadwalPelajaran::query();
+        if ($guruId && $guruId !== 'all') {
+            $jadwalQuery->where('id_user', $guruId);
+        }
+        if ($kelasId && $kelasId !== 'all') {
+            $jadwalQuery->where('id_kelas', $kelasId);
+        }
+
+        if ($periode === 'bulanan') {
+            $jadwalsPerHari = $jadwalQuery->selectRaw('hari, count(*) as count')->groupBy('hari')->pluck('count', 'hari');
+            $totalTerjadwal = 0;
+            foreach ($daysCount as $h => $c) {
+                $totalTerjadwal += $c * ($jadwalsPerHari[$h] ?? 0);
+            }
+            $kelasLapor = JurnalMengajar::whereYear('tanggal', $tahun)->whereMonth('tanggal', $bulan)->distinct('id_kelas')->count('id_kelas');
+            $guruTerlambat = JurnalMengajar::whereYear('tanggal', $tahun)->whereMonth('tanggal', $bulan)->where('menit_keterlambatan', '>', 0)->count();
+        } else {
+            $totalTerjadwal = $namaHari ? $jadwalQuery->where('hari', $namaHari)->count() : 0;
+            $kelasLapor = JurnalMengajar::whereDate('tanggal', $tanggal)->distinct('id_kelas')->count('id_kelas');
+            $guruTerlambat = JurnalMengajar::whereDate('tanggal', $tanggal)->where('menit_keterlambatan', '>', 0)->count();
+        }
+
+        $totalTerisi = $allJurnals->count();
+        $totalKosong = max(0, $totalTerjadwal - $totalTerisi);
+        $guruHadir = $totalTerisi; // Guru dianggap hadir jika mengisi jurnal / mengajar
+        $guruTidakHadir = 0;
+        $guruAbsen = 0;
+
+        // Rekapitulasi Mengajar Per Guru (untuk melihat riwayat & berapa kali kosong di bulan/tanggal ini)
+        $jadwalGuruGrouped = JadwalPelajaran::selectRaw('id_user, hari, count(*) as count')
+            ->groupBy('id_user', 'hari')
+            ->get()
+            ->groupBy('id_user');
+
+        if ($periode === 'bulanan') {
+            $jurnalGuruGrouped = JurnalMengajar::whereYear('tanggal', $tahun)
+                ->whereMonth('tanggal', $bulan)
+                ->selectRaw('id_user, count(*) as count, max(tanggal) as terakhir')
+                ->groupBy('id_user')
+                ->get()
+                ->keyBy('id_user');
+        } else {
+            $jurnalGuruGrouped = JurnalMengajar::whereDate('tanggal', $tanggal)
+                ->selectRaw('id_user, count(*) as count, max(tanggal) as terakhir')
+                ->groupBy('id_user')
+                ->get()
+                ->keyBy('id_user');
+        }
+
+        $rekapGuru = $gurus->map(function ($g) use ($jadwalGuruGrouped, $jurnalGuruGrouped, $periode, $daysCount, $namaHari) {
+            $jadwals = $jadwalGuruGrouped->get($g->id, collect());
+            $terjadwal = 0;
+            if ($periode === 'bulanan') {
+                foreach ($jadwals as $j) {
+                    $terjadwal += ($daysCount[$j->hari] ?? 0) * $j->count;
+                }
+            } else {
+                $jHari = $jadwals->firstWhere('hari', $namaHari);
+                $terjadwal = $jHari ? $jHari->count : 0;
+            }
+
+            $jurnalInfo = $jurnalGuruGrouped->get($g->id);
+            $terisi = $jurnalInfo ? $jurnalInfo->count : 0;
+            $terakhir = $jurnalInfo ? $jurnalInfo->terakhir : null;
+            $kosong = max(0, $terjadwal - $terisi);
+
+            return (object) [
+                'id' => $g->id,
+                'name' => $g->name,
+                'nip' => $g->nip,
+                'terjadwal' => $terjadwal,
+                'terisi' => $terisi,
+                'kosong' => $kosong,
+                'terakhir' => $terakhir,
+                'persentase' => $terjadwal > 0 ? min(100, round(($terisi / $terjadwal) * 100)) : ($terisi > 0 ? 100 : 0),
+            ];
+        });
+
+        if ($guruId && $guruId !== 'all') {
+            $rekapGuru = $rekapGuru->where('id', $guruId);
+        }
+
+        if ($request->filled('search')) {
+            $termLower = strtolower(trim($request->query('search')));
+            $rekapGuru = $rekapGuru->filter(function ($item) use ($termLower) {
+                return str_contains(strtolower($item->name), $termLower) || str_contains(strtolower($item->nip ?? ''), $termLower);
+            });
+        }
+
+        // Info Piket Hari Ini & Waka Backup
         $piketGuru = JadwalPiket::with('user')->where('hari', $namaHari)->where('tipe', 'guru')->first();
         $piketWaka = JadwalPiket::with('user')->where('hari', $namaHari)->where('tipe', 'waka')->first();
         $allWakaUsers = JadwalPiket::where('tipe', 'waka')->with('user')->get()->pluck('user')->filter()->unique('id');
@@ -1237,22 +1397,21 @@ class AdminController extends Controller
             ->where('status_akhir', 'Pending')
             ->get();
 
-        $tab = $request->query('tab', 'all');
-        $guruAbsen = $guruTidakHadir;
-        $menungguValidasi = 0;
-        $countSemua = $allDayJurnals->count();
+        $countSemua = $allJurnals->count();
+        $countGuruAbsen = 0;
         $countBelumValidasi = 0;
-        $countGuruAbsen = $allDayJurnals->where('status_kehadiran_guru', '!=', 'Hadir')->count();
-        $jurnals = ($tab === 'guru_absen')
-            ? $allDayJurnals->where('status_kehadiran_guru', '!=', 'Hadir')
-            : $allDayJurnals;
-        $gurus = User::where('role', 'guru')->orderBy('name', 'asc')->get();
+        $menungguValidasi = 0;
 
         return view('dashboard.admin.rekap-jurnal', compact(
             'jurnals',
             'kelases',
             'gurus',
+            'rekapGuru',
+            'periode',
             'tanggal',
+            'bulan',
+            'tahun',
+            'guruId',
             'kelasId',
             'kehadiran',
             'validasi',
@@ -1260,6 +1419,9 @@ class AdminController extends Controller
             'keterlambatan',
             'totalKelas',
             'kelasLapor',
+            'totalTerjadwal',
+            'totalTerisi',
+            'totalKosong',
             'guruHadir',
             'guruTidakHadir',
             'guruTerlambat',
@@ -1398,11 +1560,76 @@ class AdminController extends Controller
         $kelases = $kelasList;
         $mapels = Mapel::orderBy('nama_mapel')->get();
 
+        $usersForJs = $users->map(function ($u) use ($allMapelsByUser, $kelasList) {
+            $roleLabel = match ($u->role) {
+                'admin' => 'Admin',
+                'guru' => 'Guru Pengajar',
+                'pengurus_kelas' => 'Sekretaris Kelas',
+                default => ucfirst($u->role),
+            };
+            $roleClass = match ($u->role) {
+                'admin' => 'bg-purple-50 text-purple-700 border border-purple-200',
+                'guru' => 'bg-emerald-50 text-emerald-700 border border-emerald-200',
+                'pengurus_kelas' => 'bg-sky-50 text-sky-700 border border-sky-200',
+                default => 'bg-gray-50 text-gray-700 border border-gray-200',
+            };
+
+            $mapelList = isset($allMapelsByUser[$u->id]) ? array_keys($allMapelsByUser[$u->id]) : [];
+            if ($u->mapel && !in_array($u->mapel->nama_mapel, $mapelList)) {
+                $mapelList[] = $u->mapel->nama_mapel;
+            }
+            $namaMapel = !empty($mapelList) ? implode(', ', $mapelList) : (optional($u->mapel)->nama_mapel ?? '');
+
+            // Deteksi nama kelas jika role pengurus_kelas
+            $detectedNamaKelas = '';
+            $detectedIdKelas = '';
+            if ($u->role === 'pengurus_kelas') {
+                $cleanUser = strtolower(preg_replace('/[^a-zA-Z0-9]/', '', $u->username ?? ''));
+                $cleanName = strtolower(preg_replace('/[^a-zA-Z0-9]/', '', $u->name ?? ''));
+                $matchedKelas = $kelasList->first(function ($k) use ($cleanUser, $cleanName) {
+                    $cleanKelas = strtolower(preg_replace('/[^a-zA-Z0-9]/', '', $k->nama_kelas));
+                    return str_contains($cleanUser, $cleanKelas) || str_contains($cleanName, $cleanKelas);
+                });
+                if ($matchedKelas) {
+                    $detectedNamaKelas = $matchedKelas->nama_kelas;
+                    $detectedIdKelas = $matchedKelas->id_kelas;
+                }
+            }
+
+            return [
+                'id' => $u->id,
+                'name' => $u->name,
+                'username' => $u->username ?? '',
+                'identifier' => $u->username ?? $u->nip ?? '-',
+                'nip' => $u->nip ?? '',
+                'role' => $roleLabel,
+                'raw_role' => $u->role,
+                'roleClass' => $roleClass,
+                'phone' => $u->no_hp ?? '-',
+                'no_hp' => $u->no_hp ?? '',
+                'status' => 'aktif',
+                'nama_kelas' => $detectedNamaKelas,
+                'nama_mapel' => $namaMapel,
+                'id_kelas' => $detectedIdKelas,
+                'mapel_id' => $u->mapel_id ?? '',
+            ];
+        });
+
         return view('dashboard.admin.manajemen-user', compact('users', 'usersForJs', 'kelasList', 'kelases', 'mapels', 'search', 'role'));
     }
 
     public function storeUser(Request $request)
     {
+        // Dukung input name lama maupun standar
+        if (!$request->filled('name') && $request->filled('nama')) {
+            $request->merge(['name' => $request->input('nama')]);
+        }
+        if (!$request->filled('username') && $request->filled('identifier')) {
+            $request->merge(['username' => $request->input('identifier')]);
+        }
+        if (!$request->filled('no_hp') && $request->filled('phone')) {
+            $request->merge(['no_hp' => $request->input('phone')]);
+        }
         if ($request->input('role') === 'sekretaris') {
             $request->merge(['role' => 'pengurus_kelas']);
         }
@@ -1416,8 +1643,11 @@ class AdminController extends Controller
             'no_hp' => 'nullable|string|max:25',
             'mapel_id' => 'nullable|exists:mapels,id',
         ], [
+            'name.required' => 'Nama lengkap pengguna wajib diisi.',
+            'username.required' => 'Username login wajib diisi.',
             'username.unique' => 'Username ini sudah digunakan.',
             'nip.unique' => 'NIP ini sudah terdaftar.',
+            'password.required' => 'Password awal wajib diisi.',
             'password.min' => 'Password minimal 6 karakter.',
         ]);
 
@@ -1431,13 +1661,16 @@ class AdminController extends Controller
             'password' => Hash::make($validated['password']),
         ]);
 
-        return redirect()->route('admin.manajemen-user')->with('success', 'User baru berhasil dibuat!');
+        return redirect()->route('admin.manajemen-user')->with('success', 'Akun ' . $validated['name'] . ' berhasil dibuat!');
     }
 
     public function updateUser(Request $request, $id)
     {
         $user = User::findOrFail($id);
 
+        if (!$request->filled('no_hp') && $request->filled('phone')) {
+            $request->merge(['no_hp' => $request->input('phone')]);
+        }
         if ($request->input('role') === 'sekretaris') {
             $request->merge(['role' => 'pengurus_kelas']);
         }
@@ -1450,6 +1683,12 @@ class AdminController extends Controller
             'password' => 'nullable|string|min:6',
             'no_hp' => 'nullable|string|max:25',
             'mapel_id' => 'nullable|exists:mapels,id',
+        ], [
+            'name.required' => 'Nama lengkap pengguna wajib diisi.',
+            'username.required' => 'Username login wajib diisi.',
+            'username.unique' => 'Username ini sudah digunakan oleh akun lain.',
+            'nip.unique' => 'NIP ini sudah terdaftar pada akun lain.',
+            'password.min' => 'Password minimal 6 karakter.',
         ]);
 
         $updateData = [
@@ -1467,15 +1706,82 @@ class AdminController extends Controller
 
         $user->update($updateData);
 
-        return redirect()->route('admin.manajemen-user')->with('success', 'Data user ' . $user->name . ' berhasil diperbarui!');
+        return redirect()->route('admin.manajemen-user')->with('success', 'Data akun ' . $user->name . ' berhasil diperbarui!');
     }
 
     public function destroyUser($id)
     {
         $user = User::findOrFail($id);
-        $name = $user->name;
-        $user->delete();
 
-        return redirect()->route('admin.manajemen-user')->with('success', 'User ' . $name . ' berhasil dihapus!');
+        // Proteksi akun administrator utama & akun aktif
+        if ($user->id === 1 || strtolower($user->username ?? '') === 'admin1' || strtolower($user->username ?? '') === 'admin') {
+            return redirect()->route('admin.manajemen-user')->withErrors(['Akun Administrator utama tidak boleh dihapus demi keamanan sistem!']);
+        }
+
+        if (Auth::id() === $user->id) {
+            return redirect()->route('admin.manajemen-user')->withErrors(['Anda tidak dapat menghapus akun Anda sendiri yang sedang aktif digunakan!']);
+        }
+
+        $name = $user->name;
+
+        try {
+            $user->delete();
+        } catch (\Exception $e) {
+            return redirect()->route('admin.manajemen-user')->withErrors([
+                "Akun {$name} tidak dapat dihapus karena masih terkait dengan data jadwal pelajaran, jurnal mengajar, atau riwayat KBM."
+            ]);
+        }
+
+        return redirect()->route('admin.manajemen-user')->with('success', 'Akun ' . $name . ' berhasil dihapus dari sistem!');
+    }
+
+    // =========================================================================
+    // 9. LAPORAN GANTI PASSWORD (NOTIFIKASI NAVBAR)
+    // =========================================================================
+    public function terimaResetPassword(Request $request, $id)
+    {
+        $request->validate([
+            'password_baru' => 'required|min:4',
+            'catatan' => 'nullable|string|max:500',
+        ], [
+            'password_baru.required' => 'Password baru wajib diisi.',
+            'password_baru.min' => 'Password baru minimal 4 karakter.',
+        ]);
+
+        $laporan = PasswordResetRequest::findOrFail($id);
+        $user = $laporan->user ?? User::where('username', $laporan->username)->first();
+
+        if (!$user) {
+            return back()->with('error', 'Akun pengguna terkait laporan ini tidak ditemukan di database.');
+        }
+
+        // Update password user
+        $user->update([
+            'password' => Hash::make($request->password_baru),
+        ]);
+
+        // Tandai status laporan sebagai disetujui
+        $laporan->update([
+            'status' => 'disetujui',
+            'catatan_admin' => $request->catatan ?: ('Password berhasil diubah oleh Admin pada ' . now()->translatedFormat('d M Y H:i')),
+            'handled_by' => Auth::id(),
+            'handled_at' => now(),
+        ]);
+
+        return back()->with('success', "Password untuk akun {$user->name} ({$user->username}) berhasil diubah menjadi '{$request->password_baru}'!");
+    }
+
+    public function tolakResetPassword(Request $request, $id)
+    {
+        $laporan = PasswordResetRequest::findOrFail($id);
+
+        $laporan->update([
+            'status' => 'ditolak',
+            'catatan_admin' => $request->catatan ?: 'Permohonan ganti password ditolak oleh Admin.',
+            'handled_by' => Auth::id(),
+            'handled_at' => now(),
+        ]);
+
+        return back()->with('success', "Permohonan ganti password dari {$laporan->nama} telah ditolak.");
     }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\PasswordResetRequest;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -95,7 +96,27 @@ class AuthController extends Controller
                          ->with('open_reset_modal', true);
         }
 
-        return back()->with('success_reset', 'Permintaan Anda telah tercatat! Silakan hubungi Administrator Sekolah secara langsung untuk mendapatkan password baru.')
+        // Cek jika sudah ada laporan berstatus menunggu
+        $existing = PasswordResetRequest::where('user_id', $user->id)
+                                        ->where('status', 'menunggu')
+                                        ->first();
+
+        if ($existing) {
+            return back()->with('info_reset', 'Permohonan ganti password untuk akun ini sudah ada dan sedang menunggu respon dari Admin.')
+                         ->with('open_reset_modal', true);
+        }
+
+        PasswordResetRequest::create([
+            'user_id' => $user->id,
+            'nama' => $user->name,
+            'username' => $user->username,
+            'role' => $user->role ?? 'guru',
+            'no_hp' => $user->no_hp,
+            'alasan' => $request->input('alasan') ?: 'Lupa kata sandi lama, meminta bantuan reset password ke Admin.',
+            'status' => 'menunggu',
+        ]);
+
+        return back()->with('success_reset', 'Permintaan ganti password berhasil terkirim ke Admin! Notifikasi telah masuk ke sistem Administrator.')
                      ->with('open_reset_modal', true);
     }
 }

@@ -64,10 +64,10 @@
       <span>Manajemen User</span>
     </a>
 
-    <!-- Pengaturan Jadwal & Sistem -->
+    <!-- Pengaturan Sistem -->
     <a href="{{ route('admin.pengaturan') }}" class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors !no-underline {{ request()->routeIs('admin.pengaturan*') ? 'bg-[#1BA886] !text-white' : '!text-[#8EBEB2] hover:bg-[#1BA886]/10 hover:!text-white' }}">
       <i class="bi bi-gear text-lg"></i>
-      <span>Pengaturan Jam</span>
+      <span>Pengaturan</span>
     </a>
   </nav>
 
@@ -84,10 +84,13 @@
     
     
     <!-- Keluar -->
-    <a href="{{ route('login') }}" class="flex items-center gap-3 px-4 py-2 text-sm font-medium !text-[#F05252] hover:!text-red-400 !no-underline transition-colors">
-      <i class="bi bi-box-arrow-right text-lg"></i>
-      <span>Keluar</span>
-    </a>
+    <form action="{{ route('logout') }}" method="POST" class="w-full m-0 p-0">
+      @csrf
+      <button type="submit" class="w-full flex items-center gap-3 px-4 py-2 text-sm font-medium !text-[#F05252] hover:!text-red-400 !no-underline transition-colors bg-transparent border-0 text-left cursor-pointer">
+        <i class="bi bi-box-arrow-right text-lg"></i>
+        <span>Keluar</span>
+      </button>
+    </form>
 
   </div>
   

@@ -24,6 +24,7 @@ Route::middleware('auth')->group(function () {
 
     // Proses Logout
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+    Route::get('/logout', [AuthController::class, 'logout']);
 
     // --- DASHBOARD ADMIN ---
     Route::prefix('dashboard')->group(function () {
@@ -89,6 +90,12 @@ Route::middleware('auth')->group(function () {
         // --- PENGATURAN SISTEM & JAM JADWAL ---
         Route::get('/pengaturan', [AdminController::class, 'pengaturan'])->name('admin.pengaturan');
         Route::post('/pengaturan', [AdminController::class, 'updatePengaturan'])->name('admin.pengaturan.update');
+
+        // --- LAPORAN GANTI PASSWORD (NOTIFIKASI NAVBAR ADMIN) ---
+        Route::post('/admin/laporan-ganti-pw/{id}/terima', [AdminController::class, 'terimaResetPassword'])->name('admin.laporan-pw.terima');
+        Route::post('/admin/laporan-ganti-pw/{id}/tolak', [AdminController::class, 'tolakResetPassword'])->name('admin.laporan-pw.tolak');
+        Route::post('/laporan-ganti-pw/{id}/terima', [AdminController::class, 'terimaResetPassword']);
+        Route::post('/laporan-ganti-pw/{id}/tolak', [AdminController::class, 'tolakResetPassword']);
 
         // --- PIKET (DARI DEV DILENGKAPI KONTROLLER & WAKA BACKUP) ---
         Route::get('/piket', [PiketController::class, 'index'])->name('dashboard.piket');

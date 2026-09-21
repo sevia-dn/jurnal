@@ -39,20 +39,7 @@
         </div>
     @endif
 
-    @php
-        $seninKegiatan = $jadwals->where('hari', 'Senin')->first(function($item) {
-            return str_contains(strtolower($item->mapel), 'upacara');
-        });
-        $isSeninMaju = isset($isSeninMaju) ? $isSeninMaju : ($seninKegiatan && $seninKegiatan->status === 'ditiadakan');
 
-        $jumatKegiatan = $jadwals->where('hari', 'Jumat')->first(function($item) {
-            return str_contains(strtolower($item->mapel), 'pembiasaan');
-        });
-        $isJumatMaju = isset($isJumatMaju) ? $isJumatMaju : ($jumatKegiatan && $jumatKegiatan->status === 'ditiadakan');
-
-        $shiftSeninMinutes = $shiftSeninMinutes ?? 40;
-        $shiftJumatMinutes = $shiftJumatMinutes ?? 30;
-    @endphp
 
     <div class="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
@@ -62,7 +49,7 @@
         <div class="flex items-center gap-2.5">
             <a href="{{ route('admin.pengaturan') }}" class="inline-flex items-center gap-1.5 px-3.5 py-2 border border-slate-300 rounded-lg text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 transition shadow-xs">
                 <i class="bi bi-gear-fill text-slate-600"></i>
-                <span>Pengaturan Jam</span>
+                <span>Pengaturan</span>
             </a>
             <a href="{{ route('dashboard.jadwal.download-template') }}" class="inline-flex items-center gap-1.5 px-3.5 py-2 border border-slate-300 rounded-lg text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 transition shadow-xs">
                 <i class="bi bi-download text-emerald-600"></i>
@@ -198,80 +185,6 @@
 
         <!-- Kolom Kanan: Tampilan Interaktif Per Hari & Tabel Jadwal -->
         <div class="lg:col-span-2 space-y-4">
-
-            <!-- Banner Mode Jam Maju Khusus Hari Senin (Upacara) -->
-            <div id="bannerSenin" class="{{ $selectedHari === 'Senin' ? '' : 'hidden' }}">
-                @if($isSeninMaju)
-                    <div class="rounded-xl border border-emerald-300 bg-emerald-50 p-4 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                        <div class="flex items-center gap-3">
-                            <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-600 text-white shadow-sm text-base font-bold">
-                                <i class="bi bi-lightning-charge-fill"></i>
-                            </div>
-                            <div>
-                                <h3 class="text-sm font-bold text-emerald-900">Mode Jam Maju Aktif (Upacara Bendera Ditiadakan)</h3>
-                                <p class="text-xs text-emerald-700 mt-0.5">Seluruh jam pelajaran hari Senin telah dimajukan {{ $shiftSeninMinutes }} menit (mulai 07:00). Jam pulang {{ $shiftSeninMinutes }} menit lebih awal untuk seluruh kelas.</p>
-                            </div>
-                        </div>
-                        <button type="button" onclick="openShiftModal('Senin', 'normal', 'Upacara Bendera', {{ $shiftSeninMinutes }})" class="inline-flex items-center gap-1.5 px-3.5 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-lg text-xs font-semibold shadow-sm transition cursor-pointer shrink-0">
-                            <i class="bi bi-arrow-counterclockwise"></i>
-                            <span>Kembalikan Jam Normal</span>
-                        </button>
-                    </div>
-                @else
-                    <div class="rounded-xl border border-amber-200 bg-amber-50/80 p-4 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                        <div class="flex items-center gap-3">
-                            <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-amber-500 text-white shadow-sm text-base">
-                                <i class="bi bi-flag-fill"></i>
-                            </div>
-                            <div>
-                                <h3 class="text-sm font-bold text-amber-900">Upacara Bendera: Status Normal (Dilaksanakan)</h3>
-                                <p class="text-xs text-amber-700 mt-0.5">Upacara terjadwal pukul 07:00 – 07:40. Pelajaran Jam Ke-2 dimulai pukul 07:40.</p>
-                            </div>
-                        </div>
-                        <button type="button" onclick="openShiftModal('Senin', 'maju', 'Upacara Bendera', {{ $shiftSeninMinutes }})" class="inline-flex items-center gap-1.5 px-3.5 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-semibold shadow-sm transition cursor-pointer shrink-0">
-                            <i class="bi bi-lightning-charge-fill"></i>
-                            <span>Upacara Ditiadakan (Majukan Jam {{ $shiftSeninMinutes }} Menit)</span>
-                        </button>
-                    </div>
-                @endif
-            </div>
-
-            <!-- Banner Mode Jam Maju Khusus Hari Jum'at (Pembiasaan) -->
-            <div id="bannerJumat" class="{{ $selectedHari === 'Jumat' ? '' : 'hidden' }}">
-                @if($isJumatMaju)
-                    <div class="rounded-xl border border-emerald-300 bg-emerald-50 p-4 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                        <div class="flex items-center gap-3">
-                            <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-600 text-white shadow-sm text-base font-bold">
-                                <i class="bi bi-lightning-charge-fill"></i>
-                            </div>
-                            <div>
-                                <h3 class="text-sm font-bold text-emerald-900">Mode Jam Maju Aktif (Pembiasaan Jum'at Ditiadakan)</h3>
-                                <p class="text-xs text-emerald-700 mt-0.5">Seluruh jam pelajaran hari Jum'at telah dimajukan {{ $shiftJumatMinutes }} menit (mulai 07:00). Jam pulang {{ $shiftJumatMinutes }} menit lebih awal untuk seluruh kelas.</p>
-                            </div>
-                        </div>
-                        <button type="button" onclick="openShiftModal('Jumat', 'normal', 'Pembiasaan Jum\'at', {{ $shiftJumatMinutes }})" class="inline-flex items-center gap-1.5 px-3.5 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-lg text-xs font-semibold shadow-sm transition cursor-pointer shrink-0">
-                            <i class="bi bi-arrow-counterclockwise"></i>
-                            <span>Kembalikan Jam Normal</span>
-                        </button>
-                    </div>
-                @else
-                    <div class="rounded-xl border border-emerald-200 bg-emerald-50/70 p-4 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                        <div class="flex items-center gap-3">
-                            <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#155d50] text-white shadow-sm text-base">
-                                <i class="bi bi-heart-pulse-fill"></i>
-                            </div>
-                            <div>
-                                <h3 class="text-sm font-bold text-slate-800">Pembiasaan Jum'at: Status Normal (Dilaksanakan)</h3>
-                                <p class="text-xs text-slate-600 mt-0.5">Ibadah / Dhuha / Senam terjadwal pukul 07:00 – 07:30. Pelajaran Jam Ke-1 dimulai pukul 07:30.</p>
-                            </div>
-                        </div>
-                        <button type="button" onclick="openShiftModal('Jumat', 'maju', 'Pembiasaan Jum\'at', {{ $shiftJumatMinutes }})" class="inline-flex items-center gap-1.5 px-3.5 py-2 bg-[#155d50] hover:bg-[#0b2b24] text-white rounded-lg text-xs font-semibold shadow-sm transition cursor-pointer shrink-0">
-                            <i class="bi bi-lightning-charge-fill"></i>
-                            <span>Pembiasaan Ditiadakan (Majukan Jam {{ $shiftJumatMinutes }} Menit)</span>
-                        </button>
-                    </div>
-                @endif
-            </div>
 
             <div class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
                 
@@ -572,11 +485,11 @@
                             </span>
                         </div>
                         <h4 class="text-sm font-bold text-gray-900 leading-snug">
-                            {{ optional($wakaItem->user)->name ?? 'Belum Ditugaskan' }}
+                            {{ $wakaItem?->user?->name ?? 'Belum Ditugaskan' }}
                         </h4>
                         <p class="text-[11px] text-slate-500 mt-1 flex items-center gap-1">
                             <i class="bi bi-card-text text-slate-400"></i>
-                            <span>NIP: {{ optional($wakaItem->user)->nip ?? '-' }}</span>
+                            <span>NIP: {{ $wakaItem?->user?->nip ?? '-' }}</span>
                         </p>
                     </div>
                 @endforeach
@@ -637,7 +550,7 @@
                                         @foreach($pagiPetugas as $pet)
                                             <li class="flex items-center gap-2 text-xs font-medium text-gray-800">
                                                 <i class="bi bi-person-badge text-emerald-600"></i>
-                                                <span>{{ optional($pet->user)->name }}</span>
+                                                <span>{{ $pet?->user?->name }}</span>
                                             </li>
                                         @endforeach
                                     </ul>
@@ -646,7 +559,7 @@
                                     @if($pagiKoord)
                                         <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-50 border border-amber-200 text-xs font-bold text-amber-900">
                                             <i class="bi bi-star-fill text-amber-500 text-[11px]"></i>
-                                            <span>{{ optional($pagiKoord->user)->name }}</span>
+                                            <span>{{ $pagiKoord?->user?->name }}</span>
                                         </div>
                                     @else
                                         <span class="text-xs text-slate-400">-</span>
@@ -657,7 +570,7 @@
                                         @foreach($siangPetugas as $pet)
                                             <li class="flex items-center gap-2 text-xs font-medium text-gray-800">
                                                 <i class="bi bi-person-badge text-[#155d50]"></i>
-                                                <span>{{ optional($pet->user)->name }}</span>
+                                                <span>{{ $pet?->user?->name }}</span>
                                             </li>
                                         @endforeach
                                     </ul>
@@ -666,7 +579,7 @@
                                     @if($siangKoord)
                                         <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 border border-emerald-200 text-xs font-bold text-emerald-900">
                                             <i class="bi bi-star-fill text-emerald-600 text-[11px]"></i>
-                                            <span>{{ optional($siangKoord->user)->name }}</span>
+                                            <span>{{ $siangKoord?->user?->name }}</span>
                                         </div>
                                     @else
                                         <span class="text-xs text-slate-400">-</span>
@@ -710,7 +623,7 @@
                                         @foreach($pagiPetugas as $pet)
                                             <li class="flex items-center gap-2 text-xs font-medium text-gray-800">
                                                 <i class="bi bi-person-badge text-purple-600"></i>
-                                                <span>{{ optional($pet->user)->name }}</span>
+                                                <span>{{ $pet?->user?->name }}</span>
                                             </li>
                                         @endforeach
                                     </ul>
@@ -719,7 +632,7 @@
                                     @if($pagiKoord)
                                         <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-50 border border-amber-200 text-xs font-bold text-amber-900">
                                             <i class="bi bi-star-fill text-amber-500 text-[11px]"></i>
-                                            <span>{{ optional($pagiKoord->user)->name }}</span>
+                                            <span>{{ $pagiKoord?->user?->name }}</span>
                                         </div>
                                     @else
                                         <span class="text-xs text-slate-400">-</span>
@@ -730,7 +643,7 @@
                                         @foreach($siangPetugas as $pet)
                                             <li class="flex items-center gap-2 text-xs font-medium text-gray-800">
                                                 <i class="bi bi-person-badge text-purple-700"></i>
-                                                <span>{{ optional($pet->user)->name }}</span>
+                                                <span>{{ $pet?->user?->name }}</span>
                                             </li>
                                         @endforeach
                                     </ul>
@@ -739,7 +652,7 @@
                                     @if($siangKoord)
                                         <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-purple-50 border border-purple-200 text-xs font-bold text-purple-900">
                                             <i class="bi bi-star-fill text-purple-600 text-[11px]"></i>
-                                            <span>{{ optional($siangKoord->user)->name }}</span>
+                                            <span>{{ $siangKoord?->user?->name }}</span>
                                         </div>
                                     @else
                                         <span class="text-xs text-slate-400">-</span>
@@ -904,62 +817,7 @@
         </div>
     </div>
 
-    {{-- ================= MODAL SHIFT TIME (MODE JAM MAJU / NORMAL) ================= --}}
-    <div id="modalShiftTime" class="fixed inset-0 z-50 hidden bg-gray-900/60 backdrop-blur-sm overflow-y-auto h-full w-full items-center justify-center transition-opacity p-4">
-        <div class="bg-white rounded-xl shadow-xl border border-gray-100 p-6 sm:p-8 max-w-md w-full text-center relative">
-            
-            <button type="button" onclick="closeShiftModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition p-1">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                </svg>
-            </button>
 
-            <div id="shiftIconBg" class="w-16 h-16 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl font-bold">
-                <i id="shiftIcon" class="bi bi-lightning-charge-fill"></i>
-            </div>
-            
-            <h2 id="shiftModalTitle" class="text-xl font-bold text-gray-900 mb-2">Konfirmasi Penyesuaian Jadwal</h2>
-            <p id="shiftModalDesc" class="text-sm text-gray-600 mb-5 leading-relaxed">
-                Deskripsi aksi pergeseran waktu...
-            </p>
-
-            <form action="{{ route('dashboard.jadwal.shift-time') }}" method="POST" class="text-left space-y-4">
-                @csrf
-                <input type="hidden" name="kelas_id" id="shiftKelasId" value="{{ optional($selectedKelas)->id_kelas }}">
-                <input type="hidden" name="hari" id="shiftHari" value="Senin">
-                <input type="hidden" name="mode" id="shiftMode" value="maju">
-
-                <!-- Input Durasi Pemajuan Jam (Tampil saat mode maju) -->
-                <div id="containerShiftMinutes" class="space-y-1.5 p-3 rounded-lg border border-amber-200 bg-amber-50/50">
-                    <label for="shiftMinutes" class="text-xs font-bold text-amber-950 flex items-center gap-1.5">
-                        <i class="bi bi-stopwatch-fill text-amber-600"></i>
-                        <span>Durasi Pemajuan Jam (Menit)</span>
-                    </label>
-                    <div class="flex items-center gap-2">
-                        <input type="number" name="minutes" id="shiftMinutes" min="5" max="180" value="40" class="w-full px-3 py-2 rounded-lg border border-amber-300 font-bold text-slate-900 focus:ring-2 focus:ring-amber-500 bg-white text-sm">
-                        <span class="text-xs font-bold text-slate-700">Menit</span>
-                    </div>
-                    <p class="text-[11px] text-amber-800/80">Jam pelajaran berikutnya akan dimajukan sesuai jumlah menit ini (Jam Ke-2 mulai 07:00).</p>
-                </div>
-
-                <div class="bg-emerald-50 border border-emerald-200 rounded-lg p-3 flex items-center gap-2.5">
-                    <div class="w-6 h-6 rounded-full bg-emerald-600 text-white flex items-center justify-center text-xs shrink-0 font-bold">
-                        <i class="bi bi-check-lg"></i>
-                    </div>
-                    <div>
-                        <div class="text-xs font-bold text-emerald-900">Otomatis Diterapkan untuk Seluruh Kelas</div>
-                        <p class="text-[11px] text-emerald-700 mt-0.5">Penyesuaian jadwal ini langsung aktif serentak ke seluruh 48 kelas di sekolah.</p>
-                    </div>
-                </div>
-                
-                <div class="flex justify-center gap-3 pt-3">
-                    <button type="button" onclick="closeShiftModal()" class="px-5 py-2.5 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition text-sm font-medium w-full cursor-pointer">Batal</button>
-                    <button type="submit" id="shiftSubmitBtn" class="px-5 py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg transition shadow-sm text-sm font-semibold w-full cursor-pointer">
-                        Lanjutkan
-                    </button>
-                </div>
-            </form>
-        </div>
     {{-- ================= MODAL IMPORT JADWAL (EXCEL) ================= --}}
     <div id="modalImportJadwal" class="fixed inset-0 z-50 hidden items-center justify-center bg-gray-900/60 backdrop-blur-xs p-4">
         <div class="bg-white rounded-2xl shadow-xl border border-gray-100 max-w-lg w-full p-6 relative animate-in fade-in zoom-in duration-150">
@@ -1143,60 +1001,7 @@
         }
     }
 
-    function openShiftModal(hari, mode, namaKegiatan, defaultMin) {
-        document.getElementById('shiftHari').value = hari;
-        document.getElementById('shiftMode').value = mode;
 
-        const minutes = defaultMin || ((hari === 'Jumat') ? {{ $shiftJumatMinutes }} : {{ $shiftSeninMinutes }});
-        const normalRange = (hari === 'Jumat') ? '07:00 – 07:30' : '07:00 – 07:40';
-        const normalStartJam1 = (hari === 'Jumat') ? '07:30' : '07:40';
-
-        const minutesInput = document.getElementById('shiftMinutes');
-        if (minutesInput) minutesInput.value = minutes;
-
-        const containerMinutes = document.getElementById('containerShiftMinutes');
-        if (containerMinutes) {
-            if (mode === 'maju') {
-                containerMinutes.classList.remove('hidden');
-            } else {
-                containerMinutes.classList.add('hidden');
-            }
-        }
-
-        const titleEl = document.getElementById('shiftModalTitle');
-        const descEl = document.getElementById('shiftModalDesc');
-        const btnEl = document.getElementById('shiftSubmitBtn');
-        const iconBg = document.getElementById('shiftIconBg');
-        const icon = document.getElementById('shiftIcon');
-
-        if (mode === 'maju') {
-            titleEl.textContent = 'Aktifkan Mode Jam Maju (' + namaKegiatan + ' Ditiadakan)?';
-            descEl.innerHTML = 'Kegiatan <strong>' + namaKegiatan + '</strong> akan ditandai ditiadakan. Seluruh jam pelajaran hari ' + hari + ' otomatis <strong>dimajukan</strong> (mulai pukul 07:00), dan waktu pulang siswa otomatis <strong>maju lebih awal</strong> untuk <strong>seluruh 48 kelas</strong>.';
-            btnEl.textContent = 'Ya, Aktifkan Jam Maju Seluruh Kelas';
-            btnEl.className = 'px-5 py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg transition shadow-sm text-sm font-semibold w-full cursor-pointer';
-            iconBg.className = 'w-16 h-16 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl font-bold';
-            icon.className = 'bi bi-lightning-charge-fill';
-        } else {
-            titleEl.textContent = 'Kembalikan ke Jadwal Normal (' + namaKegiatan + ' Dilaksanakan)?';
-            descEl.innerHTML = 'Kegiatan <strong>' + namaKegiatan + '</strong> akan diaktifkan kembali pukul ' + normalRange + '. Seluruh jam pelajaran hari ' + hari + ' otomatis <strong>dikembalikan ke waktu normal</strong> (Jam Ke-1 mulai ' + normalStartJam1 + ') untuk <strong>seluruh 48 kelas</strong>.';
-            btnEl.textContent = 'Ya, Kembalikan ke Normal Seluruh Kelas';
-            btnEl.className = 'px-5 py-2.5 bg-slate-800 hover:bg-slate-900 text-white rounded-lg transition shadow-sm text-sm font-semibold w-full cursor-pointer';
-            iconBg.className = 'w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl font-bold';
-            icon.className = 'bi bi-arrow-counterclockwise';
-        }
-
-        const modal = document.getElementById('modalShiftTime');
-        modal.classList.remove('hidden');
-        modal.classList.add('flex');
-        document.body.style.overflow = 'hidden';
-    }
-
-    function closeShiftModal() {
-        const modal = document.getElementById('modalShiftTime');
-        modal.classList.add('hidden');
-        modal.classList.remove('flex');
-        document.body.style.overflow = 'auto';
-    }
 
     function handleMapelSelection(selectElement, type) {
         const selectedOption = selectElement.options[selectElement.selectedIndex];
@@ -1384,10 +1189,8 @@
     window.addEventListener('click', function(e) {
         const editModal = document.getElementById('modalEditJadwal');
         const deleteModal = document.getElementById('modalHapusJadwal');
-        const shiftModal = document.getElementById('modalShiftTime');
         if (e.target === editModal) closeEditModal();
         if (e.target === deleteModal) closeDeleteModal();
-        if (e.target === shiftModal) closeShiftModal();
     });
 
     // ================= BATCH ACTION JADWAL =================
