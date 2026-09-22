@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Dispensasi;
 use App\Models\JurnalMengajar;
 use App\Models\Siswa;
+use App\Services\DispensasiWorkflowService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -14,7 +16,7 @@ class LogbookController extends Controller
     /**
      * Menyimpan Jurnal Pembelajaran dan Rekap Absensi Siswa oleh Guru
      */
-    public function store(Request $request)
+    public function store(Request $request, DispensasiWorkflowService $workflowService)
     {
         Carbon::setLocale('id');
 
@@ -35,7 +37,7 @@ class LogbookController extends Controller
             'catatan' => 'nullable|string',
             'lampiran' => 'required|file|mimes:jpeg,png,jpg,webp,pdf|max:5120',
             'absensi' => 'nullable|array',
-            'absensi.*' => 'nullable|in:Hadir,Sakit,Izin,Alpa,Dispensasi',
+            'absensi.*' => 'nullable|in:Hadir,Sakit,Izin,Alpa,D,Dispensasi',
         ], [
             'materi.required' => 'Materi / Pokok Pembahasan wajib diisi.',
             'jam_selesai.gte' => 'Jam selesai mengajar harus lebih besar atau sama dengan jam mulai.',
@@ -100,6 +102,13 @@ class LogbookController extends Controller
         $idSiswaKelas = $daftarSiswaKelas->pluck('id')->all();
         $inputAbsensi = collect($request->input('absensi', []))
             ->only($idSiswaKelas);
+        $dispensasis = Dispensasi::query()
+            ->whereIn('siswa_id', $idSiswaKelas)
+            ->where('status_akhir', 'disetujui')
+            ->whereDate('tanggal', '<=', $todayDate)
+            ->whereDate('tanggal_selesai', '>=', $todayDate)
+            ->get()
+            ->groupBy('siswa_id');
 
         $jmlHadir = 0;
         $jmlSakit = 0;
@@ -111,6 +120,14 @@ class LogbookController extends Controller
         foreach ($daftarSiswaKelas as $s) {
             // Default status adalah 'Hadir' jika tidak ditentukan
             $st = $inputAbsensi->get($s->id, 'Hadir');
+            if ($st === 'Dispensasi') {
+                $st = 'D';
+            }
+            if ($dispensasis->get($s->id, collect())->contains(
+                fn (Dispensasi $dispensasi): bool => $workflowService->isActiveForStudentAt($dispensasi, $todayDate, $jamMulai)
+            )) {
+                $st = 'D';
+            }
             $absensiFinal[$s->id] = $st;
 
             switch ($st) {
@@ -123,7 +140,7 @@ class LogbookController extends Controller
                 case 'Alpa':
                     $jmlAlpa++;
                     break;
-                case 'Dispensasi':
+                case 'D':
                     $jmlDispensasi++;
                     break;
                 default:

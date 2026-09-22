@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DispensasiApprovalController;
 use App\Http\Controllers\GuruController;
@@ -52,16 +53,16 @@ Route::middleware('auth')->group(function () {
 
     Route::prefix('dashboard')->group(function () {
 
-        Route::view('/', 'dashboard.admin.admin')
+        Route::get('/', [AdminController::class, 'index'])
             ->name('dashboard');
 
-        Route::view('/catatan-jurnal', 'dashboard.admin.catatan-jurnal')
+        Route::get('/catatan-jurnal', [AdminController::class, 'catatanJurnal'])
             ->name('catatan-jurnal');
 
-        Route::view('/kelas', 'dashboard.admin.kelas')
+        Route::get('/kelas', [AdminController::class, 'kelas'])
             ->name('dashboard.kelas');
 
-        Route::view('/siswa', 'dashboard.admin.siswa')
+        Route::get('/siswa', [AdminController::class, 'siswa'])
             ->name('dashboard.siswa');
 
         Route::view('/tambah-akun', 'dashboard.admin.tambah-akun')
@@ -70,7 +71,7 @@ Route::middleware('auth')->group(function () {
         Route::view('/piket', 'dashboard.piket.utama')
             ->name('dashboard.piket');
 
-        Route::view('/manajemen-user', 'dashboard.admin.manajemen-user')
+        Route::get('/manajemen-user', [AdminController::class, 'user'])
             ->name('admin.manajemen-user');
 
         Route::get('/piket/kehadiran', [PiketController::class, 'kehadiran'])
@@ -95,49 +96,18 @@ Route::middleware('auth')->group(function () {
         // DATA GURU
         // ==========================================
 
-        Route::get('/guru', function () {
-
-            $mapels = [
-                [
-                    'kode' => 'MTK',
-                    'nama' => 'Matematika',
-                ],
-                [
-                    'kode' => 'RPL',
-                    'nama' => 'Pemrograman Web',
-                ],
-            ];
-
-            $users = [
-                [
-                    'nip' => '198005122005011002',
-                    'nama' => 'Budi Santoso, S.Pd',
-                    'mapel' => 'Matematika',
-                    'no_hp' => '081234567890',
-                ],
-                [
-                    'nip' => '198507232010012004',
-                    'nama' => 'Siti Aminah, M.Pd',
-                    'mapel' => 'Pemrograman Web',
-                    'no_hp' => '082345678901',
-                ],
-            ];
-
-            return view(
-                'dashboard.admin.guru',
-                compact('mapels', 'users')
-            );
-
-        })->name('dashboard.guru');
+        Route::get('/guru', [AdminController::class, 'guru'])->name('dashboard.guru');
+        Route::post('/guru', [AdminController::class, 'storeGuru'])->name('dashboard.guru.store');
+        Route::put('/guru/{id}', [AdminController::class, 'updateGuru'])->name('dashboard.guru.update');
+        Route::delete('/guru/{id}', [AdminController::class, 'destroyGuru'])->name('dashboard.guru.destroy');
+        Route::post('/guru/batch-delete', [AdminController::class, 'batchDeleteGuru'])->name('dashboard.guru.batch-delete');
+        Route::post('/guru/batch-edit', [AdminController::class, 'batchEditGuru'])->name('dashboard.guru.batch-edit');
 
         // ==========================================
         // JADWAL MENGAJAR
         // ==========================================
 
-        Route::get(
-            '/jadwal',
-            [JadwalMengajarController::class, 'index']
-        )->name('dashboard.jadwal');
+        Route::get('/jadwal', [AdminController::class, 'jadwal'])->name('dashboard.jadwal');
 
         // FORM TAMBAH JADWAL
 
@@ -148,41 +118,34 @@ Route::middleware('auth')->group(function () {
 
         // SIMPAN JADWAL
 
-        Route::post(
-            '/jadwal',
-            [JadwalMengajarController::class, 'store']
-        )->name('jadwal.store');
+        Route::post('/jadwal', [AdminController::class, 'storeJadwal'])->name('jadwal.store');
+        Route::put('/jadwal/{id}', [AdminController::class, 'updateJadwal'])->name('dashboard.jadwal.update');
+        Route::delete('/jadwal/{id}', [AdminController::class, 'destroyJadwal'])->name('dashboard.jadwal.destroy');
+        Route::post('/jadwal/batch-delete', [AdminController::class, 'batchDeleteJadwal'])->name('dashboard.jadwal.batch-delete');
+        Route::post('/jadwal/shift-time', [AdminController::class, 'shiftTimeJadwal'])->name('dashboard.jadwal.shift-time');
 
         // ==========================================
         // DATA MAPEL
         // ==========================================
 
-        Route::get('/mapel', function () {
+        Route::get('/mapel', [AdminController::class, 'mapel'])->name('dashboard.mapel');
+        Route::post('/mapel', [AdminController::class, 'storeMapel'])->name('dashboard.mapel.store');
+        Route::put('/mapel/{id}', [AdminController::class, 'updateMapel'])->name('dashboard.mapel.update');
+        Route::delete('/mapel/{id}', [AdminController::class, 'destroyMapel'])->name('dashboard.mapel.destroy');
+        Route::post('/mapel/batch-delete', [AdminController::class, 'batchDeleteMapel'])->name('dashboard.mapel.batch-delete');
 
-            $mapels = [
-                [
-                    'kode' => 'MAT-301',
-                    'nama' => 'Matematika Lanjut',
-                    'guru' => 'Budi Santoso, S.Pd',
-                ],
-                [
-                    'kode' => 'RPL-201',
-                    'nama' => 'Pemrograman Web',
-                    'guru' => 'Siti Aminah, M.Pd',
-                ],
-                [
-                    'kode' => 'BSD-101',
-                    'nama' => 'Basis Data',
-                    'guru' => 'Eko Prasetyo, S.Kom',
-                ],
-            ];
-
-            return view(
-                'dashboard.admin.mapel',
-                compact('mapels')
-            );
-
-        })->name('dashboard.mapel');
+        Route::post('/kelas', [AdminController::class, 'storeKelas'])->name('dashboard.kelas.store');
+        Route::put('/kelas/{id}', [AdminController::class, 'updateKelas'])->name('dashboard.kelas.update');
+        Route::delete('/kelas/{id}', [AdminController::class, 'destroyKelas'])->name('dashboard.kelas.destroy');
+        Route::post('/kelas/batch-delete', [AdminController::class, 'batchDeleteKelas'])->name('dashboard.kelas.batch-delete');
+        Route::post('/siswa', [AdminController::class, 'storeSiswa'])->name('dashboard.siswa.store');
+        Route::put('/siswa/{id}', [AdminController::class, 'updateSiswa'])->name('dashboard.siswa.update');
+        Route::delete('/siswa/{id}', [AdminController::class, 'destroySiswa'])->name('dashboard.siswa.destroy');
+        Route::post('/siswa/batch-delete', [AdminController::class, 'batchDeleteSiswa'])->name('dashboard.siswa.batch-delete');
+        Route::post('/siswa/batch-edit', [AdminController::class, 'batchEditSiswa'])->name('dashboard.siswa.batch-edit');
+        Route::get('/rekap-jurnal', [AdminController::class, 'rekapJurnal'])->name('dashboard.rekap-jurnal');
+        Route::get('/pengaturan', [AdminController::class, 'pengaturan'])->name('admin.pengaturan');
+        Route::post('/pengaturan', [AdminController::class, 'updatePengaturan'])->name('admin.pengaturan.update');
 
     });
 

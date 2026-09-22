@@ -3,7 +3,9 @@
 namespace Tests\Feature;
 
 use App\Models\Dispensasi;
+use App\Models\JurnalMengajar;
 use App\Models\Kelas;
+use App\Models\Mapel;
 use App\Models\Siswa;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -49,6 +51,20 @@ class DispensasiDualRoleTest extends TestCase
             'nis' => '12345',
             'nisn' => '1234567890',
             'jenis_kelamin' => 'L',
+        ]);
+
+        $mapel = Mapel::create([
+            'kode_mapel' => 'RPL',
+            'nama_mapel' => 'Pemrograman Web',
+        ]);
+
+        $jurnal = JurnalMengajar::create([
+            'id_user' => $guruPiket->id,
+            'id_kelas' => $kelas->id_kelas,
+            'id_mapel' => $mapel->id,
+            'tanggal' => now()->toDateString(),
+            'jam_ke' => 1,
+            'materi' => 'Materi pengujian',
         ]);
 
         // 2. Guru Piket Login & Input Dispensasi Siswa
@@ -106,5 +122,15 @@ class DispensasiDualRoleTest extends TestCase
         $this->assertEquals('disetujui', $dispensasi->status_waka);
         $this->assertEquals('disetujui', $dispensasi->status_akhir);
         $this->assertEquals($waka->id, $dispensasi->diproses_oleh);
+        $this->assertDatabaseHas('absensis', [
+            'id_jurnal' => $jurnal->id_jurnal,
+            'id_siswa' => $siswa->id,
+            'status' => 'D',
+        ]);
+        $this->assertDatabaseHas('notifikasis', [
+            'id_user' => $guruPiket->id,
+            'id_dispensasi' => $dispensasi->id,
+            'tipe' => 'dispensasi',
+        ]);
     }
 }

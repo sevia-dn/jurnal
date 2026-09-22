@@ -133,7 +133,7 @@ class PiketController extends Controller
             $absen = $absensiRecords->get($s->id);
 
             if ($dispen) {
-                $status = 'Dispensasi';
+                $status = 'D';
                 $catatan = 'Dispensasi: '.$dispen->deskripsi_waktu.' ('.$dispen->alasan.')';
             } elseif ($absen) {
                 $status = $absen->status;
@@ -161,7 +161,7 @@ class PiketController extends Controller
         $totalSakit = $studentsData->where('status', 'Sakit')->count();
         $totalIzin = $studentsData->where('status', 'Izin')->count();
         $totalAlfa = $studentsData->whereIn('status', ['Alfa', 'Alpa'])->count();
-        $totalDispen = $studentsData->where('status', 'Dispensasi')->count();
+        $totalDispen = $studentsData->where('status', 'D')->count();
 
         return view('dashboard.piket.kehadiran-siswa', compact(
             'kelasList',
@@ -183,7 +183,7 @@ class PiketController extends Controller
     {
         $request->validate([
             'siswa_id' => 'required|exists:siswas,id',
-            'status' => 'required|in:Hadir,Sakit,Izin,Alfa,Dispensasi',
+            'status' => 'required|in:Hadir,Sakit,Izin,Alfa,D',
             'catatan' => 'nullable|string|max:255',
             'tanggal' => 'required|date',
             'kelas_id' => 'required',

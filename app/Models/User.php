@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
-#[Fillable(['name', 'username', 'nip', 'no_hp', 'password', 'role', 'is_waka'])]
+#[Fillable(['name', 'username', 'nip', 'no_hp', 'mapel_id', 'password', 'role', 'is_waka'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -45,6 +45,16 @@ class User extends Authenticatable
     public function kehadiranGurus()
     {
         return $this->hasMany(KehadiranGuru::class, 'user_id');
+    }
+
+    public function mapel()
+    {
+        return $this->belongsTo(Mapel::class);
+    }
+
+    public function notifikasis()
+    {
+        return $this->hasMany(Notifikasi::class, 'id_user');
     }
 
     /**

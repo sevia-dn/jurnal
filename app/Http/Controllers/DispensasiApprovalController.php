@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Dispensasi;
+use App\Services\DispensasiWorkflowService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -31,7 +32,7 @@ class DispensasiApprovalController extends Controller
     /**
      * Proses keputusan Waka (Setujui / Tolak)
      */
-    public function process(Request $request, Dispensasi $dispensasi)
+    public function process(Request $request, Dispensasi $dispensasi, DispensasiWorkflowService $workflowService)
     {
         $user = Auth::user();
 
@@ -53,6 +54,10 @@ class DispensasiApprovalController extends Controller
             'diproses_at' => now(),
             'catatan_waka' => $request->catatan_waka,
         ]);
+
+        if ($keputusan === 'disetujui') {
+            $workflowService->approve($dispensasi);
+        }
 
         $statusText = $keputusan === 'disetujui' ? 'disetujui ✅' : 'ditolak ❌';
 
