@@ -43,18 +43,23 @@ class AuthController extends Controller
             $isPasswordValid = Hash::check($password, $user->password)
                 || ($user->role === 'guru' && $password === 'guru123');
 
-            // Jika ada intended URL (seperti link approval dari WA), prioritaskan ke intended URL
-            switch ($user->role) {
-                case 'admin':
-                    return redirect()->intended(route('dashboard'));
-                case 'pengurus_kelas':
-                    return redirect()->intended(route('pengurus-kelas.dashboard'));
-                case 'guru':
-                case 'piket':
-                case 'waka':
-                    return redirect()->intended(route('guru'));
-                default:
-                    return redirect()->intended(route('login'));
+            if ($isPasswordValid) {
+                Auth::login($user);
+                $request->session()->regenerate();
+
+                // Jika ada intended URL (seperti link approval dari WA), prioritaskan ke intended URL.
+                switch ($user->role) {
+                    case 'admin':
+                        return redirect()->intended(route('dashboard'));
+                    case 'pengurus_kelas':
+                        return redirect()->intended(route('pengurus-kelas.dashboard'));
+                    case 'guru':
+                    case 'piket':
+                    case 'waka':
+                        return redirect()->intended(route('guru'));
+                    default:
+                        return redirect()->intended(route('login'));
+                }
             }
         }
 
