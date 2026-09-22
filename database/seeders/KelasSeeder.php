@@ -2,8 +2,8 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Seeder;
 use App\Models\Kelas;
+use Illuminate\Database\Seeder;
 
 class KelasSeeder extends Seeder
 {
@@ -64,12 +64,11 @@ class KelasSeeder extends Seeder
         foreach ($kelas as $item) {
             Kelas::updateOrCreate(
                 ['id_kelas' => $item['id_kelas']],
-		[
-                	'nama_kelas' => $item['nama_kelas'],
-			'jumlah_siswa' => 0,
-		]
+                [
+                    'nama_kelas' => $item['nama_kelas'],
+                    'jumlah_siswa' => 0,
+                ]
             );
         }
     }
 }
-

@@ -455,23 +455,23 @@
                             </div>
                         </template>
 
-                        {{-- Lampiran / Foto Live --}}
+                        {{-- Foto Live Bukti Mengajar di Kelas --}}
                         <div>
-                            <p class="text-xs font-bold text-slate-700">Foto Bukti Live di Kelas</p>
+                            <p class="text-xs font-bold text-slate-700">Foto Live Bukti Kehadiran di Kelas</p>
                             <template x-if="detail.lampiran">
-                                <div class="mt-1.5">
-                                    <a :href="detail.lampiran" target="_blank" class="block overflow-hidden rounded-xl border border-slate-200 bg-slate-50 hover:border-emerald-300">
-                                        <img :src="detail.lampiran" alt="Lampiran" class="max-h-52 w-full object-cover" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'">
-                                        <div style="display:none;" class="h-20 items-center justify-center gap-2 text-xs font-semibold text-emerald-700">
-                                            <i class="bi bi-file-earmark-pdf text-xl text-rose-500"></i>
-                                            <span>Buka Berkas Lampiran (PDF)</span>
+                                <div class="mt-1.5 overflow-hidden rounded-xl border border-slate-200 bg-slate-100">
+                                    <a :href="detail.lampiran" target="_blank" title="Buka foto ukuran penuh" class="group block relative">
+                                        <img :src="detail.lampiran" alt="Foto Live Kehadiran Guru di Kelas" class="max-h-80 w-full object-contain rounded-xl transition duration-200 group-hover:opacity-95">
+                                        <div class="absolute bottom-2 right-2 rounded-lg bg-black/60 px-2.5 py-1 text-[10px] font-medium text-white backdrop-blur-xs flex items-center gap-1">
+                                            <i class="bi bi-arrows-fullscreen"></i> Buka Ukuran Penuh
                                         </div>
                                     </a>
                                 </div>
                             </template>
                             <template x-if="!detail.lampiran">
-                                <div class="mt-1.5 flex h-16 items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50">
-                                    <span class="text-xs text-slate-400">Tidak ada lampiran foto</span>
+                                <div class="mt-1.5 flex h-20 flex-col items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50 text-slate-400">
+                                    <i class="bi bi-camera-video-off text-base"></i>
+                                    <span class="mt-0.5 text-xs">Tidak ada foto live bukti kehadiran</span>
                                 </div>
                             </template>
                         </div>

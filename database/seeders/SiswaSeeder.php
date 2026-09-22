@@ -1711,7 +1711,7 @@ class SiswaSeeder extends Seeder
                 // Beberapa nama kelas di sumber punya keterangan seperti (ALFAMART) / (AXIOO CLASS).
                 $namaKelas = preg_replace('/\s*\(.*\)\s*$/', '', trim($row['kelas']));
 
-                if (!isset($kelasMap[$namaKelas])) {
+                if (! isset($kelasMap[$namaKelas])) {
                     throw new \RuntimeException("Kelas '{$namaKelas}' tidak ditemukan di tabel kelas.");
                 }
 

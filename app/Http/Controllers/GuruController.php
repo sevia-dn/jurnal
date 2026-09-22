@@ -158,6 +158,10 @@ class GuruController extends Controller
             ->orderBy('kelas_id')
             ->orderBy('nama')
             ->get();
+        // Siswa dikirim ke view dikelompokkan per kelas_id untuk presensi instan tanpa lag
+        $siswasByKelas = Siswa::orderBy('nama')
+            ->get(['id', 'nama', 'nis', 'jenis_kelamin', 'kelas_id'])
+            ->groupBy('kelas_id');
 
         return view('dashboard.guru-pengajar.utama', compact(
             'user',
@@ -168,6 +172,7 @@ class GuruController extends Controller
             'kelases',
             'mapels',
             'siswas',
+            'siswasByKelas',
             'hariIni',
             'todayDate',
             'currentTime',

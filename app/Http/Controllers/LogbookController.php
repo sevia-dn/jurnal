@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Absensi;
 use App\Models\JurnalMengajar;
 use App\Models\Siswa;
 use Carbon\Carbon;
@@ -95,8 +94,12 @@ class LogbookController extends Controller
 
         // 5. Hitung rekap absensi siswa di kelas yang dipilih
         // Ambil semua siswa yang terdaftar di kelas tersebut
-        $daftarSiswaKelas = Siswa::where('kelas_id', $request->id_kelas)->get();
-        $inputAbsensi = $request->input('absensi', []);
+        $daftarSiswaKelas = Siswa::where('kelas_id', $request->id_kelas)
+            ->orderBy('id')
+            ->get();
+        $idSiswaKelas = $daftarSiswaKelas->pluck('id')->all();
+        $inputAbsensi = collect($request->input('absensi', []))
+            ->only($idSiswaKelas);
 
         $jmlHadir = 0;
         $jmlSakit = 0;
@@ -107,7 +110,7 @@ class LogbookController extends Controller
         $absensiFinal = [];
         foreach ($daftarSiswaKelas as $s) {
             // Default status adalah 'Hadir' jika tidak ditentukan
-            $st = $inputAbsensi[$s->id] ?? 'Hadir';
+            $st = $inputAbsensi->get($s->id, 'Hadir');
             $absensiFinal[$s->id] = $st;
 
             switch ($st) {
@@ -157,14 +160,13 @@ class LogbookController extends Controller
                 'divalidasi_pada' => null,
             ]);
 
-            // Simpan detail absensi tiap siswa di kelas
-            foreach ($absensiFinal as $idSiswa => $statusSiswa) {
-                Absensi::create([
-                    'id_jurnal' => $jurnal->id_jurnal,
+            // Simpan satu detail presensi untuk setiap siswa di kelas jurnal.
+            $jurnal->absensis()->createMany(
+                collect($absensiFinal)->map(fn (string $statusSiswa, int $idSiswa): array => [
                     'id_siswa' => $idSiswa,
                     'status' => $statusSiswa,
-                ]);
-            }
+                ])->values()->all()
+            );
 
             DB::commit();
 

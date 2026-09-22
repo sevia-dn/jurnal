@@ -28,7 +28,7 @@ return new class extends Migration
                 'Selasa',
                 'Rabu',
                 'Kamis',
-                'Jumat'
+                'Jumat',
             ]);
 
             $table->integer('jam_mulai');

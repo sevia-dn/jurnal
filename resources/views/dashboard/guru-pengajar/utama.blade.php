@@ -29,7 +29,34 @@
         selectedJamKe: '',
         selectedJamSelesai: '',
         searchSiswa: '',
+        searchKelas: '',
+        searchMapel: '',
+        openKelasDropdown: false,
+        openMapelDropdown: false,
         liveClock: '{{ $currentFullTime ?? \Carbon\Carbon::now("Asia/Jakarta")->format("H:i:s") }}',
+        cameraActive: false,
+        cameraStream: null,
+        capturedPhoto: null,
+
+        mapelMap: {
+            @foreach($mapels as $mapel)
+                '{{ $mapel->id }}': '{{ addslashes($mapel->nama_mapel ?? $mapel->nama ?? $mapel->kode) }}',
+            @endforeach
+        },
+
+        kelasMap: {
+            @foreach($kelases as $kelas)
+                '{{ $kelas->id_kelas }}': '{{ addslashes($kelas->nama_kelas) }}',
+            @endforeach
+        },
+
+        getMapelName(id) {
+            return this.mapelMap[id] || '';
+        },
+
+        getKelasName(id) {
+            return this.kelasMap[id] || '';
+        },
 
         init() {
             setInterval(() => {
@@ -42,10 +69,11 @@
         },
 
         pilihJadwal(idKelas, idMapel, jamMulai, jamSelesai) {
-            this.selectedKelas = idKelas;
-            this.selectedMapel = idMapel;
-            this.selectedJamKe = jamMulai;
-            this.selectedJamSelesai = jamSelesai || jamMulai;
+            this.selectedKelas = String(idKelas);
+            this.selectedMapel = String(idMapel);
+            this.selectedJamKe = String(jamMulai);
+            this.selectedJamSelesai = String(jamSelesai || jamMulai);
+            this.searchSiswa = '';
             const logbookEl = document.getElementById('form-logbook-section');
             if (logbookEl) {
                 logbookEl.scrollIntoView({ behavior: 'smooth' });
@@ -55,7 +83,90 @@
         matchesSearch(nama, nis) {
             if (!this.searchSiswa || this.searchSiswa.trim() === '') return true;
             const query = this.searchSiswa.toLowerCase().trim();
-            return nama.includes(query) || (nis && nis.includes(query));
+            return String(nama || '').toLowerCase().includes(query) || (nis && String(nis).toLowerCase().includes(query));
+        },
+
+        async startCamera() {
+            try {
+                this.cameraStream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: { ideal: 'environment' } },
+                    audio: false
+                });
+                this.$nextTick(() => {
+                    const vid = this.$refs.cameraVideoLogbook;
+                    if (vid) { vid.srcObject = this.cameraStream; vid.play(); }
+                });
+                this.cameraActive = true;
+                this.capturedPhoto = null;
+            } catch(e) {
+                try {
+                    this.cameraStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+                    this.$nextTick(() => {
+                        const vid = this.$refs.cameraVideoLogbook;
+                        if (vid) { vid.srcObject = this.cameraStream; vid.play(); }
+                    });
+                    this.cameraActive = true;
+                    this.capturedPhoto = null;
+                } catch(err) {
+                    alert('Kamera tidak dapat diakses. Pastikan izin kamera telah diberikan pada browser Anda.');
+                }
+            }
+        },
+
+        capturePhoto() {
+            const vid = this.$refs.cameraVideoLogbook;
+            const canvas = this.$refs.cameraCanvasLogbook;
+            if (!vid || !canvas) return;
+            canvas.width = vid.videoWidth;
+            canvas.height = vid.videoHeight;
+            canvas.getContext('2d').drawImage(vid, 0, 0);
+            this.capturedPhoto = canvas.toDataURL('image/jpeg', 0.85);
+            this.$refs.lampiranInput.value = '';
+            fetch(this.capturedPhoto)
+                .then(r => r.blob())
+                .then(blob => {
+                    const file = new File([blob], 'foto-bukti-mengajar-live.jpg', { type: 'image/jpeg' });
+                    const dt = new DataTransfer();
+                    dt.items.add(file);
+                    this.$refs.lampiranInput.files = dt.files;
+                });
+            this.stopCamera();
+        },
+
+        retakePhoto() {
+            this.capturedPhoto = null;
+            this.startCamera();
+        },
+
+        stopCamera() {
+            if (this.cameraStream) {
+                this.cameraStream.getTracks().forEach(t => t.stop());
+                this.cameraStream = null;
+            }
+            this.cameraActive = false;
+        },
+
+        submitForm(e) {
+            if (!this.selectedKelas) {
+                e.preventDefault();
+                alert('Silakan pilih Kelas terlebih dahulu!');
+                return false;
+            }
+            if (!this.selectedMapel) {
+                e.preventDefault();
+                alert('Silakan pilih Mata Pelajaran terlebih dahulu!');
+                return false;
+            }
+            if (!this.capturedPhoto || !this.$refs.lampiranInput.files || this.$refs.lampiranInput.files.length === 0) {
+                e.preventDefault();
+                alert('Wajib mengambil foto live bukti kehadiran di kelas sebelum mengirim logbook!');
+                const lampiranEl = document.getElementById('section-lampiran-logbook');
+                if (lampiranEl) {
+                    lampiranEl.scrollIntoView({ behavior: 'smooth' });
+                }
+                return false;
+            }
+            this.stopCamera();
         }
     }"
     class="mx-auto w-full max-w-7xl px-4 py-5 sm:px-6 lg:px-8"
@@ -82,38 +193,38 @@
     @endif
 
     {{-- HEADER RINGKAS --}}
-    <section class="flex items-center justify-between">
-        <div>
-            <p class="text-base font-bold text-slate-800 sm:text-lg">
+    <section class="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div class="min-w-0">
+            <p class="text-base font-bold leading-tight text-slate-800 sm:text-lg">
                 {{ \Carbon\Carbon::now('Asia/Jakarta')->translatedFormat('l, d F Y') }}
             </p>
         </div>
 
-        <span class="inline-flex items-center gap-1.5 rounded-lg bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-800 border border-emerald-200 shadow-xs">
+        <span class="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-800 shadow-xs">
             <span class="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
             <strong x-text="liveClock + ' WIB'" class="font-mono text-emerald-950 font-bold"></strong>
         </span>
     </section>
 
     {{-- ========================================================= --}}
-    {{-- SECTION : JADWAL MENGAJAR GURU HARI INI --}}
+    {{-- SECTION : JADWAL MENGAJAR GURU HARI INI (MOBILE FRIENDLY) --}}
     {{-- ========================================================= --}}
-    <section class="mt-5 rounded-2xl bg-white p-4 shadow-sm border border-slate-100 sm:p-5">
-        <div class="flex items-center justify-between mb-3.5">
-            <div class="flex items-center gap-2">
+    <section class="mt-5 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:p-5">
+        <div class="mb-3 flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div class="flex min-w-0 items-center gap-2">
                 <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100 text-base text-emerald-700">
                     <i class="bi bi-calendar-week-fill"></i>
                 </span>
-                <h2 class="text-sm sm:text-base font-bold text-slate-900">
+                <h2 class="text-sm font-bold leading-tight text-slate-900 sm:text-base">
                     Jadwal Mengajar Hari Ini ({{ $hariIni }})
                 </h2>
             </div>
-            <span class="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-bold text-slate-600">
+            <span class="shrink-0 rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-bold text-slate-600">
                 {{ $jadwals->count() }} Sesi
             </span>
         </div>
 
-        <div class="space-y-3">
+        <div class="space-y-2">
             @forelse($jadwals ?? [] as $jadwal)
                 @php
                     $isFilled = $jadwal->is_filled;
@@ -121,75 +232,75 @@
                     $isOngoing = ($statusWaktu === 'berlangsung' && !$isFilled);
                 @endphp
 
-                <div class="rounded-xl border transition p-3.5 sm:p-4 {{ $isOngoing ? 'border-emerald-500 bg-emerald-50/40 ring-1 ring-emerald-300 shadow-sm' : 'border-slate-200/80 bg-white hover:border-emerald-200' }}">
+                <div class="rounded-xl border p-3 transition sm:p-3.5 {{ $isOngoing ? 'border-emerald-400 bg-white' : 'border-slate-200 bg-white hover:border-slate-300' }}">
                     
-                    {{-- Baris Atas: Jam Pelajaran & Status --}}
-                    <div class="flex items-center justify-between gap-2 border-b border-slate-100 pb-2.5 mb-2.5">
-                        <div class="flex items-center gap-2">
-                            <span class="inline-flex items-center rounded-lg px-2 py-0.5 text-xs font-bold {{ $isOngoing ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-800' }}">
-                                Jam ke-{{ $jadwal->jam_mulai }} - {{ $jadwal->jam_selesai }}
+                    {{-- Baris 1: Jam Pelajaran & Waktu (Kiri) vs Status Sesi (Kanan) --}}
+                    <div class="mb-2 flex flex-wrap items-center gap-1.5 border-b border-slate-100 pb-2 sm:gap-2">
+                        <div class="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                            <span class="inline-flex shrink-0 items-center rounded-md px-2 py-0.5 text-xs font-bold {{ $isOngoing ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-700' }}">
+                                Jam ke-{{ $jadwal->jam_mulai }}@if($jadwal->jam_selesai && $jadwal->jam_selesai != $jadwal->jam_mulai) - {{ $jadwal->jam_selesai }}@endif
                             </span>
-                            <span class="text-xs font-semibold text-slate-500 font-mono">
+                            <span class="whitespace-nowrap font-mono text-[11px] font-semibold text-slate-500 sm:text-xs">
                                 {{ $jadwal->waktu_mulai }} - {{ $jadwal->waktu_selesai }}
                             </span>
                         </div>
 
                         {{-- Status Badge --}}
-                        <div>
+                        <div class="shrink-0">
                             @if($isFilled)
-                                <span class="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-0.5 text-[10px] font-bold text-emerald-800 border border-emerald-200">
+                                <span class="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[10px] font-bold text-slate-600">
                                     <i class="bi bi-check-circle-fill text-emerald-600"></i> Terisi
                                 </span>
                             @elseif($statusWaktu === 'berlangsung')
-                                <span class="inline-flex items-center gap-1 rounded-full bg-emerald-600 px-2.5 py-0.5 text-[10px] font-bold text-white shadow-xs">
-                                    <span class="h-1.5 w-1.5 rounded-full bg-white animate-ping"></span> Berlangsung
+                                <span class="inline-flex items-center gap-1 rounded-full bg-emerald-600 px-2 py-0.5 text-[10px] font-bold text-white">
+                                    <span class="h-1.5 w-1.5 rounded-full bg-white"></span> Berlangsung
                                 </span>
                             @elseif($statusWaktu === 'lewat')
-                                <span class="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-0.5 text-[10px] font-medium text-slate-500">
+                                <span class="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-500">
                                     <i class="bi bi-clock-history"></i> Terlewat
                                 </span>
                             @else
-                                <span class="inline-flex items-center gap-1 rounded-full bg-sky-50 px-2.5 py-0.5 text-[10px] font-semibold text-sky-700 border border-sky-200">
+                                <span class="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-600">
                                     <i class="bi bi-hourglass-split"></i> Akan Datang
                                 </span>
                             @endif
                         </div>
                     </div>
 
-                    {{-- Baris Tengah: Kelas & Mapel + Tombol Aksi --}}
-                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                        <div class="min-w-0 flex-1">
-                            <div class="flex items-center gap-2">
-                                <span class="inline-flex items-center rounded-md bg-emerald-100/70 px-2.5 py-0.5 text-xs font-bold text-emerald-800 border border-emerald-200 shrink-0">
+                    {{-- Informasi kelas dan aksi selalu tampil utuh di semua ukuran layar. --}}
+                    <div class="space-y-2">
+                        <div class="flex items-start gap-2">
+                            <div class="flex min-w-0 flex-wrap items-center gap-2">
+                                <span class="inline-flex shrink-0 items-center rounded-md bg-slate-100 px-2 py-0.5 text-xs font-bold text-slate-700">
                                     {{ $jadwal->kelas->nama_kelas ?? 'Kelas' }}
                                 </span>
-                                <h3 class="text-xs sm:text-sm font-bold text-slate-900 truncate">
+                                <h3 class="break-words text-xs font-bold leading-tight text-slate-900 sm:text-sm" title="{{ $jadwal->mapel->nama_mapel ?? 'Mata Pelajaran' }}">
                                     {{ $jadwal->mapel->nama_mapel ?? 'Mata Pelajaran' }}
                                 </h3>
                             </div>
                         </div>
 
                         {{-- Tombol Aksi --}}
-                        <div class="shrink-0 flex items-center justify-end">
+                        <div class="flex w-full items-center">
                             @if($isFilled)
                                 <a href="{{ route('guru.riwayat') }}"
-                                   class="w-full sm:w-auto text-center inline-flex items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3.5 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50">
+                                   class="inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50">
                                     <i class="bi bi-eye"></i>
                                     <span>Lihat Jurnal</span>
                                 </a>
                             @elseif($statusWaktu === 'lewat')
-                                <span class="w-full sm:w-auto text-center rounded-lg bg-slate-50 border border-slate-200/60 px-3 py-1.5 text-xs font-medium text-slate-400 cursor-not-allowed">
+                                <span class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-center text-xs font-medium text-slate-400 cursor-not-allowed">
                                     <i class="bi bi-lock-fill mr-1"></i>Tenggat Lewat
                                 </span>
                             @elseif($statusWaktu === 'belum_mulai')
-                                <span class="w-full sm:w-auto text-center rounded-lg bg-sky-50/70 border border-sky-200/60 px-3 py-1.5 text-xs font-semibold text-sky-700 cursor-not-allowed">
+                                <span class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-center text-xs font-medium text-slate-500 cursor-not-allowed">
                                     <i class="bi bi-clock-history mr-1"></i>Belum Dimulai
                                 </span>
                             @else
                                 <button
                                     type="button"
                                     @click="pilihJadwal('{{ $jadwal->id_kelas }}', '{{ $jadwal->id_mapel }}', '{{ $jadwal->jam_mulai }}', '{{ $jadwal->jam_selesai }}')"
-                                    class="w-full sm:w-auto text-center inline-flex items-center justify-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-2 text-xs font-bold text-white shadow-xs transition hover:bg-emerald-700"
+                                    class="inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-emerald-700"
                                 >
                                     <i class="bi bi-pencil-square"></i>
                                     <span>Isi Logbook</span>
@@ -217,84 +328,6 @@
             method="POST"
             enctype="multipart/form-data"
             class="space-y-5"
-            x-data="{
-                cameraActive: false,
-                cameraStream: null,
-                capturedPhoto: null,
-
-                async startCamera() {
-                    try {
-                        this.cameraStream = await navigator.mediaDevices.getUserMedia({
-                            video: { facingMode: { ideal: 'environment' } },
-                            audio: false
-                        });
-                        this.$nextTick(() => {
-                            const vid = this.$refs.cameraVideoLogbook;
-                            if (vid) { vid.srcObject = this.cameraStream; vid.play(); }
-                        });
-                        this.cameraActive = true;
-                        this.capturedPhoto = null;
-                    } catch(e) {
-                        try {
-                            this.cameraStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-                            this.$nextTick(() => {
-                                const vid = this.$refs.cameraVideoLogbook;
-                                if (vid) { vid.srcObject = this.cameraStream; vid.play(); }
-                            });
-                            this.cameraActive = true;
-                            this.capturedPhoto = null;
-                        } catch(err) {
-                            alert('Kamera tidak dapat diakses. Pastikan izin kamera telah diberikan pada browser Anda.');
-                        }
-                    }
-                },
-
-                capturePhoto() {
-                    const vid = this.$refs.cameraVideoLogbook;
-                    const canvas = this.$refs.cameraCanvasLogbook;
-                    if (!vid || !canvas) return;
-                    canvas.width = vid.videoWidth;
-                    canvas.height = vid.videoHeight;
-                    canvas.getContext('2d').drawImage(vid, 0, 0);
-                    this.capturedPhoto = canvas.toDataURL('image/jpeg', 0.85);
-                    this.$refs.lampiranInput.value = '';
-                    fetch(this.capturedPhoto)
-                        .then(r => r.blob())
-                        .then(blob => {
-                            const file = new File([blob], 'foto-bukti-mengajar-live.jpg', { type: 'image/jpeg' });
-                            const dt = new DataTransfer();
-                            dt.items.add(file);
-                            this.$refs.lampiranInput.files = dt.files;
-                        });
-                    this.stopCamera();
-                },
-
-                retakePhoto() {
-                    this.capturedPhoto = null;
-                    this.startCamera();
-                },
-
-                stopCamera() {
-                    if (this.cameraStream) {
-                        this.cameraStream.getTracks().forEach(t => t.stop());
-                        this.cameraStream = null;
-                    }
-                    this.cameraActive = false;
-                },
-
-                submitForm(e) {
-                    if (!this.capturedPhoto || !this.$refs.lampiranInput.files || this.$refs.lampiranInput.files.length === 0) {
-                        e.preventDefault();
-                        alert('Wajib mengambil foto live bukti kehadiran di kelas sebelum mengirim logbook!');
-                        const lampiranEl = document.getElementById('section-lampiran-logbook');
-                        if (lampiranEl) {
-                            lampiranEl.scrollIntoView({ behavior: 'smooth' });
-                        }
-                        return false;
-                    }
-                    this.stopCamera();
-                }
-            }"
             @submit="submitForm($event)"
         >
             @csrf
@@ -333,41 +366,142 @@
                         >
                     </label>
 
-                    {{-- MATA PELAJARAN --}}
-                    <label class="block">
+                    {{-- MATA PELAJARAN (SEARCHABLE DROPDOWN WITH FLOATING/STICKY SEARCH) --}}
+                    <div class="relative block" @click.outside="openMapelDropdown = false">
                         <span class="text-xs font-bold text-slate-700">Mata Pelajaran <span class="text-rose-500">*</span></span>
-                        <select
-                            name="id_mapel"
-                            x-model="selectedMapel"
-                            required
-                            class="mt-1.5 w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-700 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100"
+                        <input type="hidden" name="id_mapel" :value="selectedMapel" required>
+                        
+                        {{-- Trigger Button --}}
+                        <button
+                            type="button"
+                            @click="openMapelDropdown = !openMapelDropdown; if(openMapelDropdown) { openKelasDropdown = false; $nextTick(() => $refs.inputSearchMapel?.focus()); }"
+                            class="mt-1.5 flex w-full items-center justify-between rounded-lg border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-left text-slate-700 transition focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100"
                         >
-                            <option value="">-- Pilih Mata Pelajaran --</option>
-                            @foreach($mapels as $mapel)
-                                <option value="{{ $mapel->id }}">
-                                    {{ $mapel->nama_mapel ?? $mapel->nama ?? $mapel->kode }}
-                                </option>
-                            @endforeach
-                        </select>
-                    </label>
+                            <span x-text="getMapelName(selectedMapel) || '-- Pilih Mata Pelajaran --'" :class="{'text-slate-400': !selectedMapel, 'text-slate-800 font-medium': selectedMapel}"></span>
+                            <i class="bi bi-chevron-down text-xs text-slate-400 transition-transform duration-200" :class="{'rotate-180': openMapelDropdown}"></i>
+                        </button>
 
-                    {{-- KELAS --}}
-                    <label class="block">
-                        <span class="text-xs font-bold text-slate-700">Kelas <span class="text-rose-500">*</span></span>
-                        <select
-                            name="id_kelas"
-                            x-model="selectedKelas"
-                            required
-                            class="mt-1.5 w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-700 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100"
+                        {{-- Dropdown Menu --}}
+                        <div
+                            x-show="openMapelDropdown"
+                            x-cloak
+                            x-transition:enter="transition ease-out duration-100"
+                            x-transition:enter-start="transform opacity-0 scale-95"
+                            x-transition:enter-end="transform opacity-100 scale-100"
+                            x-transition:leave="transition ease-in duration-75"
+                            x-transition:leave-start="transform opacity-100 scale-100"
+                            x-transition:leave-end="transform opacity-0 scale-95"
+                            class="absolute left-0 right-0 z-30 mt-1 max-h-64 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl"
                         >
-                            <option value="">-- Pilih Kelas --</option>
-                            @foreach($kelases as $kelas)
-                                <option value="{{ $kelas->id_kelas }}">
-                                    {{ $kelas->nama_kelas }}
-                                </option>
-                            @endforeach
-                        </select>
-                    </label>
+                            {{-- FLOATING / STICKY SEARCH INPUT --}}
+                            <div class="sticky top-0 z-10 border-b border-slate-100 bg-white/95 backdrop-blur-xs p-2 shadow-2xs">
+                                <div class="relative flex items-center">
+                                    <i class="bi bi-search absolute left-2.5 text-slate-400 text-xs"></i>
+                                    <input
+                                        type="search"
+                                        x-ref="inputSearchMapel"
+                                        x-model="searchMapel"
+                                        placeholder="Cari mata pelajaran..."
+                                        class="w-full rounded-lg border border-slate-200 bg-slate-50/80 py-1.5 pl-8 pr-7 text-xs text-slate-700 outline-none focus:border-emerald-600 focus:bg-white focus:ring-2 focus:ring-emerald-100"
+                                    >
+                                    <button
+                                        type="button"
+                                        x-show="searchMapel"
+                                        @click="searchMapel = ''; $refs.inputSearchMapel?.focus()"
+                                        class="absolute right-2 text-slate-400 hover:text-slate-600 text-xs"
+                                    >
+                                        <i class="bi bi-x-circle-fill"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            {{-- Scrollable List --}}
+                            <div class="max-h-48 overflow-y-auto p-1 space-y-0.5 custom-scrollbar">
+                                @foreach($mapels as $mapel)
+                                    @php
+                                        $namaMapel = $mapel->nama_mapel ?? $mapel->nama ?? $mapel->kode;
+                                    @endphp
+                                    <button
+                                        type="button"
+                                        x-show="!searchMapel || '{{ strtolower(addslashes($namaMapel)) }}'.includes(searchMapel.toLowerCase().trim())"
+                                        @click="selectedMapel = '{{ $mapel->id }}'; openMapelDropdown = false; searchMapel = ''"
+                                        class="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-xs font-medium transition hover:bg-emerald-50 hover:text-emerald-800"
+                                        :class="selectedMapel == '{{ $mapel->id }}' ? 'bg-emerald-100 text-emerald-900 font-bold' : 'text-slate-700'"
+                                    >
+                                        <span>{{ $namaMapel }}</span>
+                                        <i x-show="selectedMapel == '{{ $mapel->id }}'" class="bi bi-check-lg text-emerald-600 font-bold"></i>
+                                    </button>
+                                @endforeach
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- KELAS (SEARCHABLE DROPDOWN WITH FLOATING/STICKY SEARCH) --}}
+                    <div class="relative block" @click.outside="openKelasDropdown = false">
+                        <span class="text-xs font-bold text-slate-700">Kelas <span class="text-rose-500">*</span></span>
+                        <input type="hidden" name="id_kelas" :value="selectedKelas" required>
+                        
+                        {{-- Trigger Button --}}
+                        <button
+                            type="button"
+                            @click="openKelasDropdown = !openKelasDropdown; if(openKelasDropdown) { openMapelDropdown = false; $nextTick(() => $refs.inputSearchKelas?.focus()); }"
+                            class="mt-1.5 flex w-full items-center justify-between rounded-lg border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-left text-slate-700 transition focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100"
+                        >
+                            <span x-text="getKelasName(selectedKelas) || '-- Pilih Kelas --'" :class="{'text-slate-400': !selectedKelas, 'text-slate-800 font-medium': selectedKelas}"></span>
+                            <i class="bi bi-chevron-down text-xs text-slate-400 transition-transform duration-200" :class="{'rotate-180': openKelasDropdown}"></i>
+                        </button>
+
+                        {{-- Dropdown Menu --}}
+                        <div
+                            x-show="openKelasDropdown"
+                            x-cloak
+                            x-transition:enter="transition ease-out duration-100"
+                            x-transition:enter-start="transform opacity-0 scale-95"
+                            x-transition:enter-end="transform opacity-100 scale-100"
+                            x-transition:leave="transition ease-in duration-75"
+                            x-transition:leave-start="transform opacity-100 scale-100"
+                            x-transition:leave-end="transform opacity-0 scale-95"
+                            class="absolute left-0 right-0 z-30 mt-1 max-h-64 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl"
+                        >
+                            {{-- FLOATING / STICKY SEARCH INPUT --}}
+                            <div class="sticky top-0 z-10 border-b border-slate-100 bg-white/95 backdrop-blur-xs p-2 shadow-2xs">
+                                <div class="relative flex items-center">
+                                    <i class="bi bi-search absolute left-2.5 text-slate-400 text-xs"></i>
+                                    <input
+                                        type="search"
+                                        x-ref="inputSearchKelas"
+                                        x-model="searchKelas"
+                                        placeholder="Cari kelas (contoh: X RPL 1, XI TKJ)..."
+                                        class="w-full rounded-lg border border-slate-200 bg-slate-50/80 py-1.5 pl-8 pr-7 text-xs text-slate-700 outline-none focus:border-emerald-600 focus:bg-white focus:ring-2 focus:ring-emerald-100"
+                                    >
+                                    <button
+                                        type="button"
+                                        x-show="searchKelas"
+                                        @click="searchKelas = ''; $refs.inputSearchKelas?.focus()"
+                                        class="absolute right-2 text-slate-400 hover:text-slate-600 text-xs"
+                                    >
+                                        <i class="bi bi-x-circle-fill"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            {{-- Scrollable List --}}
+                            <div class="max-h-48 overflow-y-auto p-1 space-y-0.5 custom-scrollbar">
+                                @foreach($kelases as $kelas)
+                                    <button
+                                        type="button"
+                                        x-show="!searchKelas || '{{ strtolower(addslashes($kelas->nama_kelas)) }}'.includes(searchKelas.toLowerCase().trim())"
+                                        @click="selectedKelas = '{{ $kelas->id_kelas }}'; openKelasDropdown = false; searchKelas = ''; searchSiswa = ''"
+                                        class="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-xs font-medium transition hover:bg-emerald-50 hover:text-emerald-800"
+                                        :class="selectedKelas == '{{ $kelas->id_kelas }}' ? 'bg-emerald-100 text-emerald-900 font-bold' : 'text-slate-700'"
+                                    >
+                                        <span>{{ $kelas->nama_kelas }}</span>
+                                        <i x-show="selectedKelas == '{{ $kelas->id_kelas }}'" class="bi bi-check-lg text-emerald-600 font-bold"></i>
+                                    </button>
+                                @endforeach
+                            </div>
+                        </div>
+                    </div>
 
                     {{-- JAM PELAJARAN --}}
                     <div class="grid grid-cols-2 gap-3 sm:col-span-1">
@@ -534,132 +668,131 @@
                     Pilih kelas terlebih dahulu untuk menampilkan daftar siswa.
                 </div>
 
-                {{-- CONTAINER PRESENSI SISWA DENGAN FLOATING STICKY SEARCH --}}
-                <div x-show="selectedKelas" class="relative rounded-xl border border-slate-200/80 bg-slate-50/60 overflow-hidden">
-                    
-                    {{-- FLOATING / STICKY SEARCH BAR --}}
-                    <div class="sticky top-0 z-20 bg-white/95 backdrop-blur-xs border-b border-slate-200 p-2.5 shadow-xs">
-                        <div class="relative flex items-center">
-                            <i class="bi bi-search absolute left-3 text-slate-400 text-xs"></i>
-                            <input
-                                type="search"
-                                x-model="searchSiswa"
-                                placeholder="Cari nama atau NIS siswa..."
-                                class="w-full rounded-lg border border-slate-200 bg-slate-50/80 py-2 pl-9 pr-3 text-xs text-slate-700 outline-none transition focus:border-emerald-600 focus:bg-white focus:ring-2 focus:ring-emerald-100"
-                            >
-                            <button
-                                type="button"
-                                x-show="searchSiswa"
-                                @click="searchSiswa = ''"
-                                class="absolute right-2.5 text-slate-400 hover:text-slate-600 text-xs"
-                            >
-                                <i class="bi bi-x-circle-fill"></i>
-                            </button>
-                        </div>
+                {{-- SEARCH BAR TERPISAH (TIDAK STICKY, INDEPENDENT) --}}
+                <div x-show="selectedKelas" class="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+                    <div class="relative flex items-center">
+                        <i class="bi bi-search absolute left-3 text-slate-400 text-xs"></i>
+                        <input
+                            type="search"
+                            x-model="searchSiswa"
+                            placeholder="Cari nama atau NIS siswa..."
+                            class="w-full rounded-lg border border-slate-200 bg-slate-50/80 py-2 pl-9 pr-3 text-xs text-slate-700 outline-none transition focus:border-emerald-600 focus:bg-white focus:ring-2 focus:ring-emerald-100"
+                        >
+                        <button
+                            type="button"
+                            x-show="searchSiswa"
+                            @click.stop="searchSiswa = ''"
+                            class="absolute right-2.5 text-slate-400 hover:text-slate-600 text-xs"
+                        >
+                            <i class="bi bi-x-circle-fill"></i>
+                        </button>
                     </div>
+                </div>
 
-                    {{-- LIST SISWA SCROLLABLE --}}
-                    <div class="max-h-80 overflow-y-auto p-3 space-y-2 custom-scrollbar">
-                        @php
-                            $nomorAbsen = 0;
-                            $prevKelasId = null;
-                        @endphp
-                        @forelse($siswas as $siswa)
-                            @php
-                                if ($prevKelasId !== $siswa->kelas_id) {
-                                    $prevKelasId = $siswa->kelas_id;
-                                    $nomorAbsen = 1;
-                                } else {
-                                    $nomorAbsen++;
-                                }
-                            @endphp
-                            <div
-                                x-show="selectedKelas == '{{ $siswa->kelas_id }}' && matchesSearch('{{ strtolower($siswa->nama) }}', '{{ strtolower($siswa->nis ?? '') }}')"
-                                class="flex flex-col gap-2 rounded-xl border border-slate-200/70 bg-white p-3 sm:flex-row sm:items-center sm:justify-between shadow-2xs transition hover:border-emerald-300"
-                            >
-                                <div class="flex items-center gap-2.5 min-w-0 flex-1">
-                                    <span class="flex h-6 min-w-6 px-1.5 items-center justify-center rounded-full bg-emerald-50 text-[11px] font-bold text-emerald-800 border border-emerald-200/80">
-                                        {{ $nomorAbsen }}
-                                    </span>
-                                    <div class="min-w-0 flex-1">
-                                        <p class="text-xs font-bold text-slate-800 truncate">
-                                            {{ $siswa->nama }}
-                                        </p>
-                                        <p class="text-[11px] text-slate-400">
-                                            No. Absen: {{ $nomorAbsen }} | NIS: {{ $siswa->nis ?? '-' }} | {{ $siswa->jenis_kelamin }}
-                                        </p>
+                {{-- CONTAINER PRESENSI SISWA (STANDALONE, SCROLLABLE) --}}
+                <div x-show="selectedKelas" class="relative rounded-xl border border-slate-200/80 bg-slate-50/60 overflow-hidden">
+                    {{-- LIST SISWA GROUPED BY KELAS DENGAN NOMOR ABSEN 1..N --}}
+                    <div class="p-3 space-y-2">
+                        @forelse($siswasByKelas as $kelasId => $kelasSiswas)
+                            @if(count($kelasSiswas) > 0)
+                                <div class="space-y-2" x-show="selectedKelas === @js((string) $kelasId)">
+                                    @foreach($kelasSiswas as $idx => $siswa)
+                                        <div
+                                            x-show="matchesSearch(@js($siswa->nama), @js($siswa->nis))"
+                                            class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 rounded-xl border border-slate-200/80 bg-white p-3 shadow-2xs transition hover:border-emerald-300"
+                                        >
+                                            {{-- NOMOR & NAMA SISWA (FULL WIDTH DI MOBILE) --}}
+                                            <div class="flex items-center gap-2.5 w-full sm:flex-1 sm:min-w-0">
+                                                <span class="flex h-6 min-w-6 px-1.5 items-center justify-center rounded-full bg-emerald-50 text-[11px] font-bold text-emerald-800 border border-emerald-200/80 shrink-0">
+                                                    {{ $idx + 1 }}
+                                                </span>
+                                                <div class="min-w-0 flex-1">
+                                                    <p class="text-xs font-bold text-slate-800 break-words">
+                                                        {{ $siswa->nama }}
+                                                    </p>
+                                                    <p class="text-[11px] text-slate-400 truncate">
+                                                        NIS: {{ $siswa->nis ?? '-' }} &bull; {{ $siswa->jenis_kelamin }}
+                                                    </p>
+                                                </div>
+                                            </div>
+
+                                            {{-- PILIHAN STATUS H, S, I, A, D (FULL WIDTH DI MOBILE) --}}
+                                            <fieldset class="flex items-center gap-1 w-full sm:w-auto sm:shrink-0 sm:justify-end justify-between">
+                                            {{-- HADIR (H) --}}
+                                            <div class="flex-1 sm:flex-none">
+                                                <input
+                                                    type="radio"
+                                                    id="absensi_{{ $siswa->id }}_hadir"
+                                                    name="absensi[{{ $siswa->id }}]"
+                                                    value="Hadir"
+                                                    checked
+                                                    class="peer sr-only"
+                                                >
+                                                <label for="absensi_{{ $siswa->id }}_hadir" class="cursor-pointer flex h-7 w-full sm:w-7 items-center justify-center rounded-lg border text-xs font-bold transition peer-checked:border-emerald-600 peer-checked:bg-emerald-600 peer-checked:text-white border-slate-200 bg-white text-slate-600 hover:bg-slate-50" title="Hadir">
+                                                    H
+                                                </label>
+                                            </div>
+
+                                            {{-- SAKIT (S) --}}
+                                            <div class="flex-1 sm:flex-none">
+                                                <input
+                                                    type="radio"
+                                                    id="absensi_{{ $siswa->id }}_sakit"
+                                                    name="absensi[{{ $siswa->id }}]"
+                                                    value="Sakit"
+                                                    class="peer sr-only"
+                                                >
+                                                <label for="absensi_{{ $siswa->id }}_sakit" class="cursor-pointer flex h-7 w-full sm:w-7 items-center justify-center rounded-lg border text-xs font-bold transition peer-checked:border-amber-500 peer-checked:bg-amber-500 peer-checked:text-white border-slate-200 bg-white text-slate-600 hover:bg-slate-50" title="Sakit">
+                                                    S
+                                                </label>
+                                            </div>
+
+                                            {{-- IZIN (I) --}}
+                                            <div class="flex-1 sm:flex-none">
+                                                <input
+                                                    type="radio"
+                                                    id="absensi_{{ $siswa->id }}_izin"
+                                                    name="absensi[{{ $siswa->id }}]"
+                                                    value="Izin"
+                                                    class="peer sr-only"
+                                                >
+                                                <label for="absensi_{{ $siswa->id }}_izin" class="cursor-pointer flex h-7 w-full sm:w-7 items-center justify-center rounded-lg border text-xs font-bold transition peer-checked:border-blue-500 peer-checked:bg-blue-500 peer-checked:text-white border-slate-200 bg-white text-slate-600 hover:bg-slate-50" title="Izin">
+                                                    I
+                                                </label>
+                                            </div>
+
+                                            {{-- ALPA (A) --}}
+                                            <div class="flex-1 sm:flex-none">
+                                                <input
+                                                    type="radio"
+                                                    id="absensi_{{ $siswa->id }}_alpa"
+                                                    name="absensi[{{ $siswa->id }}]"
+                                                    value="Alpa"
+                                                    class="peer sr-only"
+                                                >
+                                                <label for="absensi_{{ $siswa->id }}_alpa" class="cursor-pointer flex h-7 w-full sm:w-7 items-center justify-center rounded-lg border text-xs font-bold transition peer-checked:border-rose-500 peer-checked:bg-rose-500 peer-checked:text-white border-slate-200 bg-white text-slate-600 hover:bg-slate-50" title="Alpa">
+                                                    A
+                                                </label>
+                                            </div>
+
+                                            {{-- DISPENSASI (D) --}}
+                                            <div class="flex-1 sm:flex-none">
+                                                <input
+                                                    type="radio"
+                                                    id="absensi_{{ $siswa->id }}_dispensasi"
+                                                    name="absensi[{{ $siswa->id }}]"
+                                                    value="Dispensasi"
+                                                    class="peer sr-only"
+                                                >
+                                                <label for="absensi_{{ $siswa->id }}_dispensasi" class="cursor-pointer flex h-7 w-full sm:w-7 items-center justify-center rounded-lg border text-xs font-bold transition peer-checked:border-indigo-600 peer-checked:bg-indigo-600 peer-checked:text-white border-slate-200 bg-white text-slate-600 hover:bg-slate-50" title="Dispensasi">
+                                                    D
+                                                </label>
+                                            </div>
+                                        </fieldset>
                                     </div>
+                                @endforeach
                                 </div>
-
-                                {{-- PILIHAN STATUS H, S, I, A, D --}}
-                                <div class="flex items-center gap-1.5 shrink-0 self-start sm:self-center">
-                                    {{-- HADIR (H) --}}
-                                    <label class="cursor-pointer" title="Hadir">
-                                        <input
-                                            type="radio"
-                                            name="absensi[{{ $siswa->id }}]"
-                                            value="Hadir"
-                                            checked
-                                            class="peer sr-only"
-                                        >
-                                        <span class="flex h-7 w-7 items-center justify-center rounded-lg border text-xs font-bold transition peer-checked:border-emerald-600 peer-checked:bg-emerald-600 peer-checked:text-white border-slate-200 bg-white text-slate-600 hover:bg-slate-50">
-                                            H
-                                        </span>
-                                    </label>
-
-                                    {{-- SAKIT (S) --}}
-                                    <label class="cursor-pointer" title="Sakit">
-                                        <input
-                                            type="radio"
-                                            name="absensi[{{ $siswa->id }}]"
-                                            value="Sakit"
-                                            class="peer sr-only"
-                                        >
-                                        <span class="flex h-7 w-7 items-center justify-center rounded-lg border text-xs font-bold transition peer-checked:border-amber-500 peer-checked:bg-amber-500 peer-checked:text-white border-slate-200 bg-white text-slate-600 hover:bg-slate-50">
-                                            S
-                                        </span>
-                                    </label>
-
-                                    {{-- IZIN (I) --}}
-                                    <label class="cursor-pointer" title="Izin">
-                                        <input
-                                            type="radio"
-                                            name="absensi[{{ $siswa->id }}]"
-                                            value="Izin"
-                                            class="peer sr-only"
-                                        >
-                                        <span class="flex h-7 w-7 items-center justify-center rounded-lg border text-xs font-bold transition peer-checked:border-blue-500 peer-checked:bg-blue-500 peer-checked:text-white border-slate-200 bg-white text-slate-600 hover:bg-slate-50">
-                                            I
-                                        </span>
-                                    </label>
-
-                                    {{-- ALPA (A) --}}
-                                    <label class="cursor-pointer" title="Alpa">
-                                        <input
-                                            type="radio"
-                                            name="absensi[{{ $siswa->id }}]"
-                                            value="Alpa"
-                                            class="peer sr-only"
-                                        >
-                                        <span class="flex h-7 w-7 items-center justify-center rounded-lg border text-xs font-bold transition peer-checked:border-rose-500 peer-checked:bg-rose-500 peer-checked:text-white border-slate-200 bg-white text-slate-600 hover:bg-slate-50">
-                                            A
-                                        </span>
-                                    </label>
-
-                                    {{-- DISPENSASI (D) --}}
-                                    <label class="cursor-pointer" title="Dispensasi">
-                                        <input
-                                            type="radio"
-                                            name="absensi[{{ $siswa->id }}]"
-                                            value="Dispensasi"
-                                            class="peer sr-only"
-                                        >
-                                        <span class="flex h-7 w-7 items-center justify-center rounded-lg border text-xs font-bold transition peer-checked:border-indigo-600 peer-checked:bg-indigo-600 peer-checked:text-white border-slate-200 bg-white text-slate-600 hover:bg-slate-50">
-                                            D
-                                        </span>
-                                    </label>
-                                </div>
-                            </div>
+                            @endif
                         @empty
                             <div class="p-6 text-center text-xs text-slate-400">
                                 Belum ada data siswa terdaftar.
@@ -686,7 +819,7 @@
             {{-- SUBMIT BUTTON --}}
             <button
                 type="submit"
-                class="flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-5 py-3.5 text-sm font-bold text-white shadow-sm transition hover:bg-emerald-700"
+                class="flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-5 py-3.5 text-sm font-bold text-white shadow-sm transition hover:bg-emerald-700 active:scale-98"
             >
                 <i class="bi bi-send-fill"></i>
                 <span>Kirim Logbook &amp; Presensi Siswa</span>
