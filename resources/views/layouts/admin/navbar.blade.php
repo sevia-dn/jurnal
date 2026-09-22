@@ -3,9 +3,6 @@
 
     <div class="flex items-center gap-3">
       <div class="text-xl font-bold text-gray-800">Admin</div>
-      <span class="hidden sm:inline-block px-2.5 py-0.5 text-[11px] font-semibold bg-emerald-50 text-emerald-700 rounded-full border border-emerald-200">
-        JurnalKita Management
-      </span>
     </div>
 
     <div class="flex items-center gap-4 text-gray-500">
@@ -213,17 +210,6 @@
         title="Bantuan Penggunaan"
       >
         <i class="bi bi-question-circle text-xl"></i>
-      </div>
-
-      <!-- Divider -->
-      <div class="w-px h-6 bg-gray-200 mx-1"></div>
-
-      <!-- User Profile Pill -->
-      <div class="flex items-center gap-2 text-sm text-gray-700 font-semibold pl-1">
-        <div class="w-8 h-8 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-xs shadow-2xs">
-          A
-        </div>
-        <span class="hidden md:inline-block">Administrator</span>
       </div>
 
     </div>

@@ -73,6 +73,12 @@ Route::middleware('auth')->group(function () {
 
         Route::get('/manajemen-user', [AdminController::class, 'user'])
             ->name('admin.manajemen-user');
+        Route::post('/manajemen-user', [AdminController::class, 'storeUser'])
+            ->name('admin.manajemen-user.store');
+        Route::put('/manajemen-user/{id}', [AdminController::class, 'updateUser'])
+            ->name('admin.manajemen-user.update');
+        Route::delete('/manajemen-user/{id}', [AdminController::class, 'destroyUser'])
+            ->name('admin.manajemen-user.destroy');
 
         Route::get('/piket/kehadiran', [PiketController::class, 'kehadiran'])
             ->name('piket.kehadiran');
@@ -102,6 +108,8 @@ Route::middleware('auth')->group(function () {
         Route::delete('/guru/{id}', [AdminController::class, 'destroyGuru'])->name('dashboard.guru.destroy');
         Route::post('/guru/batch-delete', [AdminController::class, 'batchDeleteGuru'])->name('dashboard.guru.batch-delete');
         Route::post('/guru/batch-edit', [AdminController::class, 'batchEditGuru'])->name('dashboard.guru.batch-edit');
+        Route::post('/guru/import', [AdminController::class, 'importGuru'])->name('dashboard.guru.import');
+        Route::get('/guru/download-template', [AdminController::class, 'downloadTemplateGuru'])->name('dashboard.guru.download-template');
 
         // ==========================================
         // JADWAL MENGAJAR
@@ -118,11 +126,13 @@ Route::middleware('auth')->group(function () {
 
         // SIMPAN JADWAL
 
-        Route::post('/jadwal', [AdminController::class, 'storeJadwal'])->name('jadwal.store');
+        Route::post('/jadwal', [AdminController::class, 'storeJadwal'])->name('dashboard.jadwal.store');
         Route::put('/jadwal/{id}', [AdminController::class, 'updateJadwal'])->name('dashboard.jadwal.update');
         Route::delete('/jadwal/{id}', [AdminController::class, 'destroyJadwal'])->name('dashboard.jadwal.destroy');
         Route::post('/jadwal/batch-delete', [AdminController::class, 'batchDeleteJadwal'])->name('dashboard.jadwal.batch-delete');
         Route::post('/jadwal/shift-time', [AdminController::class, 'shiftTimeJadwal'])->name('dashboard.jadwal.shift-time');
+        Route::post('/jadwal/import', [AdminController::class, 'importJadwal'])->name('dashboard.jadwal.import');
+        Route::get('/jadwal/download-template', [AdminController::class, 'downloadTemplateJadwal'])->name('dashboard.jadwal.download-template');
 
         // ==========================================
         // DATA MAPEL
@@ -144,6 +154,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/siswa/batch-delete', [AdminController::class, 'batchDeleteSiswa'])->name('dashboard.siswa.batch-delete');
         Route::post('/siswa/batch-edit', [AdminController::class, 'batchEditSiswa'])->name('dashboard.siswa.batch-edit');
         Route::get('/rekap-jurnal', [AdminController::class, 'rekapJurnal'])->name('dashboard.rekap-jurnal');
+        Route::post('/rekap-jurnal/penugasan-piket', [AdminController::class, 'updatePenugasanPiket'])->name('dashboard.rekap-jurnal.penugasan-piket');
         Route::get('/pengaturan', [AdminController::class, 'pengaturan'])->name('admin.pengaturan');
         Route::post('/pengaturan', [AdminController::class, 'updatePengaturan'])->name('admin.pengaturan.update');
 

@@ -833,7 +833,7 @@ class AdminController extends Controller
             $query->where('id_kelas', $selectedKelas->id_kelas);
         }
 
-        $jadwals = $query->orderByRaw("FIELD(hari, 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu')")
+        $jadwals = $query->orderByRaw("CASE hari WHEN 'Senin' THEN 1 WHEN 'Selasa' THEN 2 WHEN 'Rabu' THEN 3 WHEN 'Kamis' THEN 4 WHEN 'Jumat' THEN 5 WHEN 'Sabtu' THEN 6 ELSE 7 END")
             ->orderBy('jam_mulai', 'asc')
             ->orderBy('jam_ke', 'asc')
             ->get();
@@ -842,12 +842,12 @@ class AdminController extends Controller
 
         $piketWakas = JadwalPiket::with('user')
             ->where('tipe', 'waka')
-            ->orderByRaw("FIELD(hari, 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu')")
+            ->orderByRaw("CASE hari WHEN 'Senin' THEN 1 WHEN 'Selasa' THEN 2 WHEN 'Rabu' THEN 3 WHEN 'Kamis' THEN 4 WHEN 'Jumat' THEN 5 WHEN 'Sabtu' THEN 6 ELSE 7 END")
             ->get();
 
         $piketGurus = JadwalPiket::with('user')
             ->where('tipe', 'guru')
-            ->orderByRaw("FIELD(hari, 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu')")
+            ->orderByRaw("CASE hari WHEN 'Senin' THEN 1 WHEN 'Selasa' THEN 2 WHEN 'Rabu' THEN 3 WHEN 'Kamis' THEN 4 WHEN 'Jumat' THEN 5 WHEN 'Sabtu' THEN 6 ELSE 7 END")
             ->get();
 
         $shiftSeninMinutes = (int) Pengaturan::getValue('shift_senin_minutes', 40);
@@ -1469,7 +1469,7 @@ class AdminController extends Controller
 
     public function catatanJurnal(Request $request)
     {
-        return $this->rekapJurnal($request);
+        return redirect()->route('dashboard.rekap-jurnal', $request->query());
     }
 
     // =========================================================================

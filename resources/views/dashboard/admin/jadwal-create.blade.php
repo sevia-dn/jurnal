@@ -46,7 +46,7 @@
                 </div>
             </div>
 
-            <form action="{{ route('jadwal.store') }}" method="POST" class="space-y-4">
+            <form action="{{ route('dashboard.jadwal.store') }}" method="POST" class="space-y-4">
                 @csrf
 
                 <div>
@@ -115,4 +115,3 @@
 
 </div>
 @endsection
-

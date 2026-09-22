@@ -12,6 +12,8 @@ class JadwalPiket extends Model
     protected $fillable = [
         'user_id',
         'hari',
+        'tipe',
+        'keterangan',
         'bulan',
         'tahun',
         'shift',

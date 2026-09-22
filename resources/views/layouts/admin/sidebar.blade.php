@@ -1,3 +1,22 @@
+<style>
+  /* Aksi massal tidak dipakai pada dashboard admin; setiap data dikelola per baris. */
+  #batchActionBar,
+  #batchActionBarKelas,
+  #batchActionBarSiswa,
+  #batchActionBarMapel,
+  #batchActionBarJadwal {
+    display: none !important;
+  }
+
+  th:has(#selectAllGuru), td:has(.guru-checkbox),
+  th:has(#selectAllKelas), td:has(.kelas-checkbox),
+  th:has(#selectAllSiswa), td:has(.siswa-checkbox),
+  th:has(#selectAllMapel), td:has(.mapel-checkbox),
+  th:has(#selectAllJadwal), td:has(.jadwal-checkbox) {
+    display: none !important;
+  }
+</style>
+
 <aside class="w-64 bg-[#0D6B5A] h-screen sticky top-0 flex flex-col font-sans border-r border-[#17826E]">
   
   <!-- Logo Area -->
@@ -51,7 +70,7 @@
     </a>
 
     <!-- Catatan Jurnal -->
-    <a href="{{ route('catatan-jurnal') }}" class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors !no-underline {{ request()->routeIs('catatan-jurnal*') ? 'bg-[#1BA886] !text-white' : '!text-[#8EBEB2] hover:bg-[#1BA886]/10 hover:!text-white' }}">
+    <a href="{{ route('dashboard.rekap-jurnal') }}" class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors !no-underline {{ request()->routeIs('catatan-jurnal*', 'dashboard.rekap-jurnal') ? 'bg-[#1BA886] !text-white' : '!text-[#8EBEB2] hover:bg-[#1BA886]/10 hover:!text-white' }}">
       <i class="bi bi-book text-lg"></i>
       <span>Catatan Jurnal</span>
     </a>
@@ -69,23 +88,39 @@
 
 
   <!-- Footer Area -->
-  <div class="mt-auto px-5 pb-8 pt-4 flex flex-col">
-       <!-- Tambah Akun (Admin) -->
+  <div class="mt-auto px-5 pb-6 pt-4 flex flex-col gap-3">
+    <!-- Tambah Akun (Admin) -->
     <a href="{{ route('tambah-akun') }}" class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors !no-underline {{ request()->routeIs('tambah-akun') ? 'bg-[#1BA886] !text-white' : '!text-[#8EBEB2] hover:bg-[#1BA886]/10 hover:!text-white' }}">
       <i class="bi bi-person-plus text-lg"></i>
       <span>Tambah Akun</span>
     </a>
-    <!-- Garis Pemisah (Divider) -->
-    <div class="h-px w-full bg-[#17826E] mb-3"></div>
-    
-<!-- Keluar -->
-    <form action="{{ route('logout') }}" method="POST" class="w-full m-0 p-0">
+
+    <div class="h-px w-full bg-[#17826E]"></div>
+
+    @php
+      $adminName = Auth::user()?->name ?? 'Administrator';
+      $adminInitials = collect(preg_split('/\s+/', trim($adminName)))
+        ->filter()
+        ->take(2)
+        ->map(fn ($word) => strtoupper(mb_substr($word, 0, 1)))
+        ->implode('');
+    @endphp
+
+    <div class="flex items-center gap-2 rounded-xl bg-[#0A594B] border border-[#17826E] px-3 py-3 shadow-sm">
+      <div class="w-9 h-9 shrink-0 rounded-full bg-[#1BA886] text-white flex items-center justify-center font-bold text-xs">
+        {{ $adminInitials ?: 'A' }}
+      </div>
+      <div class="min-w-0 flex-1">
+        <p class="truncate text-sm font-semibold text-white">{{ $adminName }}</p>
+        <p class="text-[11px] text-[#8EBEB2]">Administrator</p>
+      </div>
+      <form action="{{ route('logout') }}" method="POST" class="m-0 shrink-0">
         @csrf
-        <button type="submit" class="w-full flex items-center gap-3 px-4 py-2 text-sm font-medium !text-[#F05252] hover:!text-red-400 !no-underline transition-colors bg-transparent border-0 text-left cursor-pointer">
+        <button type="submit" class="w-9 h-9 rounded-lg flex items-center justify-center text-rose-200 hover:text-white hover:bg-rose-500/20 transition-colors bg-transparent border-0 cursor-pointer" title="Keluar">
             <i class="bi bi-box-arrow-right text-lg"></i>
-            <span>Keluar</span>
         </button>
-    </form>
+      </form>
+    </div>
 
   </div>
   
