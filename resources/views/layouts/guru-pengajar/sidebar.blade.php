@@ -30,6 +30,14 @@
         </a>
     </nav>
 
+    @php
+        $authUser = auth()->user();
+        $namaUser = $authUser?->name ?? 'Guru';
+        // Generate inisial dari nama: ambil huruf pertama tiap kata, max 2 huruf
+        $words = explode(' ', $namaUser);
+        $inisial = strtoupper(substr($words[0], 0, 1) . (isset($words[1]) ? substr($words[1], 0, 1) : ''));
+        $roleLabel = $authUser?->isWaka() ? 'Waka Kesiswaan' : 'Guru Pengajar';
+    @endphp
     <div class="mt-auto border-t border-[#17826E] px-4 pb-6 pt-4">
         <div class="flex items-center justify-between gap-3">
             <div class="flex min-w-0 items-center gap-3">
@@ -41,13 +49,14 @@
                     }
                 @endphp
                 <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#DFFAF3] text-xs font-bold text-[#0D6B5A]">
-                    {{ $initials }}
+                    {{ $inisial }}
                 </span>
                 <div class="min-w-0">
-                    <p class="truncate text-sm font-semibold text-white">{{ Auth::user()->name }}</p>
-                    <p class="truncate text-[11px] text-[#AEE5D4]">Guru Pengajar</p>
+                    <p class="truncate text-sm font-semibold text-white">{{ $namaUser }}</p>
+                    <p class="truncate text-[11px] text-[#AEE5D4]">{{ $roleLabel }}</p>
                 </div>
             </div>
+        </div>
 
 <form action="{{ route('logout') }}" method="POST" class="m-0 p-0">
     @csrf

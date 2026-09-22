@@ -2,13 +2,10 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class JurnalMengajar extends Model
 {
-    use HasFactory;
-
     protected $table = 'jurnal_mengajars';
 
     protected $primaryKey = 'id_jurnal';
@@ -56,6 +53,11 @@ class JurnalMengajar extends Model
     public function kelas()
     {
         return $this->belongsTo(Kelas::class, 'id_kelas', 'id_kelas');
+    }
+
+    public function guru()
+    {
+        return $this->belongsTo(User::class, 'id_user');
     }
 
     public function mapel()

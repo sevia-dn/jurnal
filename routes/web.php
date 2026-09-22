@@ -1,10 +1,12 @@
 <?php
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\DispensasiApprovalController;
 use App\Http\Controllers\GuruController;
 use App\Http\Controllers\JadwalMengajarController;
 use App\Http\Controllers\LogbookController;
 use App\Http\Controllers\PengurusKelasController;
+use App\Http\Controllers\PiketController;
 use Illuminate\Support\Facades\Route;
 
 // ==========================================
@@ -35,6 +37,15 @@ Route::middleware('auth')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout'])
         ->name('logout');
 
+    Route::get('/dispensasi/approval/{token}', [DispensasiApprovalController::class, 'show'])
+        ->name('dispensasi.approval');
+
+    Route::post('/dispensasi/approval/{dispensasi}', [DispensasiApprovalController::class, 'process'])
+        ->name('dispensasi.process');
+
+    Route::get('/dispensasi/{dispensasi}/cetak', [DispensasiApprovalController::class, 'cetakSurat'])
+        ->name('dispensasi.cetak');
+
     // ==========================================
     // DASHBOARD ADMIN
     // ==========================================
@@ -62,17 +73,23 @@ Route::middleware('auth')->group(function () {
         Route::view('/manajemen-user', 'dashboard.admin.manajemen-user')
             ->name('admin.manajemen-user');
 
-        Route::view('/piket/kehadiran', 'dashboard.piket.kehadiran')
+        Route::get('/piket/kehadiran', [PiketController::class, 'kehadiran'])
             ->name('piket.kehadiran');
 
-        Route::view('/piket/dispensasi', 'dashboard.piket.dispensasi')
-            ->name('piket.dispensasi');
+        Route::post('/piket/kehadiran/{kehadiran}/verifikasi', [PiketController::class, 'verifikasiKehadiran'])
+            ->name('piket.kehadiran.verifikasi');
 
-        Route::get('/piket/kehadiran-siswa', function () {
+        Route::get('/piket/dispensasi', [PiketController::class, 'dispensasiForm'])
+            ->name('piket.dispensasi.form');
 
-            return view('dashboard.piket.kehadiran-siswa');
+        Route::post('/piket/dispensasi', [PiketController::class, 'dispensasiStore'])
+            ->name('piket.dispensasi.store');
 
-        })->name('piket.kehadiran-siswa');
+        Route::get('/piket/kehadiran-siswa', [PiketController::class, 'kehadiranSiswa'])
+            ->name('piket.kehadiran-siswa');
+
+        Route::post('/piket/kehadiran-siswa', [PiketController::class, 'updateKehadiranSiswa'])
+            ->name('piket.kehadiran-siswa.update');
 
         // ==========================================
         // DATA GURU
@@ -217,6 +234,9 @@ Route::middleware('auth')->group(function () {
     // GURU PENGAJAR
     // ==========================================
 
+    Route::get('/guru-pengajar', [GuruController::class, 'beranda'])
+        ->name('guru');
+
     Route::get(
         '/guru-pengajar/beranda',
         [GuruController::class, 'beranda']
@@ -226,6 +246,9 @@ Route::middleware('auth')->group(function () {
         '/guru-pengajar/absen',
         [GuruController::class, 'storeAbsen']
     )->name('guru.absen.store');
+
+    Route::post('/guru-pengajar/absen-masuk', [GuruController::class, 'absenMasuk'])
+        ->name('guru.absen-masuk');
 
     Route::post(
         '/guru-pengajar/jurnal',

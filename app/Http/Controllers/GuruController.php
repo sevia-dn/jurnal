@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Dispensasi;
 use App\Models\JadwalMengajar;
 use App\Models\JurnalMengajar;
+use App\Models\KehadiranGuru;
 use App\Models\Kelas;
 use App\Models\Mapel;
 use App\Models\Siswa;
@@ -37,7 +39,7 @@ class GuruController extends Controller
      */
     public static function getJamSlot(string $hari, int $jamKe): array
     {
-        $isJumat = in_array(strtolower(trim($hari)), ['jumat', 'jum\'at', 'friday']);
+        $isJumat = in_array(strtolower(trim($hari)), ['jumat', 'friday']);
 
         if (! $isJumat) {
             $seninKamis = [
@@ -45,15 +47,11 @@ class GuruController extends Controller
                 2 => ['start' => '07:40', 'end' => '08:20'],
                 3 => ['start' => '08:20', 'end' => '09:00'],
                 4 => ['start' => '09:00', 'end' => '09:40'],
-                5 => ['start' => '10:00', 'end' => '10:40'],
-                6 => ['start' => '10:40', 'end' => '11:20'],
-                7 => ['start' => '11:20', 'end' => '12:00'],
-                8 => ['start' => '13:00', 'end' => '13:40'],
-                9 => ['start' => '13:40', 'end' => '14:20'],
-                10 => ['start' => '14:20', 'end' => '15:00'],
+                // Istirahat 09:40 - 10:00
                 5 => ['start' => '10:00', 'end' => '10:35'],
                 6 => ['start' => '10:35', 'end' => '11:10'],
                 7 => ['start' => '11:10', 'end' => '11:45'],
+                // Ishoma 11:45 - 13:15
                 8 => ['start' => '13:15', 'end' => '13:50'],
                 9 => ['start' => '13:50', 'end' => '14:25'],
                 10 => ['start' => '14:25', 'end' => '15:00'],
@@ -68,19 +66,17 @@ class GuruController extends Controller
             3 => ['start' => '08:00', 'end' => '08:30'],
             4 => ['start' => '08:30', 'end' => '09:00'],
             5 => ['start' => '09:00', 'end' => '09:30'],
+            // Istirahat 09:30 - 09:50
             6 => ['start' => '09:50', 'end' => '10:20'],
             7 => ['start' => '10:20', 'end' => '10:50'],
             8 => ['start' => '10:50', 'end' => '11:20'],
+            // Sholat Jumat 11:20 - 13:00
             9 => ['start' => '13:00', 'end' => '13:30'],
             10 => ['start' => '13:30', 'end' => '14:00'],
             11 => ['start' => '14:00', 'end' => '14:30'],
-            12 => ['start' => '14:30', 'end' => '15:00'],
-            13 => ['start' => '15:00', 'end' => '15:30'],
             12 => ['start' => '14:30', 'end' => '15:10'],
-            13 => ['start' => '15:00', 'end' => '15:35'],
+            13 => ['start' => '15:10', 'end' => '15:35'],
         ];
-
-        return $jumat[$jamKe] ?? ['start' => '07:00', 'end' => '15:30'];
 
         return $jumat[$jamKe] ?? ['start' => '07:00', 'end' => '15:35'];
     }
@@ -93,14 +89,39 @@ class GuruController extends Controller
         Carbon::setLocale('id');
 
         $user = Auth::user();
-
-        $now = Carbon::now();
         $now = Carbon::now('Asia/Jakarta');
         $todayDate = $now->toDateString();
         $hariIni = $now->translatedFormat('l');
         $currentTime = $now->format('H:i');
         $currentFullTime = $now->format('H:i:s');
 
+        $isPiketActive = $user->isPiketActive();
+        $isWaka = $user->isWaka();
+
+        // Absensi guru hari ini (via TeacherAttendance untuk form storeAbsen)
+        $attendance = TeacherAttendance::where('user_id', $user->id)
+            ->where('date', $todayDate)
+            ->first();
+        $hasCheckedIn = $attendance !== null;
+
+        // Kehadiran guru (via KehadiranGuru untuk tombol absen masuk)
+        $kehadiranHariIni = KehadiranGuru::where('user_id', $user->id)
+            ->whereDate('tanggal', $todayDate)
+            ->first();
+        $sudahAbsen = $kehadiranHariIni !== null;
+
+        $pendingDispensasis = collect();
+        if ($isWaka) {
+            $pendingDispensasis = Dispensasi::with(['siswa', 'pembuat'])
+                ->where('status_waka', 'menunggu')
+                ->latest()
+                ->get();
+        }
+
+        $allDispensasis = Dispensasi::with(['siswa', 'pembuat', 'pemroses'])
+            ->latest()
+            ->take(5)
+            ->get();
         // Jadwal guru khusus HARI INI (hari saat login)
         $jadwals = JadwalMengajar::with(['kelas', 'mapel'])
             ->where('id_user', $user->id)
@@ -124,13 +145,13 @@ class GuruController extends Controller
                 ->where('jam_ke', $jadwal->jam_mulai)
                 ->exists();
 
-            // Batasan waktu: jika waktu sekarang sudah melebihi waktu selesai sesi mengajar
+            // Status waktu berdasarkan jam sekarang
             if ($currentTime > $jadwal->waktu_selesai) {
-                $jadwal->status_waktu = 'lewat'; // sudah kelewat jam mengajar
+                $jadwal->status_waktu = 'lewat';
             } elseif ($currentTime < $jadwal->waktu_mulai) {
                 $jadwal->status_waktu = 'belum_mulai';
             } else {
-                $jadwal->status_waktu = 'berlangsung'; // sedang dalam jam mengajar
+                $jadwal->status_waktu = 'berlangsung';
             }
         }
 
@@ -143,15 +164,9 @@ class GuruController extends Controller
         $activeJadwal = $jadwals->firstWhere('is_filled', false) ?? $jadwals->first();
 
         // Data pendukung form
-        $teachers = User::where('role', 'guru')
-            ->orderBy('name')
-            ->get();
-
-        $kelases = Kelas::orderBy('nama_kelas')
-            ->get();
-
-        $mapels = Mapel::orderBy('nama_mapel')
-            ->get();
+        $teachers = User::where('role', 'guru')->orderBy('name')->get();
+        $kelases = Kelas::orderBy('nama_kelas')->get();
+        $mapels = Mapel::orderBy('nama_mapel')->get();
 
         // Siswa dikirim ke view untuk daftar presensi di kelas terpilih
         $siswas = Siswa::with('kelas')
@@ -165,8 +180,16 @@ class GuruController extends Controller
 
         return view('dashboard.guru-pengajar.utama', compact(
             'user',
-            'hasSubmittedJournal',
+            'isPiketActive',
+            'isWaka',
+            'pendingDispensasis',
+            'allDispensasis',
+            'sudahAbsen',
+            'kehadiranHariIni',
+            'attendance',
+            'hasCheckedIn',
             'jadwals',
+            'hasSubmittedJournal',
             'activeJadwal',
             'teachers',
             'kelases',
@@ -176,8 +199,39 @@ class GuruController extends Controller
             'hariIni',
             'todayDate',
             'currentTime',
-            'currentFullTime'
+            'currentFullTime',
         ));
+    }
+
+    /**
+     * Proses Absen Masuk / Lapor Kehadiran Guru
+     */
+    public function absenMasuk(Request $request)
+    {
+        $user = Auth::user();
+        if (! $user) {
+            return redirect()->route('login');
+        }
+
+        $today = now()->toDateString();
+        $jamSekarang = now()->format('H:i:s');
+
+        // Gunakan updateOrCreate agar tidak duplicate jika diklik 2x
+        KehadiranGuru::updateOrCreate(
+            [
+                'user_id' => $user->id,
+                'tanggal' => $today,
+            ],
+            [
+                'jam_masuk' => $jamSekarang,
+                'status' => 'Hadir',
+            ]
+        );
+
+        return back()->with(
+            'success',
+            'Kehadiran masuk berhasil dilaporkan pada pukul '.substr($jamSekarang, 0, 5).' WIB.'
+        );
     }
 
     /**
@@ -199,7 +253,6 @@ class GuruController extends Controller
             'proof_file.max' => 'Ukuran berkas bukti maksimal 5 MB.',
         ]);
 
-        $todayDate = Carbon::today()->toDateString();
         $todayDate = Carbon::today('Asia/Jakarta')->toDateString();
 
         $existingAttendance = TeacherAttendance::where('user_id', $teacherId)

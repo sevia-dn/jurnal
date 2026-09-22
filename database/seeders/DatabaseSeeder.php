@@ -23,6 +23,7 @@ class DatabaseSeeder extends Seeder
             JadwalPelajaranSeeder::class,
             JadwalMengajarSeeder::class,
             JurnalMengajarSeeder::class,
+            JadwalPiketSeeder::class,    // Seeder jadwal piket shift 1 & 2
             AbsensiSeeder::class,
         ]);
     }
