@@ -5,11 +5,10 @@ namespace App\Http\Controllers;
 use App\Models\Dispensasi;
 use App\Models\JadwalMengajar;
 use App\Models\JurnalMengajar;
-use App\Models\KehadiranGuru;
 use App\Models\Kelas;
 use App\Models\Mapel;
+use App\Models\PengaturanJurnal;
 use App\Models\Siswa;
-use App\Models\TeacherAttendance;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -97,18 +96,6 @@ class GuruController extends Controller
         $isPiketActive = $user->isPiketActive();
         $isWaka = $user->isWaka();
 
-        // Absensi guru hari ini (via TeacherAttendance untuk form storeAbsen)
-        $attendance = TeacherAttendance::where('user_id', $user->id)
-            ->where('date', $todayDate)
-            ->first();
-        $hasCheckedIn = $attendance !== null;
-
-        // Kehadiran guru (via KehadiranGuru untuk tombol absen masuk)
-        $kehadiranHariIni = KehadiranGuru::where('user_id', $user->id)
-            ->whereDate('tanggal', $todayDate)
-            ->first();
-        $sudahAbsen = $kehadiranHariIni !== null;
-
         $pendingDispensasis = collect();
         if ($isWaka) {
             $pendingDispensasis = Dispensasi::with(['siswa', 'pembuat'])
@@ -121,6 +108,10 @@ class GuruController extends Controller
             ->latest()
             ->take(5)
             ->get();
+
+        // Kebijakan tenggat pengisian jurnal
+        $pengaturan = PengaturanJurnal::getKebijakanAktif();
+        $kebijakanTenggat = $pengaturan->kebijakan_tenggat ?? 'jam_mengajar';
 
         // Jadwal guru khusus HARI INI (hari saat login)
         $jadwals = JadwalMengajar::with(['kelas', 'mapel'])
@@ -145,17 +136,24 @@ class GuruController extends Controller
                 ->where('jam_ke', $jadwal->jam_mulai)
                 ->exists();
 
-            // Status waktu berdasarkan jam sekarang
-            if ($currentTime > $jadwal->waktu_selesai) {
-                $jadwal->status_waktu = 'lewat';
-            } elseif ($currentTime < $jadwal->waktu_mulai) {
-                $jadwal->status_waktu = 'belum_mulai';
+            // Status waktu berdasarkan jam sekarang dan kebijakan aktif
+            if ($kebijakanTenggat === 'jam_mengajar') {
+                if ($currentTime > $jadwal->waktu_selesai) {
+                    $jadwal->status_waktu = 'lewat';
+                } elseif ($currentTime < $jadwal->waktu_mulai) {
+                    $jadwal->status_waktu = 'belum_mulai';
+                } else {
+                    $jadwal->status_waktu = 'berlangsung';
+                }
             } else {
+                // Untuk kebijakan 'hari_ini' dan 'longgar', selalu terbuka sepanjang hari
                 $jadwal->status_waktu = 'berlangsung';
             }
         }
 
-        // Cek apakah ada minimal 1 jurnal yang sudah diisi hari ini
+        // Cek apakah guru sudah pernah mengisi minimal 1 jurnal hari ini
+        // (Jika FALSE: foto WAJIB diunggah pada jurnal pertama sebagai bukti presensi;
+        //  Jika TRUE: foto OPSIONAL pada jurnal ke-2, ke-3, dst)
         $hasSubmittedJournal = JurnalMengajar::where('id_user', $user->id)
             ->where('tanggal', $todayDate)
             ->exists();
@@ -179,10 +177,6 @@ class GuruController extends Controller
             'isWaka',
             'pendingDispensasis',
             'allDispensasis',
-            'sudahAbsen',
-            'kehadiranHariIni',
-            'attendance',
-            'hasCheckedIn',
             'jadwals',
             'hasSubmittedJournal',
             'activeJadwal',
@@ -192,91 +186,7 @@ class GuruController extends Controller
             'siswas',
             'hariIni',
             'currentFullTime',
+            'kebijakanTenggat',
         ));
-    }
-
-    /**
-     * Proses Absen Masuk / Lapor Kehadiran Guru
-     */
-    public function absenMasuk(Request $request)
-    {
-        $user = Auth::user();
-        if (! $user) {
-            return redirect()->route('login');
-        }
-
-        $today = now()->toDateString();
-        $jamSekarang = now()->format('H:i:s');
-
-        // Gunakan updateOrCreate agar tidak duplicate jika diklik 2x
-        KehadiranGuru::updateOrCreate(
-            [
-                'user_id' => $user->id,
-                'tanggal' => $today,
-            ],
-            [
-                'jam_masuk' => $jamSekarang,
-                'status' => 'Hadir',
-            ]
-        );
-
-        return back()->with(
-            'success',
-            'Kehadiran masuk berhasil dilaporkan pada pukul '.substr($jamSekarang, 0, 5).' WIB.'
-        );
-    }
-
-    /**
-     * Simpan absensi guru
-     */
-    public function storeAbsen(Request $request)
-    {
-        $teacherId = $request->teacher_id ?: Auth::id();
-
-        $request->validate([
-            'teacher_id' => 'required|exists:users,id',
-            'nip' => 'nullable|string',
-            'status_kehadiran_guru' => 'required|in:Hadir,Tidak Hadir',
-            'reason' => 'required_if:status_kehadiran_guru,Tidak Hadir|nullable|string|max:500',
-            'proof_file' => 'nullable|file|mimes:jpeg,png,jpg,webp,pdf|max:5120',
-        ], [
-            'reason.required_if' => 'Alasan wajib diisi jika memilih status Tidak Hadir.',
-            'proof_file.mimes' => 'Format berkas bukti harus berupa gambar (JPG, PNG, WebP) atau dokumen PDF.',
-            'proof_file.max' => 'Ukuran berkas bukti maksimal 5 MB.',
-        ]);
-
-        $todayDate = Carbon::today('Asia/Jakarta')->toDateString();
-
-        $existingAttendance = TeacherAttendance::where('user_id', $teacherId)
-            ->where('date', $todayDate)
-            ->first();
-
-        if ($existingAttendance) {
-            return redirect()
-                ->back()
-                ->with('error', 'Absensi untuk guru tersebut sudah dilakukan hari ini.');
-        }
-
-        $path = null;
-
-        if ($request->hasFile('proof_file')) {
-            $path = $request->file('proof_file')
-                ->store('teacher-attendances', 'public');
-        }
-
-        TeacherAttendance::create([
-            'user_id' => $teacherId,
-            'date' => $todayDate,
-            'status' => $request->status_kehadiran_guru,
-            'reason' => $request->reason,
-            'proof_file' => $path,
-        ]);
-
-        return redirect()
-            ->route('guru.utama')
-            ->with(
-                'success',
-                'Presensi/Absen berhasil dicatat. '.($request->status_kehadiran_guru === 'Hadir' ? 'Silakan lanjutkan mengisi jurnal pembelajaran.' : 'Laporan ketidakhadiran Anda telah disimpan.')
-            );
     }
 }

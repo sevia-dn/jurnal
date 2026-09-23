@@ -5,6 +5,7 @@ use App\Http\Controllers\DispensasiApprovalController;
 use App\Http\Controllers\GuruController;
 use App\Http\Controllers\JadwalMengajarController;
 use App\Http\Controllers\LogbookController;
+use App\Http\Controllers\PengaturanJurnalController;
 use App\Http\Controllers\PiketController;
 use Illuminate\Support\Facades\Route;
 
@@ -62,6 +63,17 @@ Route::middleware('auth')->group(function () {
 
         Route::view('/manajemen-user', 'dashboard.admin.manajemen-user')
             ->name('admin.manajemen-user');
+
+        // --- PENGATURAN TENGGAT JURNAL ---
+        Route::get('/pengaturan-jurnal', [PengaturanJurnalController::class, 'index'])
+            ->name('admin.pengaturan-jurnal.index');
+
+        Route::post('/pengaturan-jurnal', [PengaturanJurnalController::class, 'update'])
+            ->name('admin.pengaturan-jurnal.update');
+
+        // --- REKAP JURNAL (ADMIN) ---
+        Route::get('/jurnal/rekap', [LogbookController::class, 'rekap'])
+            ->name('admin.jurnal.rekap');
 
         // --- DATA GURU ---
         Route::get('/guru', [JadwalMengajarController::class, 'guruIndex'])
@@ -136,16 +148,13 @@ Route::middleware('auth')->group(function () {
     Route::get('/guru-pengajar/beranda', [GuruController::class, 'beranda'])
         ->name('guru.utama');
 
-    Route::post('/guru-pengajar/absen-masuk', [GuruController::class, 'absenMasuk'])
-        ->name('guru.absen-masuk');
-
-    Route::post('/guru-pengajar/absen', [GuruController::class, 'storeAbsen'])
-        ->name('guru.absen.store');
-
     Route::post('/guru-pengajar/jurnal', [LogbookController::class, 'store'])
         ->name('guru.jurnal.store');
 
     Route::get('/guru-pengajar/riwayat', [LogbookController::class, 'history'])
         ->name('guru.riwayat');
+
+    Route::get('/guru-pengajar/rekap', [LogbookController::class, 'rekap'])
+        ->name('guru.jurnal.rekap');
 
 });

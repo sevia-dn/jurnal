@@ -64,7 +64,11 @@
       <span>Manajemen User</span>
     </a>
 
-    
+    <!-- Pengaturan Jurnal -->
+    <a href="{{ route('admin.pengaturan-jurnal.index') }}" class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors !no-underline {{ request()->routeIs('admin.pengaturan-jurnal*') ? 'bg-[#1BA886] !text-white' : '!text-[#8EBEB2] hover:bg-[#1BA886]/10 hover:!text-white' }}">
+      <i class="bi bi-clock-history text-lg"></i>
+      <span>Pengaturan Jurnal</span>
+    </a>
   </nav>
 
 

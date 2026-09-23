@@ -26,7 +26,13 @@
         <a href="{{ $historyUrl }}"
            class="flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors !no-underline {{ request()->routeIs('guru.riwayat') || $activePage === 'riwayat' ? 'bg-[#1BA886] !text-white shadow-sm' : '!text-[#D9F7EE] hover:bg-[#1BA886]/10 hover:!text-white' }}">
             <i class="bi bi-clock-history text-lg" aria-hidden="true"></i>
-            <span>Riwayat &amp; Rekap</span>
+            <span>Riwayat Logbook</span>
+        </a>
+
+        <a href="{{ route('guru.jurnal.rekap') }}"
+           class="flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors !no-underline {{ request()->routeIs('guru.jurnal.rekap*') || $activePage === 'rekap' ? 'bg-[#1BA886] !text-white shadow-sm' : '!text-[#D9F7EE] hover:bg-[#1BA886]/10 hover:!text-white' }}">
+            <i class="bi bi-file-earmark-bar-graph text-lg" aria-hidden="true"></i>
+            <span>Rekap Jurnal</span>
         </a>
     </nav>
 

@@ -30,6 +30,7 @@ class JurnalMengajar extends Model
         'ada_tugas',
         'catatan',
         'lampiran',
+        'foto',
         'status_validasi',
         'catatan_validasi',
         'divalidasi_pada',
