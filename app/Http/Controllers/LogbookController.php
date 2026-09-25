@@ -6,6 +6,8 @@ use App\Models\Dispensasi;
 use App\Models\JurnalMengajar;
 use App\Models\Siswa;
 use App\Services\DispensasiWorkflowService;
+use App\Services\LogbookDeadlinePolicy;
+use App\Services\ScheduleTimeService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -16,15 +18,17 @@ class LogbookController extends Controller
     /**
      * Menyimpan Jurnal Pembelajaran dan Rekap Absensi Siswa oleh Guru
      */
-    public function store(Request $request, DispensasiWorkflowService $workflowService)
-    {
+    public function store(
+        Request $request,
+        DispensasiWorkflowService $workflowService,
+        LogbookDeadlinePolicy $deadlinePolicy,
+        ScheduleTimeService $scheduleTimeService,
+    ) {
         Carbon::setLocale('id');
 
         $user = Auth::user();
         $now = Carbon::now('Asia/Jakarta');
         $todayDate = $now->toDateString();
-        $hariIni = $now->translatedFormat('l');
-        $currentTime = $now->format('H:i');
 
         // 1. Validasi input form jurnal, lampiran bukti hadir, dan absensi siswa
         $request->validate([
@@ -32,12 +36,15 @@ class LogbookController extends Controller
             'id_mapel' => 'required|exists:mapels,id',
             'jam_ke' => 'required|integer|min:1|max:13',
             'jam_selesai' => 'nullable|integer|min:1|max:13|gte:jam_ke',
+            'tanggal' => 'nullable|date',
             'materi' => 'required|string|max:500',
             'ada_tugas' => 'required|in:Ya,Tidak',
             'catatan' => 'nullable|string',
             'lampiran' => 'required|file|mimes:jpeg,png,jpg,webp,pdf|max:5120',
             'absensi' => 'nullable|array',
             'absensi.*' => 'nullable|in:Hadir,Sakit,Izin,Alpa,D,Dispensasi',
+            'absensi_catatan' => 'nullable|array',
+            'absensi_catatan.*' => 'nullable|string|max:255',
         ], [
             'materi.required' => 'Materi / Pokok Pembahasan wajib diisi.',
             'jam_selesai.gte' => 'Jam selesai mengajar harus lebih besar atau sama dengan jam mulai.',
@@ -49,35 +56,29 @@ class LogbookController extends Controller
 
         $jamMulai = (int) $request->jam_ke;
         $jamSelesai = (int) ($request->jam_selesai ?: $request->jam_ke);
+        $journalDate = Carbon::parse($request->input('tanggal', $todayDate), 'Asia/Jakarta')->startOfDay();
+        $journalDateString = $journalDate->toDateString();
 
-        // 2. Batasan Waktu Jam Mengajar:
-        // Ambil slot waktu mulai dan selesai mengajar
-        $slotMulai = GuruController::getJamSlot($hariIni, $jamMulai);
-        $slotSelesai = GuruController::getJamSlot($hariIni, $jamSelesai);
+        // 2. Terapkan kebijakan yang disimpan Admin pada tanggal jurnal yang dipilih.
+        $hariJurnal = $journalDate->translatedFormat('l');
+        $slotMulai = $scheduleTimeService->slot($hariJurnal, $jamMulai);
+        $slotSelesai = $scheduleTimeService->slot($hariJurnal, $jamSelesai);
         $startSlot = $slotMulai['start'];
         $endSlot = $slotSelesai['end'];
 
-        // Cek jika belum memasuki jam waktu mengajar
-        if ($currentTime < $startSlot) {
+        $violation = $deadlinePolicy->violation($now, $journalDate, $startSlot, $endSlot);
+        if ($violation) {
             return redirect()
                 ->back()
                 ->withInput()
-                ->with('error', "Jam pelajaran untuk sesi ini belum dimulai ({$startSlot} - {$endSlot} WIB). Anda hanya dapat mengisi jurnal setelah jam pelajaran dimulai.");
-        }
-
-        // Cek jika telah melewati jam waktu mengajar
-        if ($currentTime > $endSlot) {
-            return redirect()
-                ->back()
-                ->withInput()
-                ->with('error', "Batas waktu pengisian jurnal untuk sesi ini ({$startSlot} - {$endSlot} WIB) telah terlewat. Anda tidak dapat mengisi jurnal setelah jam mengajar berakhir.");
+                ->with('error', $violation);
         }
 
         // 3. Cek apakah guru sudah mengirimkan jurnal untuk kelas, mapel, tanggal, dan jam_ke yang sama
         $existing = JurnalMengajar::where('id_user', $user->id)
             ->where('id_kelas', $request->id_kelas)
             ->where('id_mapel', $request->id_mapel)
-            ->where('tanggal', $todayDate)
+            ->whereDate('tanggal', $journalDateString)
             ->where('jam_ke', $jamMulai)
             ->exists();
 
@@ -85,7 +86,7 @@ class LogbookController extends Controller
             return redirect()
                 ->back()
                 ->withInput()
-                ->with('error', 'Anda sudah pernah mengirimkan jurnal pembelajaran untuk kelas dan jam pelajaran ini pada hari ini.');
+                ->with('error', 'Anda sudah pernah mengirimkan jurnal pembelajaran untuk kelas dan jam pelajaran ini pada tanggal tersebut.');
         }
 
         // 4. Upload lampiran bukti kehadiran guru di kelas (jika ada)
@@ -102,11 +103,13 @@ class LogbookController extends Controller
         $idSiswaKelas = $daftarSiswaKelas->pluck('id')->all();
         $inputAbsensi = collect($request->input('absensi', []))
             ->only($idSiswaKelas);
+        $inputCatatanAbsensi = collect($request->input('absensi_catatan', []))
+            ->only($idSiswaKelas);
         $dispensasis = Dispensasi::query()
             ->whereIn('siswa_id', $idSiswaKelas)
             ->where('status_akhir', 'disetujui')
-            ->whereDate('tanggal', '<=', $todayDate)
-            ->whereDate('tanggal_selesai', '>=', $todayDate)
+            ->whereDate('tanggal', '<=', $journalDateString)
+            ->whereDate('tanggal_selesai', '>=', $journalDateString)
             ->get()
             ->groupBy('siswa_id');
 
@@ -124,11 +127,14 @@ class LogbookController extends Controller
                 $st = 'D';
             }
             if ($dispensasis->get($s->id, collect())->contains(
-                fn (Dispensasi $dispensasi): bool => $workflowService->isActiveForStudentAt($dispensasi, $todayDate, $jamMulai)
+                fn (Dispensasi $dispensasi): bool => $workflowService->isActiveForStudentAt($dispensasi, $journalDateString, $jamMulai)
             )) {
                 $st = 'D';
             }
-            $absensiFinal[$s->id] = $st;
+            $absensiFinal[$s->id] = [
+                'status' => $st,
+                'catatan' => $st === 'Hadir' ? null : $inputCatatanAbsensi->get($s->id),
+            ];
 
             switch ($st) {
                 case 'Sakit':
@@ -157,7 +163,7 @@ class LogbookController extends Controller
                 'id_user' => $user->id,
                 'id_kelas' => $request->id_kelas,
                 'id_mapel' => $request->id_mapel,
-                'tanggal' => $todayDate,
+                'tanggal' => $journalDateString,
                 'jam_ke' => $jamMulai,
                 'jam_selesai' => $jamSelesai,
                 'materi' => $request->materi,
@@ -179,9 +185,10 @@ class LogbookController extends Controller
 
             // Simpan satu detail presensi untuk setiap siswa di kelas jurnal.
             $jurnal->absensis()->createMany(
-                collect($absensiFinal)->map(fn (string $statusSiswa, int $idSiswa): array => [
+                collect($absensiFinal)->map(fn (array $absensiSiswa, int $idSiswa): array => [
                     'id_siswa' => $idSiswa,
-                    'status' => $statusSiswa,
+                    'status' => $absensiSiswa['status'],
+                    'catatan' => $absensiSiswa['catatan'],
                 ])->values()->all()
             );
 

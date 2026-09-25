@@ -12,8 +12,6 @@
 
 @section('content')
 <style>[x-cloak] { display: none !important; }</style>
-<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
-
 <div x-data="userManagement()" class="p-6 sm:p-10 font-sans">
 
     @if(isset($errors) && $errors->any())

@@ -34,7 +34,12 @@ class User extends Authenticatable
 
     public function isWaka(): bool
     {
-        return (bool) ($this->is_waka || $this->role === 'waka');
+        return (bool) $this->is_waka;
+    }
+
+    public function scopeWakaKesiswaan($query)
+    {
+        return $query->where('is_waka', true);
     }
 
     public function jadwalPikets()
@@ -62,21 +67,11 @@ class User extends Authenticatable
      */
     public function getJadwalPiketAktifAttribute()
     {
-        $hariIndo = [
-            'Sunday' => 'Minggu',
-            'Monday' => 'Senin',
-            'Tuesday' => 'Selasa',
-            'Wednesday' => 'Rabu',
-            'Thursday' => 'Kamis',
-            'Friday' => 'Jumat',
-            'Saturday' => 'Sabtu',
-        ];
-
-        $today = $hariIndo[Carbon::now()->format('l')] ?? 'Senin';
-        $nowTime = Carbon::now()->format('H:i:s');
+        $todayDate = Carbon::now('Asia/Jakarta')->toDateString();
+        $nowTime = Carbon::now('Asia/Jakarta')->format('H:i:s');
 
         return $this->jadwalPikets()
-            ->where('hari', $today)
+            ->whereDate('tanggal', $todayDate)
             ->where('jam_mulai', '<=', $nowTime)
             ->where('jam_selesai', '>=', $nowTime)
             ->first();
@@ -87,27 +82,16 @@ class User extends Authenticatable
      */
     public function isPiketActive(): bool
     {
-        $hariIndo = [
-            'Sunday' => 'Minggu',
-            'Monday' => 'Senin',
-            'Tuesday' => 'Selasa',
-            'Wednesday' => 'Rabu',
-            'Thursday' => 'Kamis',
-            'Friday' => 'Jumat',
-            'Saturday' => 'Sabtu',
-        ];
+        $todayDate = Carbon::now('Asia/Jakarta')->toDateString();
 
-        $today = $hariIndo[Carbon::now()->format('l')] ?? 'Senin';
-
-        // Cek apakah ada jadwal piket hari ini
-        $hasScheduleToday = $this->jadwalPikets()->where('hari', $today)->exists();
+        // Tugas piket bersumber dari tanggal penugasan, bukan role statis atau hari mingguan.
+        $hasScheduleToday = $this->jadwalPikets()->whereDate('tanggal', $todayDate)->exists();
 
         if (! $hasScheduleToday) {
             return false;
         }
 
         // Cek apakah sudah absen hari ini di KehadiranGuru
-        $todayDate = Carbon::now()->toDateString();
         $absenToday = $this->kehadiranGurus()->where('tanggal', $todayDate)->exists();
 
         // Jika ada jadwal piket hari ini & sudah absen -> Mode piket aktif

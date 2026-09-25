@@ -203,14 +203,14 @@
         </div>
       </div>
 
-      <!-- Icon Help -->
-      <div
-        class="cursor-pointer hover:text-emerald-600 transition p-2 rounded-xl hover:bg-gray-50"
-        onclick="alert('JurnalKita Management System\n\nUntuk mereset password pengguna:\n1. Klik ikon lonceng untuk melihat laporan user yang lupa password.\n2. Klik Terima & Ganti PW untuk memasukkan password baru.\n3. User bisa langsung login menggunakan password baru tersebut.')"
-        title="Bantuan Penggunaan"
+      <a
+        href="{{ route('admin.pengaturan') }}"
+        class="p-2 rounded-xl text-gray-600 hover:text-emerald-600 hover:bg-emerald-50/60 transition flex items-center justify-center"
+        title="Pengaturan Jam dan Tenggat Jurnal"
+        aria-label="Pengaturan Jam dan Tenggat Jurnal"
       >
-        <i class="bi bi-question-circle text-xl"></i>
-      </div>
+        <i class="bi bi-gear-fill text-xl"></i>
+      </a>
 
     </div>
   </div>

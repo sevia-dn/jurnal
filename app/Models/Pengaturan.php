@@ -18,7 +18,6 @@ class Pengaturan
             'senin_shifted_minutes' => 0,
             'jumat_is_maju' => 0,
             'jumat_shifted_minutes' => 0,
-            'tenggat_status' => 1,
             'tenggat_opsi' => 'terbatas_jam', // 'terbatas_jam' | 'hari_ini' | 'los'
         ];
     }

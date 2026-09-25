@@ -12,6 +12,7 @@ class JadwalPiket extends Model
     protected $fillable = [
         'user_id',
         'hari',
+        'tanggal',
         'tipe',
         'keterangan',
         'bulan',
@@ -20,6 +21,13 @@ class JadwalPiket extends Model
         'jam_mulai',
         'jam_selesai',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'tanggal' => 'date',
+        ];
+    }
 
     public function user()
     {

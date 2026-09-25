@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Services\PiketScheduleService;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -14,13 +16,31 @@ class AuthController extends Controller
      */
     public function showLoginForm()
     {
+        // Jika pengguna sudah login, arahkan ke dashboard sesuai role.
+        if (Auth::check()) {
+            return $this->redirectByRole(Auth::user());
+        }
+
         return view('auth.login');
+    }
+
+    /**
+     * Redirect berdasarkan role pengguna.
+     */
+    private function redirectByRole(User $user): RedirectResponse
+    {
+        return match ($user->role) {
+            'admin' => redirect()->route('dashboard'),
+            'pengurus_kelas' => redirect()->route('pengurus-kelas.dashboard'),
+            'guru', 'piket', 'waka' => redirect()->route('guru'),
+            default => redirect()->route('login'),
+        };
     }
 
     /**
      * Proses login (bisa menggunakan NIP dengan/tanpa spasi, atau username).
      */
-    public function login(Request $request)
+    public function login(Request $request, PiketScheduleService $piketScheduleService)
     {
         $request->validate([
             'identity' => 'required|string',
@@ -30,18 +50,20 @@ class AuthController extends Controller
         $identity = trim($request->input('identity'));
         $password = $request->input('password');
         $cleanIdentity = str_replace([' ', '-', '.'], '', $identity);
+        $normalizedUsername = strtolower($identity);
 
-        // Cari user berdasarkan nip (dengan/tanpa spasi) ATAU username
-        $user = User::where('nip', $identity)
-            ->orWhere('username', $identity)
-            ->orWhere('nip', $cleanIdentity)
-            ->orWhereRaw("REPLACE(REPLACE(nip, ' ', ''), '-', '') = ?", [$cleanIdentity])
-            ->first();
+        // Username diprioritaskan karena nilainya sudah ditetapkan secara eksplisit pada UserSeeder.
+        $user = User::whereRaw('LOWER(username) = ?', [$normalizedUsername])->first();
+
+        if (! $user) {
+            $user = User::where('nip', $identity)
+                ->orWhere('nip', $cleanIdentity)
+                ->orWhereRaw("REPLACE(REPLACE(REPLACE(nip, ' ', ''), '-', ''), '.', '') = ?", [$cleanIdentity])
+                ->first();
+        }
 
         if ($user) {
-            // Cek password akun, atau master password 'guru123' untuk guru
-            $isPasswordValid = Hash::check($password, $user->password)
-                || ($user->role === 'guru' && $password === 'guru123');
+            $isPasswordValid = Hash::check($password, $user->password);
 
             if ($isPasswordValid) {
                 Auth::login($user);

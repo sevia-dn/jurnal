@@ -37,10 +37,10 @@
                 <i class="bi bi-journal-text"></i>
             </div>
             <h2 class="mt-4 text-lg font-bold text-slate-800">Tidak Ada Logbook Dipilih</h2>
-            <p class="mt-1 text-sm text-slate-500">Silakan pilih logbook dari daftar jadwal untuk melihat detail dan melakukan validasi.</p>
+            <p class="mt-1 text-sm text-slate-500">Silakan pilih logbook dari riwayat untuk melihat detail dan melakukan validasi.</p>
             <div class="mt-6 flex justify-center gap-3">
-                <a href="{{ route('pengurus-kelas.jadwal') }}" class="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-bold text-white shadow-sm hover:bg-emerald-700">
-                    <i class="bi bi-calendar-week"></i> Lihat Jadwal Kelas
+                <a href="{{ route('pengurus-kelas.jurnal-detail') }}" class="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-bold text-white shadow-sm hover:bg-emerald-700">
+                    <i class="bi bi-clock-history"></i> Lihat Riwayat Logbook
                 </a>
                 <a href="{{ route('pengurus-kelas.dashboard') }}" class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-100">
                     <i class="bi bi-arrow-left"></i> Kembali ke Dashboard
@@ -200,7 +200,7 @@
                 {{-- Daftar Siswa Tidak Masuk / Daftar Lengkap --}}
                 <div class="mt-4">
                     @php
-                        $tidakHadir = $jurnal->absensis->where('status', '!=', 'Hadir');
+                        $tidakHadir = $jurnal->absensis->filter(fn ($a) => trim(strtolower($a->status ?? '')) !== 'hadir');
                     @endphp
 
                     @if($tidakHadir->count() > 0)
@@ -212,7 +212,9 @@
                             <div class="space-y-1.5">
                                 @foreach($tidakHadir as $ab)
                                     @php
-                                        $badgeBg = match($ab->status) {
+                                        $normStatus = strtoupper(trim((string) $ab->status));
+                                        $statusLabel = in_array($normStatus, ['D', 'DISPENSASI']) ? 'Dispensasi' : (in_array($normStatus, ['ALFA', 'ALPA']) ? 'Alpa' : $ab->status);
+                                        $badgeBg = match($statusLabel) {
                                             'Sakit' => 'bg-amber-100 text-amber-800 border-amber-200',
                                             'Izin' => 'bg-blue-100 text-blue-800 border-blue-200',
                                             'Alpa' => 'bg-rose-100 text-rose-800 border-rose-200',
@@ -220,13 +222,16 @@
                                             default => 'bg-slate-100 text-slate-800 border-slate-200',
                                         };
                                     @endphp
-                                    <div class="flex items-center justify-between rounded-lg bg-white border border-slate-200 px-3 py-1.5 text-xs shadow-2xs">
+                                    <div class="flex items-center justify-between gap-3 rounded-lg bg-white border border-slate-200 p-2.5 text-xs shadow-2xs">
                                         <div class="min-w-0">
-                                            <span class="font-bold text-slate-800">{{ $ab->siswa->nama ?? 'Siswa' }}</span>
-                                            <span class="text-[10px] text-slate-400 ml-1">(NISN: {{ $ab->siswa->nis ?? '-' }})</span>
+                                            <div class="flex items-center gap-1.5">
+                                                <span class="font-bold text-slate-800">{{ $ab->siswa->nama ?? 'Siswa' }}</span>
+                                                <span class="text-[10px] text-slate-400">(NIS: {{ $ab->siswa->nis ?? '-' }})</span>
+                                            </div>
+                                            <p class="mt-0.5 text-[11px] text-slate-600">Alasan: {{ $ab->catatan ?: 'Tidak ada keterangan yang diisi guru.' }}</p>
                                         </div>
-                                        <span class="rounded-md border px-2 py-0.5 text-[10px] font-bold {{ $badgeBg }}">
-                                            {{ $ab->status }}
+                                        <span class="shrink-0 rounded-md border px-2 py-0.5 text-[10px] font-bold {{ $badgeBg }}">
+                                            {{ $statusLabel }}
                                         </span>
                                     </div>
                                 @endforeach
@@ -283,7 +288,8 @@
 
         </div>
 
-        {{-- ACTION FOOTER VALIDASI (SETUJUI / MINTA REVISI) --}}
+        {{-- ACTION FOOTER VALIDASI hanya untuk jurnal yang belum memperoleh keputusan. --}}
+        @if($statusValidasi === 'belum_divalidasi')
         <section class="mt-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
             <form action="{{ route('pengurus-kelas.jurnal-validasi', ['id' => $jurnal->id_jurnal]) }}" method="POST">
                 @csrf
@@ -301,8 +307,8 @@
                 </div>
 
                 <div class="flex flex-col-reverse gap-3 border-t border-slate-100 bg-slate-50 px-5 py-4 sm:flex-row sm:justify-between sm:items-center">
-                    <a href="{{ route('pengurus-kelas.jadwal') }}" class="inline-flex items-center justify-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900">
-                        <i class="bi bi-arrow-left"></i> Kembali ke Jadwal
+                    <a href="{{ route('pengurus-kelas.jurnal-detail') }}" class="inline-flex items-center justify-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900">
+                        <i class="bi bi-arrow-left"></i> Kembali ke Riwayat
                     </a>
 
                     <div class="flex flex-col-reverse gap-2 sm:flex-row sm:items-center">
@@ -326,6 +332,15 @@
                 </div>
             </form>
         </section>
+        @else
+        <section class="mt-6 flex flex-col gap-3 rounded-2xl border border-{{ $statusColor }}-200 bg-{{ $statusColor }}-50/60 p-5 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+            <div>
+                <p class="text-sm font-extrabold text-{{ $statusColor }}-900">Logbook sudah {{ strtolower($statusLabel) }}</p>
+                <p class="mt-1 text-xs text-slate-600">Keputusan validasi telah tersimpan sehingga tindakan validasi tidak tersedia lagi.</p>
+            </div>
+            <a href="{{ route('pengurus-kelas.jurnal-detail') }}" class="inline-flex w-fit items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 transition hover:bg-slate-50"><i class="bi bi-arrow-left"></i>Kembali ke Riwayat</a>
+        </section>
+        @endif
     @endif
 
 </div>

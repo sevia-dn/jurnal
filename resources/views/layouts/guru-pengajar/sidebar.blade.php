@@ -18,7 +18,7 @@
 
     <nav class="flex-1 space-y-1.5 overflow-y-auto px-4">
         <a href="{{ $homeUrl }}"
-           class="flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors !no-underline {{ request()->routeIs('guru.utama') || $activePage === 'utama' ? 'bg-[#1BA886] !text-white shadow-sm' : '!text-[#D9F7EE] hover:bg-[#1BA886]/10 hover:!text-white' }}">
+           class="flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors !no-underline {{ (request()->routeIs('guru.utama') || $activePage === 'utama') && !request()->is('dashboard/piket*') && $activePage !== 'piket' ? 'bg-[#1BA886] !text-white shadow-sm' : '!text-[#D9F7EE] hover:bg-[#1BA886]/10 hover:!text-white' }}">
             <i class="bi bi-grid text-lg" aria-hidden="true"></i>
             <span>Halaman Utama</span>
         </a>
@@ -27,6 +27,19 @@
            class="flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors !no-underline {{ request()->routeIs('guru.riwayat') || $activePage === 'riwayat' ? 'bg-[#1BA886] !text-white shadow-sm' : '!text-[#D9F7EE] hover:bg-[#1BA886]/10 hover:!text-white' }}">
             <i class="bi bi-clock-history text-lg" aria-hidden="true"></i>
             <span>Riwayat &amp; Rekap</span>
+        </a>
+
+        <a href="{{ route('dashboard.piket') }}"
+           class="flex items-center justify-between gap-3 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors !no-underline {{ request()->is('dashboard/piket*') || request()->is('piket*') || $activePage === 'piket' ? 'bg-[#1BA886] !text-white shadow-sm' : '!text-[#D9F7EE] hover:bg-[#1BA886]/10 hover:!text-white' }}">
+            <div class="flex items-center gap-3">
+                <i class="bi bi-shield-check text-lg" aria-hidden="true"></i>
+                <span>{{ ($isPiketActive ?? auth()->user()?->isPiketActive()) ? 'Tugas Piket' : 'Anda sedang tidak piket' }}</span>
+            </div>
+            @if($isPiketActive ?? auth()->user()?->isPiketActive())
+                <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-300 text-emerald-950 shadow-xs">
+                    Piket
+                </span>
+            @endif
         </a>
     </nav>
 

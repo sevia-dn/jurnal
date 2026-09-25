@@ -14,15 +14,14 @@ use Illuminate\Support\Facades\Route;
 // 1. AREA GUEST
 // ==========================================
 
+// Public routes – always show the login form regardless of authentication state.
+Route::get('/', [AuthController::class, 'showLoginForm']);
+Route::get('/login', [AuthController::class, 'showLoginForm'])->name('login');
+Route::post('/login', [AuthController::class, 'login']);
+
+// Retain any guest‑only routes in a separate group (currently none).
 Route::middleware('guest')->group(function () {
-
-    Route::get('/', [AuthController::class, 'showLoginForm']);
-
-    Route::get('/login', [AuthController::class, 'showLoginForm'])
-        ->name('login');
-
-    Route::post('/login', [AuthController::class, 'login']);
-
+    // Add guest‑only routes here if needed.
 });
 
 // ==========================================
@@ -68,7 +67,7 @@ Route::middleware('auth')->group(function () {
         Route::view('/tambah-akun', 'dashboard.admin.tambah-akun')
             ->name('tambah-akun');
 
-        Route::view('/piket', 'dashboard.piket.utama')
+        Route::get('/piket', [PiketController::class, 'utama'])
             ->name('dashboard.piket');
 
         Route::get('/manajemen-user', [AdminController::class, 'user'])
@@ -82,6 +81,15 @@ Route::middleware('auth')->group(function () {
 
         Route::get('/piket/kehadiran', [PiketController::class, 'kehadiran'])
             ->name('piket.kehadiran');
+
+        Route::get('/piket/kehadiran/lapor', [PiketController::class, 'laporKehadiranForm'])
+            ->name('piket.kehadiran.form');
+
+        Route::get('/piket/jurnal/{jurnal}', [PiketController::class, 'jurnalDetail'])
+            ->name('piket.jurnal.show');
+
+        Route::post('/piket/kehadiran', [PiketController::class, 'storeKehadiranGuru'])
+            ->name('piket.kehadiran.store');
 
         Route::post('/piket/kehadiran/{kehadiran}/verifikasi', [PiketController::class, 'verifikasiKehadiran'])
             ->name('piket.kehadiran.verifikasi');
@@ -172,11 +180,6 @@ Route::middleware('auth')->group(function () {
         )->name('pengurus-kelas.dashboard');
 
         Route::get(
-            '/jadwal',
-            [PengurusKelasController::class, 'jadwal']
-        )->name('pengurus-kelas.jadwal');
-
-        Route::get(
             '/jurnal-detail/{id?}',
             function ($id = null) {
                 if ($id) {
@@ -202,6 +205,11 @@ Route::middleware('auth')->group(function () {
             [PengurusKelasController::class, 'kehadiranSiswa']
         )->name('pengurus-kelas.kehadiran-siswa');
 
+        Route::post(
+            '/notifikasi/read-all',
+            [PengurusKelasController::class, 'markAllNotificationsRead']
+        )->name('pengurus-kelas.notifikasi.read-all');
+
     });
 
     // ==========================================
@@ -223,6 +231,12 @@ Route::middleware('auth')->group(function () {
 
     Route::post('/guru-pengajar/absen-masuk', [GuruController::class, 'absenMasuk'])
         ->name('guru.absen-masuk');
+
+    Route::post('/guru-pengajar/notifikasi/{notifikasi}/read', [GuruController::class, 'markNotificationRead'])
+        ->name('guru.notifikasi.read');
+
+    Route::post('/guru-pengajar/notifikasi/read-all', [GuruController::class, 'markAllNotificationsRead'])
+        ->name('guru.notifikasi.read-all');
 
     Route::post(
         '/guru-pengajar/jurnal',

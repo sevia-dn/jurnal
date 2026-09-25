@@ -62,7 +62,7 @@
     </div>
 
     <!-- ========================================================================= -->
-    <!-- KARTU UTAMA: KEBIJAKAN TENGGAT WAKTU PENGISIAN JURNAL GURU (ON/OFF & 3 OPSI) -->
+    <!-- KARTU UTAMA: KEBIJAKAN TENGGAT WAKTU PENGISIAN JURNAL GURU -->
     <!-- ========================================================================= -->
     <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
         <div class="p-6 sm:p-7 border-b border-slate-100">
@@ -72,20 +72,9 @@
                         <i class="bi bi-hourglass-split"></i>
                     </div>
                     <div>
-                        <div class="flex items-center gap-2">
-                            <h2 class="text-lg font-bold text-slate-900">Kebijakan Tenggat Waktu Pengisian Jurnal</h2>
-                            @if($tenggatStatus == 1)
-                                <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
-                                    <i class="bi bi-shield-check"></i> AKTIF
-                                </span>
-                            @else
-                                <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-900 border border-amber-300">
-                                    <i class="bi bi-shield-slash"></i> NONAKTIF (MODE BEBAS)
-                                </span>
-                            @endif
-                        </div>
+                        <h2 class="text-lg font-bold text-slate-900">Kebijakan Tenggat Waktu Pengisian Jurnal</h2>
                         <p class="text-xs sm:text-sm text-slate-500 mt-0.5">
-                            Kontrol hak akses pengisian logbook guru: kunci tepat waktu sesuai jam, fleksibel harian, atau buka mode susulan jika ada guru yang lupa.
+                            Pilih satu aturan yang berlaku serentak untuk seluruh pengisian logbook dan jurnal guru.
                         </p>
                     </div>
                 </div>
@@ -95,34 +84,6 @@
         <form action="{{ route('admin.pengaturan.update') }}" method="POST" class="p-6 sm:p-7 space-y-6">
             @csrf
             <input type="hidden" name="action_type" value="tenggat">
-
-            <!-- Switch Master ON / OFF -->
-            <div class="p-4 rounded-xl border {{ $tenggatStatus == 1 ? 'border-emerald-200 bg-emerald-50/40' : 'border-amber-200 bg-amber-50/40' }} flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-colors">
-                <div class="flex items-start sm:items-center gap-3">
-                    <div class="w-10 h-10 rounded-xl {{ $tenggatStatus == 1 ? 'bg-emerald-600 text-white' : 'bg-amber-500 text-white' }} flex items-center justify-center shrink-0 text-lg shadow-xs">
-                        <i class="bi {{ $tenggatStatus == 1 ? 'bi-toggle-on' : 'bi-toggle-off' }}"></i>
-                    </div>
-                    <div>
-                        <span class="text-xs font-bold uppercase tracking-wider {{ $tenggatStatus == 1 ? 'text-emerald-800' : 'text-amber-800' }}">Status Pembatasan Waktu</span>
-                        <h3 class="text-sm font-bold text-slate-900">
-                            {{ $tenggatStatus == 1 ? 'Tenggat Waktu Diaktifkan (Ketat / Fleksibel Sesuai Opsi)' : 'Tenggat Waktu Dinonaktifkan (Mode Bebas / Susulan Terbuka)' }}
-                        </h3>
-                        <p class="text-xs text-slate-600 mt-0.5">
-                            Jika dinonaktifkan, guru dapat mengisi jurnal untuk <strong>hari ini atau kemarin (H-1)</strong> tanpa terkunci jam mengajar.
-                        </p>
-                    </div>
-                </div>
-
-                <div class="flex items-center gap-3.5 self-end sm:self-center shrink-0">
-                    <span class="text-xs font-extrabold px-3 py-1 rounded-full select-none transition-colors {{ $tenggatStatus == 1 ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-700' }}" id="labelToggleTenggat">
-                        {{ $tenggatStatus == 1 ? 'AKTIF' : 'NONAKTIF' }}
-                    </span>
-                    <label class="relative inline-flex items-center cursor-pointer">
-                        <input type="checkbox" name="tenggat_status" value="1" {{ $tenggatStatus == 1 ? 'checked' : '' }} class="sr-only peer" id="toggleTenggat">
-                        <div class="w-14 h-7 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[4px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-emerald-600"></div>
-                    </label>
-                </div>
-            </div>
 
             <!-- Pilihan 3 Opsi Kebijakan Tenggat Waktu (Radio Cards) -->
             <div>
@@ -146,7 +107,7 @@
                                 <h4 class="text-sm font-bold text-slate-900">Terbatas Jam Mengajar</h4>
                             </div>
                             <p class="text-xs text-slate-600 leading-relaxed">
-                                Guru <strong>hanya bisa mengisi</strong> pada saat jam mengajarnya sedang berlangsung (disertai toleransi keterlambatan).
+                                Guru <strong>hanya bisa mengisi</strong> pada saat jam mengajarnya sedang berlangsung.
                             </p>
                         </div>
                         <div class="mt-3 pt-3 border-t border-slate-200/80 text-[11px] font-semibold text-emerald-900 flex items-center gap-1.5">
@@ -414,21 +375,4 @@
 
 </div>
 
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const toggle = document.getElementById('toggleTenggat');
-        const label = document.getElementById('labelToggleTenggat');
-        if (toggle && label) {
-            toggle.addEventListener('change', function() {
-                if (this.checked) {
-                    label.textContent = 'AKTIF';
-                    label.className = 'text-xs font-extrabold px-3 py-1 rounded-full select-none transition-colors bg-emerald-100 text-emerald-800';
-                } else {
-                    label.textContent = 'NONAKTIF';
-                    label.className = 'text-xs font-extrabold px-3 py-1 rounded-full select-none transition-colors bg-slate-200 text-slate-700';
-                }
-            });
-        }
-    });
-</script>
 @endsection

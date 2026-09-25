@@ -7,6 +7,7 @@ use App\Models\Dispensasi;
 use App\Models\JadwalMengajar;
 use App\Models\JurnalMengajar;
 use App\Models\Notifikasi;
+use App\Models\PiketKehadiranSiswa;
 use App\Models\User;
 use Carbon\Carbon;
 
@@ -17,6 +18,7 @@ class DispensasiWorkflowService
         $dispensasi->loadMissing('siswa.kelas');
 
         $this->markExistingAttendanceAsDispensasi($dispensasi);
+        $this->markPiketKehadiranAsDispensasi($dispensasi);
         $this->notifyRelatedUsers($dispensasi);
     }
 
@@ -57,17 +59,46 @@ class DispensasiWorkflowService
         }
     }
 
+    private function markPiketKehadiranAsDispensasi(Dispensasi $dispensasi): void
+    {
+        $startDate = Carbon::parse($dispensasi->tanggal);
+        $endDate = Carbon::parse($dispensasi->tanggal_selesai);
+
+        for ($date = $startDate->copy(); $date->lte($endDate); $date->addDay()) {
+            PiketKehadiranSiswa::updateOrCreate(
+                [
+                    'siswa_id' => $dispensasi->siswa_id,
+                    'tanggal' => $date->toDateString(),
+                ],
+                [
+                    'kelas_id' => $dispensasi->siswa->kelas_id,
+                    'status' => 'D',
+                    'catatan' => 'Dispensasi disetujui: '.$dispensasi->alasan,
+                    'dicatat_oleh' => $dispensasi->diproses_oleh ?? $dispensasi->dibuat_oleh,
+                ]
+            );
+        }
+    }
+
     private function notifyRelatedUsers(Dispensasi $dispensasi): void
     {
-        $date = Carbon::parse($dispensasi->tanggal)->translatedFormat('l');
+        $date = Carbon::parse($dispensasi->tanggal)->locale('id')->translatedFormat('l');
         $teacherIds = JadwalMengajar::query()
             ->where('id_kelas', $dispensasi->siswa->kelas_id)
             ->where('hari', $date)
             ->pluck('id_user');
-        $piketIds = User::query()
-            ->whereHas('jadwalPikets', fn ($query) => $query->where('hari', $date))
+
+        $namaKelasSiswa = $dispensasi->siswa->kelas?->nama_kelas;
+        $pengurusIds = User::query()
+            ->where('role', 'pengurus_kelas')
+            ->get()
+            ->filter(fn (User $u) => trim(str_ireplace('Pengurus Kelas ', '', $u->name)) === $namaKelasSiswa || $u->name === $namaKelasSiswa)
             ->pluck('id');
-        $pengurusIds = User::query()->where('role', 'pengurus_kelas')->pluck('id');
+
+        $piketIds = User::query()
+            ->whereHas('jadwalPikets', fn ($query) => $query->whereDate('tanggal', $dispensasi->tanggal))
+            ->pluck('id');
+
         $recipientIds = $teacherIds
             ->merge($piketIds)
             ->merge($pengurusIds)

@@ -32,4 +32,9 @@ class Siswa extends Model
             'id'
         );
     }
+
+    public function kehadiranPiket()
+    {
+        return $this->hasMany(PiketKehadiranSiswa::class, 'siswa_id');
+    }
 }

@@ -11,6 +11,7 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
     
     <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <script>
         tailwind.config = {
             theme: {
@@ -18,6 +19,7 @@
             }
         }
     </script>
+    <style>[x-cloak] { display: none !important; }</style>
 </head>
 
 <!-- PERBAIKAN 1: Ganti h-screen menjadi h-[100dvh] -->

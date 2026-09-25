@@ -1,18 +1,21 @@
 @extends('layouts.app')
 
-@section('title', 'Rekap Kehadiran Siswa')
+@section('title', 'Rekap Kehadiran Siswa - Piket JurnalKita')
 
 @section('sidebar')
-    @include('layouts.piket.sidebar')
+    @include('layouts.guru-pengajar.sidebar', ['activePage' => 'piket'])
 @endsection
 
 @section('navbar')
-    @include('layouts.piket.navbar')
+    @include('layouts.guru-pengajar.navbar', ['activePage' => 'piket'])
 @endsection
 
 @section('content')
-<div id="student-attendance-page" class="min-h-full bg-slate-50 p-5 pb-24 font-sans sm:p-8 lg:p-10">
+<div id="student-attendance-page" class="min-h-full bg-slate-50 p-4 pb-24 font-sans sm:p-6 lg:p-8">
     <div class="mx-auto max-w-7xl">
+                    <a href="{{ route('dashboard.piket') }}" class="mb-4 inline-flex items-center gap-2 text-sm font-semibold text-emerald-700 transition hover:text-emerald-800">
+                <i class="bi bi-arrow-left"></i>Kembali ke halaman utama piket
+            </a>
         
         <!-- Flash Message -->
         @if(session('success'))
@@ -25,15 +28,16 @@
             </div>
         @endif
 
-        <!-- Header & Top Filter -->
-        <header class="mb-7 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+
+        <!-- Top Filter & Controls Card -->
+        <div class="mb-6 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between rounded-2xl bg-white p-4 border border-slate-200 shadow-2xs">
+
+            <h1 class="text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl">Rekap Kehadiran Siswa</h1>
             <div>
-                <div class="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">
-                    <span class="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_0_4px_rgba(16,185,129,0.12)]"></span>
-                    Monitoring Presensi Siswa Real-time
-                </div>
-                <h1 class="text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl">Rekap Kehadiran Siswa</h1>
-                <p class="mt-1 text-sm text-slate-500">Presensi harian siswa per kelas terintegrasi otomatis dengan surat dispensasi.</p>
+
+
+                <p class="text-xs font-bold text-slate-700">Filter Kelas & Tanggal</p>
+                <p class="hidden text-[11px] text-slate-400 sm:block">Pilih kelas dan tanggal untuk memuat data absensi siswa</p>
             </div>
 
             <!-- Action Controls -->
@@ -56,298 +60,231 @@
                     <input type="date" id="student-attendance-date" value="{{ $tanggal }}" class="bg-transparent font-medium focus:outline-none cursor-pointer">
                 </div>
 
-                <!-- Export Data -->
-                <button type="button" id="export-student-data" class="inline-flex items-center gap-2 rounded-xl bg-emerald-700 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-emerald-800 focus:outline-none focus:ring-4 focus:ring-emerald-200 cursor-pointer">
-                    <i class="bi bi-download"></i>
-                    <span>Export CSV</span>
-                </button>
             </div>
-        </header>
+        </div>
 
-        <!-- Summary Cards -->
-        <section class="mb-7 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
-            <!-- Card Total -->
-            <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-                <p class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Total Siswa</p>
-                <p id="stat-total" class="mt-2 text-2xl font-extrabold text-slate-900">{{ $totalSiswa }}</p>
-                <p class="mt-2 text-xs font-semibold text-slate-500">{{ $selectedKelas?->nama_kelas ?? 'Kelas' }}</p>
-            </div>
-            <!-- Card Hadir -->
-            <div class="rounded-2xl border border-emerald-200 bg-emerald-50/50 p-4 shadow-sm">
-                <p class="text-[11px] font-bold uppercase tracking-wider text-emerald-700">Hadir</p>
-                <p id="stat-hadir" class="mt-2 text-2xl font-extrabold text-emerald-800">{{ $totalHadir }}</p>
-                <p class="mt-2 text-xs font-semibold text-emerald-600">{{ $totalSiswa > 0 ? round(($totalHadir / $totalSiswa) * 100) : 0 }}% hadir</p>
-            </div>
-            <!-- Card Sakit -->
-            <div class="rounded-2xl border border-amber-200 bg-amber-50/50 p-4 shadow-sm">
-                <p class="text-[11px] font-bold uppercase tracking-wider text-amber-700">Sakit</p>
-                <p id="stat-sakit" class="mt-2 text-2xl font-extrabold text-amber-800">{{ $totalSakit }}</p>
-                <p class="mt-2 text-xs font-semibold text-amber-600">Siswa sakit</p>
-            </div>
-            <!-- Card Izin -->
-            <div class="rounded-2xl border border-orange-200 bg-orange-50/50 p-4 shadow-sm">
-                <p class="text-[11px] font-bold uppercase tracking-wider text-orange-700">Izin</p>
-                <p id="stat-izin" class="mt-2 text-2xl font-extrabold text-orange-800">{{ $totalIzin }}</p>
-                <p class="mt-2 text-xs font-semibold text-orange-600">Izin keluarga</p>
-            </div>
-            <!-- Card Dispensasi (Terintegrasi) -->
-            <div class="rounded-2xl border border-purple-200 bg-purple-50/50 p-4 shadow-sm">
-                <p class="text-[11px] font-bold uppercase tracking-wider text-purple-700">Dispensasi</p>
-                <p id="stat-dispen" class="mt-2 text-2xl font-extrabold text-purple-800">{{ $totalDispen }}</p>
-                <p class="mt-2 text-xs font-semibold text-purple-600">Tugas / Lomba</p>
-            </div>
-            <!-- Card Alfa -->
-            <div class="rounded-2xl border border-rose-200 bg-rose-50/50 p-4 shadow-sm col-span-2 sm:col-span-1">
-                <p class="text-[11px] font-bold uppercase tracking-wider text-rose-700">Alfa</p>
-                <p id="stat-alfa" class="mt-2 text-2xl font-extrabold text-rose-800">{{ $totalAlfa }}</p>
-                <p class="mt-2 text-xs font-semibold text-rose-600">Tanpa keterangan</p>
+        <!-- Ringkasan Status dalam satu kartu -->
+        <section class="mb-7 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+                <div><p class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Ringkasan Kehadiran</p><p class="mt-1 text-sm font-semibold text-slate-700">{{ $selectedKelas?->nama_kelas ?? 'Kelas' }} · {{ $totalSiswa }} siswa</p></div>
+                <div class="flex flex-wrap gap-2 text-xs font-bold"><span class="rounded-full bg-emerald-100 px-3 py-1.5 text-emerald-800">{{ $totalHadir }} Hadir</span><span class="rounded-full bg-amber-100 px-3 py-1.5 text-amber-800">{{ $totalSakit }} Sakit</span><span class="rounded-full bg-orange-100 px-3 py-1.5 text-orange-800">{{ $totalIzin }} Izin</span><span class="rounded-full bg-indigo-100 px-3 py-1.5 text-indigo-800">{{ $totalDispen }} Dispensasi</span><span class="rounded-full bg-rose-100 px-3 py-1.5 text-rose-800">{{ $totalAlfa }} Alpa</span></div>
             </div>
         </section>
 
-        <!-- Search & Filter Controls -->
-        <section class="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div class="relative flex-1 max-w-md">
+        <!-- Pencarian -->
+        <section class="mb-5">
+            <div class="relative max-w-xl">
                 <i class="bi bi-search absolute left-4 top-3.5 text-slate-400"></i>
                 <input type="text" id="search-input" placeholder="Cari nama atau NIS siswa..." class="w-full rounded-xl border border-slate-300 bg-white py-2.5 pl-11 pr-4 text-sm font-medium text-slate-800 shadow-sm placeholder:text-slate-400 focus:border-emerald-500 focus:outline-none focus:ring-4 focus:ring-emerald-100">
             </div>
 
-            <div class="flex items-center gap-2">
-                <select id="status-filter" class="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-4 focus:ring-emerald-100">
-                    <option value="all">Semua Status</option>
-                    <option value="Hadir">Hadir</option>
-                    <option value="Sakit">Sakit</option>
-                    <option value="Izin">Izin</option>
-                    <option value="Dispensasi">Dispensasi</option>
-                    <option value="Alfa">Alfa</option>
-                </select>
-            </div>
         </section>
 
         <!-- Main Table Container -->
         <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-            <div class="border-b border-slate-100 px-6 py-4 flex items-center justify-between">
-                <div>
+            <div class="flex flex-wrap items-center gap-3 border-b border-slate-100 px-4 py-4 sm:px-6">
+                {{-- Judul & Keterangan --}}
+                <div class="flex-1 min-w-0">
                     <h2 class="font-bold text-slate-800">Daftar Presensi Siswa</h2>
-                    <p class="text-xs text-slate-500">Kelas <span id="current-class-label" class="font-bold text-emerald-700">{{ $selectedKelas?->nama_kelas }}</span> • {{ \Carbon\Carbon::parse($tanggal)->translatedFormat('l, d F Y') }}</p>
+                    <p class="hidden text-xs text-slate-500 sm:block">Kelas <span id="current-class-label" class="font-bold text-emerald-700">{{ $selectedKelas?->nama_kelas }}</span> • {{ \Carbon\Carbon::parse($tanggal)->translatedFormat('l, d F Y') }}</p>
+                    @unless($isEditableDate)
+                        <p class="mt-1 text-xs font-semibold text-amber-700"><i class="bi bi-eye-fill mr-1"></i>Mode pemantauan: status hanya dapat diubah pada tanggal hari ini.</p>
+                    @endunless
                 </div>
+
+                {{-- Filter Status --}}
+                <label class="flex shrink-0 items-center gap-2 text-xs font-bold text-slate-600">
+                    <span>Status</span>
+                    <select id="status-filter" class="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-4 focus:ring-emerald-100">
+                        <option value="all">Semua</option>
+                        <option value="Hadir">Hadir</option>
+                        <option value="Sakit">Sakit</option>
+                        <option value="Izin">Izin</option>
+                        <option value="Dispensasi">Dispensasi</option>
+                        <option value="Alfa">Alfa</option>
+                    </select>
+                </label>
+
+                {{-- Tombol Simpan (menempel kanan, terpisah dari dropdown) --}}
+                @if($isEditableDate)
+                    <button form="student-attendance-form" type="submit"
+                        class="ml-auto shrink-0 inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-emerald-700 active:scale-95">
+                        <i class="bi bi-floppy"></i>Simpan
+                    </button>
+                @endif
             </div>
 
-            <div class="overflow-x-auto">
-                <table class="w-full min-w-[700px] text-left">
-                    <thead class="bg-slate-50 text-[11px] font-bold uppercase tracking-wider text-slate-500 border-b border-slate-100">
-                        <tr>
-                            <th scope="col" class="px-6 py-4">NIS</th>
-                            <th scope="col" class="px-6 py-4">Nama Siswa</th>
-                            <th scope="col" class="px-6 py-4">L/P</th>
-                            <th scope="col" class="px-6 py-4">Status Kehadiran</th>
-                            <th scope="col" class="px-6 py-4">Keterangan</th>
-                            <th scope="col" class="px-6 py-4 text-center">Aksi</th>
-                        </tr>
-                    </thead>
-                    <tbody id="student-table-body" class="divide-y divide-slate-100 text-sm">
-                        <!-- Content rendered via JS from real backend data -->
-                    </tbody>
-                </table>
-            </div>
+            <form id="student-attendance-form" method="POST" action="{{ route('piket.kehadiran-siswa.update') }}" class="text-sm">
+                @csrf
+                <input type="hidden" name="bulk_attendance" value="1">
+                <input type="hidden" name="kelas_id" value="{{ $selectedKelasId }}">
+                <input type="hidden" name="tanggal" value="{{ $tanggal }}">
+                <div id="student-table-body" class="space-y-3 p-3 sm:p-4">
+                    <!-- Content rendered via JS from real backend data -->
+                </div>
+            </form>
         </section>
     </div>
 
-    <!-- MODAL UBAH STATUS PRESENSI SISWA -->
-    <div id="student-modal" class="fixed inset-0 z-[60] hidden items-center justify-center bg-slate-950/60 p-4 opacity-0 backdrop-blur-sm transition-opacity duration-200" role="dialog" aria-modal="true">
-        <div id="modal-panel" class="w-full max-w-md translate-y-4 rounded-2xl bg-white p-6 shadow-2xl transition duration-200 sm:translate-y-0">
-            <div class="flex items-center justify-between border-b border-slate-100 pb-4">
-                <h3 class="text-lg font-bold text-slate-900">Ubah Status Presensi Siswa</h3>
-                <button type="button" id="close-modal" class="text-slate-400 hover:text-slate-600 cursor-pointer"><i class="bi bi-x-lg"></i></button>
-            </div>
-
-            <form method="POST" action="{{ route('piket.kehadiran-siswa.update') }}" class="mt-4 space-y-4">
-                @csrf
-                <input type="hidden" name="siswa_id" id="modal-student-id">
-                <input type="hidden" name="kelas_id" value="{{ $selectedKelasId }}">
-                <input type="hidden" name="tanggal" value="{{ $tanggal }}">
-
-                <div>
-                    <p class="text-xs font-semibold text-slate-400">Nama Siswa</p>
-                    <p id="modal-student-name" class="font-bold text-slate-800 text-base"></p>
-                    <p id="modal-student-nis" class="text-xs text-slate-500"></p>
-                </div>
-
-                <div>
-                    <label class="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2 block">Pilih Status Kehadiran</label>
-                    <div class="grid grid-cols-2 gap-2">
-                        <label class="flex items-center gap-2 rounded-xl border border-slate-200 p-2.5 cursor-pointer hover:bg-emerald-50">
-                            <input type="radio" name="status" value="Hadir" class="accent-emerald-600">
-                            <span class="text-xs font-bold text-slate-700">Hadir</span>
-                        </label>
-                        <label class="flex items-center gap-2 rounded-xl border border-slate-200 p-2.5 cursor-pointer hover:bg-amber-50">
-                            <input type="radio" name="status" value="Sakit" class="accent-amber-600">
-                            <span class="text-xs font-bold text-slate-700">Sakit</span>
-                        </label>
-                        <label class="flex items-center gap-2 rounded-xl border border-slate-200 p-2.5 cursor-pointer hover:bg-orange-50">
-                            <input type="radio" name="status" value="Izin" class="accent-orange-600">
-                            <span class="text-xs font-bold text-slate-700">Izin</span>
-                        </label>
-                        <label class="flex items-center gap-2 rounded-xl border border-slate-200 p-2.5 cursor-pointer hover:bg-rose-50">
-                            <input type="radio" name="status" value="Alfa" class="accent-rose-600">
-                            <span class="text-xs font-bold text-slate-700">Alfa</span>
-                        </label>
-                    </div>
-                </div>
-
-                <div>
-                    <label class="text-xs font-bold text-slate-700 uppercase tracking-wider mb-1 block">Catatan / Alasan</label>
-                    <textarea name="catatan" id="modal-note" rows="3" placeholder="Tambahkan catatan izin atau surat dokter..." class="w-full rounded-xl border border-slate-300 p-3 text-xs font-medium text-slate-800 focus:border-emerald-500 focus:outline-none focus:ring-4 focus:ring-emerald-100"></textarea>
-                </div>
-
-                <div class="mt-6 flex justify-end gap-2 border-t border-slate-100 pt-4">
-                    <button type="button" id="cancel-modal" class="rounded-xl px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 cursor-pointer">Batal</button>
-                    <button type="submit" class="rounded-xl bg-emerald-700 px-5 py-2 text-xs font-bold text-white shadow transition hover:bg-emerald-800 cursor-pointer">Simpan Status</button>
-                </div>
-            </form>
-        </div>
-    </div>
 </div>
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
     // Data Riil Siswa dari Database Controller
-    const studentsData = {!! json_encode($studentsData) !!};
+    const studentsData = @json($studentsData);
+    const canEditAttendance = @js($isEditableDate);
 
     const tableBody = document.getElementById('student-table-body');
     const classSelect = document.getElementById('class-select');
     const dateInput = document.getElementById('student-attendance-date');
     const searchInput = document.getElementById('search-input');
     const statusFilter = document.getElementById('status-filter');
-    const modal = document.getElementById('student-modal');
-    const modalPanel = document.getElementById('modal-panel');
+    const attendanceForm = document.getElementById('student-attendance-form');
 
-    function getBadgeClass(status) {
-        switch(status) {
-            case 'Hadir': return 'bg-emerald-50 text-emerald-700 ring-emerald-200';
-            case 'Sakit': return 'bg-amber-50 text-amber-700 ring-amber-200';
-            case 'Izin': return 'bg-orange-50 text-orange-700 ring-orange-200';
-            case 'Dispensasi': return 'bg-purple-50 text-purple-700 ring-purple-200 font-bold';
-            case 'Alfa':
-            case 'Alpa': return 'bg-rose-50 text-rose-700 ring-rose-200';
-            default: return 'bg-slate-50 text-slate-700 ring-slate-200';
-        }
+    // CSS classes for active vs inactive radio label states
+    const ACTIVE_CLS   = ['bg-emerald-600', 'border-emerald-600', 'text-white'];
+    const INACTIVE_CLS = ['bg-white', 'border-slate-200', 'text-slate-500'];
+
+    // Apply active/inactive styling to all labels in a fieldset based on which radio is checked
+    function syncRadioStyles(fieldset) {
+        const inputs = fieldset.querySelectorAll('input[type="radio"]');
+        inputs.forEach((input) => {
+            const label = fieldset.querySelector(`label[for="${input.id}"]`);
+            if (!label) { return; }
+            if (input.checked) {
+                INACTIVE_CLS.forEach(c => label.classList.remove(c));
+                ACTIVE_CLS.forEach(c => label.classList.add(c));
+            } else {
+                ACTIVE_CLS.forEach(c => label.classList.remove(c));
+                INACTIVE_CLS.forEach(c => label.classList.add(c));
+            }
+        });
+    }
+
+    function displayStatus(status) {
+        if (status === 'D') { return 'Dispensasi'; }
+        if (status === 'Alpa') { return 'Alfa'; }
+        return status;
+    }
+
+    function escapeHtml(value) {
+        return String(value ?? '').replace(/[&<>'"]/g, (c) => ({
+            '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#039;', '"': '&quot;',
+        })[c]);
     }
 
     function renderTable() {
-        const searchQuery = searchInput.value.toLowerCase().trim();
+        const searchQuery  = searchInput.value.toLowerCase().trim();
         const selectedStatus = statusFilter.value;
 
         const filtered = studentsData.filter(s => {
             const matchSearch = s.name.toLowerCase().includes(searchQuery) || s.nis.includes(searchQuery);
-            const matchStatus = selectedStatus === 'all' || s.status === selectedStatus;
+            const matchStatus = selectedStatus === 'all' || displayStatus(s.status) === selectedStatus;
             return matchSearch && matchStatus;
         });
 
         if (filtered.length === 0) {
-            tableBody.innerHTML = `<tr><td colspan="6" class="px-6 py-12 text-center text-slate-400 font-medium">Tidak ada siswa yang sesuai filter.</td></tr>`;
+            tableBody.innerHTML = `<div class="px-6 py-12 text-center font-medium text-slate-400">Tidak ada siswa yang sesuai filter.</div>`;
             return;
         }
 
-        tableBody.innerHTML = filtered.map((s, index) => `
-            <tr class="${index % 2 ? 'bg-slate-50/60' : 'bg-white'} transition hover:bg-emerald-50/40">
-                <td class="whitespace-nowrap px-6 py-4 font-mono text-xs text-slate-500 font-bold">${s.nis}</td>
-                <td class="px-6 py-4 font-bold text-slate-800">${s.name}</td>
-                <td class="px-6 py-4 font-semibold text-slate-500">${s.gender}</td>
-                <td class="px-6 py-4">
-                    <span class="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold ring-1 ${getBadgeClass(s.status)}">
-                        ${s.status === 'Dispensasi' ? '<i class="bi bi-ticket-perforated"></i> ' : ''}${s.status}
-                    </span>
-                </td>
-                <td class="px-6 py-4 text-xs text-slate-500 max-w-xs truncate" title="${s.note}">${s.note}</td>
-                <td class="px-6 py-4 text-center">
-                    ${s.is_dispen ? `
-                        <span class="text-[11px] font-semibold text-purple-700 bg-purple-50 border border-purple-200 rounded-lg px-2 py-1 inline-flex items-center gap-1" title="Dispensasi Disahkan Waka">
-                            <i class="bi bi-shield-check"></i> Surat Waka
-                        </span>
-                    ` : `
-                        <button type="button" onclick="openEditModal(${s.id})" class="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-bold text-slate-700 transition hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-200 cursor-pointer">
-                            Ubah Status
-                        </button>
-                    `}
-                </td>
-            </tr>
-        `).join('');
+        tableBody.innerHTML = filtered.map((s, index) => {
+            // Default to 'Hadir' if no status recorded
+            const storedStatus = s.status || 'Hadir';
+            const isLocked = s.is_dispen || !canEditAttendance;
+
+            const OPTIONS = [
+                { label: 'H', value: 'Hadir' },
+                { label: 'S', value: 'Sakit' },
+                { label: 'I', value: 'Izin'  },
+                { label: 'A', value: 'Alfa'  },
+                { label: 'D', value: 'D'     },
+            ];
+
+            const buttons = OPTIONS.map(({ label, value }) => {
+                const inputId = `att-${s.id}-${value}`;
+                const isChecked = storedStatus === value
+                    || (value === 'Alfa' && storedStatus === 'Alpa');
+
+                // Inline style: active class applied directly at render time via JS classes string
+                const activeCls   = 'bg-emerald-600 border-emerald-600 text-white';
+                const inactiveCls = 'bg-white border-slate-200 text-slate-500';
+                const stateCls    = isChecked ? activeCls : inactiveCls;
+                const disabledCls = isLocked  ? 'cursor-not-allowed opacity-60' : 'cursor-pointer hover:border-emerald-400 hover:bg-emerald-50 hover:text-emerald-700';
+
+                return `
+                    <input id="${inputId}" type="radio"
+                        name="absensi[${s.id}]" value="${value}"
+                        data-group="${s.id}"
+                        class="sr-only"
+                        ${isChecked ? 'checked' : ''}
+                        ${isLocked  ? 'disabled' : ''}>
+                    <label for="${inputId}"
+                        class="flex h-9 w-full select-none items-center justify-center rounded-lg border text-sm font-bold transition ${stateCls} ${disabledCls}">
+                        ${label}
+                    </label>`;
+            }).join('');
+
+            return `
+                <div data-attendance-card class="space-y-2.5 rounded-xl border border-slate-200 bg-white p-3 shadow-sm transition hover:border-emerald-200 hover:shadow-md">
+                    <div class="flex items-center gap-3">
+                        <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-emerald-200 bg-emerald-50 text-[11px] font-bold text-emerald-800">${index + 1}</span>
+                        <div class="min-w-0 flex-1">
+                            <p class="text-sm font-bold leading-tight text-slate-900">${escapeHtml(s.name)}</p>
+                            <p class="mt-0.5 text-[11px] font-medium text-slate-400">NIS: ${escapeHtml(s.nis)} &bull; ${escapeHtml(s.gender)}</p>
+                        </div>
+                    </div>
+                    <fieldset data-student-id="${s.id}" class="grid grid-cols-5 gap-2" aria-label="Status kehadiran ${escapeHtml(s.name)}">
+                        ${buttons}
+                    </fieldset>
+                    <label class="block">
+                        <span class="sr-only">Alasan / Keterangan</span>
+                        <input type="text" name="absensi_catatan[${s.id}]" maxlength="255"
+                            value="${escapeHtml(s.note === '-' ? '' : s.note)}"
+                            ${isLocked ? 'readonly' : ''}
+                            placeholder="Keterangan jika tidak hadir (opsional)"
+                            class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-emerald-500 focus:bg-white focus:ring-2 focus:ring-emerald-100 ${isLocked ? 'cursor-not-allowed opacity-60' : ''}">
+                    </label>
+                </div>`;
+        }).join('');
     }
 
-    window.openEditModal = function(id) {
-        const student = studentsData.find(s => s.id === id);
-        if (!student) return;
-
-        document.getElementById('modal-student-id').value = student.id;
-        document.getElementById('modal-student-name').textContent = student.name;
-        document.getElementById('modal-student-nis').textContent = `NIS: ${student.nis} • Kelas: ${student.class}`;
-        document.getElementById('modal-note').value = student.note === '-' ? '' : student.note;
-        
-        const radios = document.getElementsByName('status');
-        radios.forEach(r => { r.checked = (r.value === student.status); });
-
-        modal.classList.remove('hidden');
-        setTimeout(() => {
-            modal.classList.remove('opacity-0');
-            modalPanel.classList.remove('translate-y-4');
-        }, 10);
-    };
-
-    function closeModal() {
-        modal.classList.add('opacity-0');
-        modalPanel.classList.add('translate-y-4');
-        setTimeout(() => modal.classList.add('hidden'), 200);
-    }
-
-    document.getElementById('close-modal').addEventListener('click', closeModal);
-    document.getElementById('cancel-modal').addEventListener('click', closeModal);
-
-    // Ganti Kelas & Tanggal -> reload URL query parameter
-    classSelect.addEventListener('change', function() {
+    // Ganti Kelas & Tanggal -> reload URL
+    classSelect.addEventListener('change', function () {
         window.location.href = `{{ route('piket.kehadiran-siswa') }}?kelas_id=${this.value}&tanggal=${dateInput.value}`;
     });
-
-    dateInput.addEventListener('change', function() {
+    dateInput.addEventListener('change', function () {
         window.location.href = `{{ route('piket.kehadiran-siswa') }}?kelas_id=${classSelect.value}&tanggal=${this.value}`;
     });
 
     searchInput.addEventListener('input', renderTable);
     statusFilter.addEventListener('change', renderTable);
 
-    // Export CSV Siswa
-    document.getElementById('export-student-data').addEventListener('click', () => {
-        const query = searchInput.value.toLowerCase().trim();
-        const selectedStatus = statusFilter.value;
-        const filtered = studentsData.filter(s => {
-            const matchSearch = s.name.toLowerCase().includes(query) || s.nis.includes(query);
-            const matchStatus = selectedStatus === 'all' || s.status === selectedStatus;
-            return matchSearch && matchStatus;
+    // Delegated listener: update label styles when any radio changes
+    tableBody.addEventListener('change', (event) => {
+        const input = event.target;
+        if (input.type !== 'radio') { return; }
+
+        // Mark card as dirty
+        input.closest('[data-attendance-card]')?.setAttribute('data-dirty', 'true');
+
+        // Re-sync styles for this fieldset
+        const fieldset = input.closest('fieldset[data-student-id]');
+        if (fieldset) { syncRadioStyles(fieldset); }
+    });
+
+    tableBody.addEventListener('input', (event) => {
+        event.target.closest('[data-attendance-card]')?.setAttribute('data-dirty', 'true');
+    });
+
+    attendanceForm.addEventListener('submit', () => {
+        tableBody.querySelectorAll('[data-attendance-card]').forEach((card) => {
+            if (card.dataset.dirty !== 'true') {
+                card.querySelectorAll('input[name^="absensi["], input[name^="absensi_catatan["]').forEach((inp) => {
+                    inp.disabled = true;
+                });
+            }
         });
-
-        if (filtered.length === 0) {
-            alert('Tidak ada data presensi siswa untuk diekspor.');
-            return;
-        }
-
-        const className = classSelect.options[classSelect.selectedIndex]?.text || 'Kelas';
-        const dateVal = dateInput.value || 'Hari-Ini';
-
-        const header = ['NIS', 'Nama Siswa', 'L/P', 'Kelas', 'Status Kehadiran', 'Keterangan', 'Tanggal'];
-        const rows = filtered.map(s => [s.nis, s.name, s.gender, s.class, s.status, s.note, dateVal]);
-
-        const csvContent = [header, ...rows]
-            .map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
-            .join('\n');
-
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `presensi-siswa-${className.replace(/\s+/g, '_')}-${dateVal}.csv`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
     });
 
     renderTable();

@@ -22,12 +22,24 @@
     .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(16, 185, 129, 0.5); }
 </style>
 
+@php
+    $mapelMap = $mapels->mapWithKeys(fn ($mapel) => [
+        (string) $mapel->id => $mapel->nama_mapel ?? $mapel->nama ?? $mapel->kode ?? '',
+    ])->all();
+    $kelasMap = $kelases->mapWithKeys(fn ($kelas) => [
+        (string) $kelas->id_kelas => $kelas->nama_kelas ?? '',
+    ])->all();
+    $mapelMapEncoded = base64_encode(json_encode($mapelMap) ?: '{}');
+    $kelasMapEncoded = base64_encode(json_encode($kelasMap) ?: '{}');
+@endphp
+
 <div
     x-data="{
         selectedKelas: '',
         selectedMapel: '',
         selectedJamKe: '',
         selectedJamSelesai: '',
+        selectedTanggal: '{{ $todayDate }}',
         searchSiswa: '',
         searchKelas: '',
         searchMapel: '',
@@ -37,18 +49,11 @@
         cameraActive: false,
         cameraStream: null,
         capturedPhoto: null,
+        previewModal: false,
 
-        mapelMap: {
-            @foreach($mapels as $mapel)
-                '{{ $mapel->id }}': '{{ addslashes($mapel->nama_mapel ?? $mapel->nama ?? $mapel->kode) }}',
-            @endforeach
-        },
+        mapelMap: JSON.parse(atob('{{ $mapelMapEncoded }}')),
 
-        kelasMap: {
-            @foreach($kelases as $kelas)
-                '{{ $kelas->id_kelas }}': '{{ addslashes($kelas->nama_kelas) }}',
-            @endforeach
-        },
+        kelasMap: JSON.parse(atob('{{ $kelasMapEncoded }}')),
 
         getMapelName(id) {
             return this.mapelMap[id] || '';
@@ -84,6 +89,12 @@
             if (!this.searchSiswa || this.searchSiswa.trim() === '') return true;
             const query = this.searchSiswa.toLowerCase().trim();
             return String(nama || '').toLowerCase().includes(query) || (nis && String(nis).toLowerCase().includes(query));
+        },
+
+        attendanceCount(status) {
+            if (!this.$refs.logbookForm) return 0;
+            return [...this.$refs.logbookForm.querySelectorAll('input[type=radio]:checked')]
+                .filter((input) => input.value === status).length;
         },
 
         async startCamera() {
@@ -166,7 +177,15 @@
                 }
                 return false;
             }
+            e.preventDefault();
+            this.previewModal = true;
+            return false;
+        },
+
+        sendLogbook() {
+            this.previewModal = false;
             this.stopCamera();
+            this.$refs.logbookForm.submit();
         }
     }"
     class="mx-auto w-full max-w-7xl px-4 py-5 sm:px-6 lg:px-8"
@@ -192,20 +211,6 @@
         </div>
     @endif
 
-    {{-- HEADER RINGKAS --}}
-    <section class="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div class="min-w-0">
-            <p class="text-base font-bold leading-tight text-slate-800 sm:text-lg">
-                {{ \Carbon\Carbon::now('Asia/Jakarta')->translatedFormat('l, d F Y') }}
-            </p>
-        </div>
-
-        <span class="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-800 shadow-xs">
-            <span class="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
-            <strong x-text="liveClock + ' WIB'" class="font-mono text-emerald-950 font-bold"></strong>
-        </span>
-    </section>
-
     {{-- ========================================================= --}}
     {{-- SECTION : JADWAL MENGAJAR GURU HARI INI (MOBILE FRIENDLY) --}}
     {{-- ========================================================= --}}
@@ -230,6 +235,7 @@
                     $isFilled = $jadwal->is_filled;
                     $statusWaktu = $jadwal->status_waktu;
                     $isOngoing = ($statusWaktu === 'berlangsung' && !$isFilled);
+                    $canFillSchedule = $logbookPolicy['mode'] !== 'terbatas_jam' || $statusWaktu === 'berlangsung';
                 @endphp
 
                 <div class="rounded-xl border p-3 transition sm:p-3.5 {{ $isOngoing ? 'border-emerald-400 bg-white' : 'border-slate-200 bg-white hover:border-slate-300' }}">
@@ -288,13 +294,9 @@
                                     <i class="bi bi-eye"></i>
                                     <span>Lihat Jurnal</span>
                                 </a>
-                            @elseif($statusWaktu === 'lewat')
+                            @elseif(! $canFillSchedule)
                                 <span class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-center text-xs font-medium text-slate-400 cursor-not-allowed">
                                     <i class="bi bi-lock-fill mr-1"></i>Tenggat Lewat
-                                </span>
-                            @elseif($statusWaktu === 'belum_mulai')
-                                <span class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-center text-xs font-medium text-slate-500 cursor-not-allowed">
-                                    <i class="bi bi-clock-history mr-1"></i>Belum Dimulai
                                 </span>
                             @else
                                 <button
@@ -324,6 +326,7 @@
     {{-- ========================================================= --}}
     <section id="form-logbook-section" class="mt-6">
         <form
+            x-ref="logbookForm"
             action="{{ route('guru.jurnal.store') }}"
             method="POST"
             enctype="multipart/form-data"
@@ -344,6 +347,29 @@
                 </div>
 
                 <div class="grid gap-4 sm:grid-cols-2">
+                    <label class="block">
+                        <span class="text-xs font-bold text-slate-700">Tanggal Jurnal <span class="text-rose-500">*</span></span>
+                        <input
+                            type="date"
+                            name="tanggal"
+                            x-model="selectedTanggal"
+                            value="{{ $todayDate }}"
+                            min="{{ $logbookPolicy['allows_yesterday'] ? \Carbon\Carbon::parse($todayDate)->subDay()->toDateString() : $todayDate }}"
+                            max="{{ $todayDate }}"
+                            {{ $logbookPolicy['allows_yesterday'] ? '' : 'readonly' }}
+                            class="mt-1.5 w-full rounded-lg border border-slate-200 px-3.5 py-2.5 text-sm text-slate-700 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100 {{ $logbookPolicy['allows_yesterday'] ? 'bg-white' : 'cursor-not-allowed bg-slate-100' }}"
+                        >
+                        <span class="mt-1 block text-[11px] text-slate-500">
+                            @if($logbookPolicy['mode'] === 'los')
+                                Mode susulan: pilih hari ini atau kemarin (H-1).
+                            @elseif($logbookPolicy['mode'] === 'hari_ini')
+                                Fleksibel jam, tetapi hanya untuk hari ini hingga pukul 23:59 WIB.
+                            @else
+                                Pengisian hanya diizinkan saat jam mengajar berlangsung.
+                            @endif
+                        </span>
+                    </label>
+
                     {{-- GURU PENGAJAR --}}
                     <label class="block">
                         <span class="text-xs font-bold text-slate-700">Nama Guru Pengajar</span>
@@ -554,15 +580,207 @@
                         <input
                             type="text"
                             name="materi"
+                            x-ref="materiInput"
                             required
-                            placeholder="Contoh: Pengenalan struktur data array dan penerapannya"
                             class="mt-1.5 w-full rounded-lg border border-slate-200 px-3.5 py-2.5 text-sm text-slate-700 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100"
                         >
                     </label>
                 </div>
             </div>
 
-            {{-- 2. LAMPIRAN BUKTI HADIR DI KELAS (FOTO LIVE) --}}
+
+            {{-- 3. PRESENSI KEHADIRAN SISWA --}}
+            <div class="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm sm:p-5">
+                <div class="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 pb-3 mb-3">
+                    <div class="flex items-center gap-2">
+                        <span class="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-100 text-sm text-emerald-700">
+                            <i class="bi bi-people-fill"></i>
+                        </span>
+                        <h3 class="text-base font-bold text-slate-800">
+                            Presensi Kehadiran Siswa
+                        </h3>
+                    </div>
+
+                    {{-- LEGENDA STATUS ABSENSI DENGAN DISPENSASI (D) --}}
+                    <div class="flex flex-wrap items-center gap-1.5 text-[11px] font-semibold">
+                        <span class="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-0.5 text-emerald-700 border border-emerald-200">
+                            <span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span> H: Hadir
+                        </span>
+                        <span class="inline-flex items-center gap-1 rounded-md bg-amber-50 px-2 py-0.5 text-amber-700 border border-amber-200">
+                            <span class="h-1.5 w-1.5 rounded-full bg-amber-500"></span> S: Sakit
+                        </span>
+                        <span class="inline-flex items-center gap-1 rounded-md bg-blue-50 px-2 py-0.5 text-blue-700 border border-blue-200">
+                            <span class="h-1.5 w-1.5 rounded-full bg-blue-500"></span> I: Izin
+                        </span>
+                        <span class="inline-flex items-center gap-1 rounded-md bg-rose-50 px-2 py-0.5 text-rose-700 border border-rose-200">
+                            <span class="h-1.5 w-1.5 rounded-full bg-rose-500"></span> A: Alpa
+                        </span>
+                        <span class="inline-flex items-center gap-1 rounded-md bg-indigo-50 px-2 py-0.5 text-indigo-700 border border-indigo-200">
+                            <span class="h-1.5 w-1.5 rounded-full bg-indigo-500"></span> D: Dispensasi
+                        </span>
+                    </div>
+                </div>
+
+                {{-- INFO KELAS BELUM TERPILIH --}}
+                <div x-show="!selectedKelas" class="rounded-xl border border-dashed border-slate-200 bg-slate-50 p-6 text-center text-xs text-slate-500">
+                    <i class="bi bi-info-circle text-lg text-slate-400 block mb-1"></i>
+                    Pilih kelas terlebih dahulu untuk menampilkan daftar siswa.
+                </div>
+
+                {{-- SEARCH BAR TERPISAH (TIDAK STICKY, INDEPENDENT) --}}
+                <div x-show="selectedKelas" class="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+                    <div class="relative flex items-center">
+                        <i class="bi bi-search absolute left-3 text-slate-400 text-xs"></i>
+                        <input
+                            type="search"
+                            x-model="searchSiswa"
+                            placeholder="Cari nama atau NIS siswa..."
+                            class="w-full rounded-lg border border-slate-200 bg-slate-50/80 py-2 pl-9 pr-3 text-xs text-slate-700 outline-none transition focus:border-emerald-600 focus:bg-white focus:ring-2 focus:ring-emerald-100"
+                        >
+                        <button
+                            type="button"
+                            x-show="searchSiswa"
+                            @click.stop="searchSiswa = ''"
+                            class="absolute right-2.5 text-slate-400 hover:text-slate-600 text-xs"
+                        >
+                            <i class="bi bi-x-circle-fill"></i>
+                        </button>
+                    </div>
+                </div>
+
+                {{-- CONTAINER PRESENSI SISWA (STANDALONE, SCROLLABLE) --}}
+                <div x-show="selectedKelas" class="relative overflow-hidden rounded-xl border border-slate-200/80 bg-slate-50/60">
+                    {{-- LIST SISWA GROUPED BY KELAS DENGAN NOMOR ABSEN 1..N --}}
+                    <div class="custom-scrollbar max-h-[min(52dvh,34rem)] space-y-2 overflow-y-auto p-3">
+                        @forelse($siswasByKelas as $kelasId => $kelasSiswas)
+                            @if(count($kelasSiswas) > 0)
+                                <div class="space-y-2" x-show="selectedKelas === @js((string) $kelasId)">
+                                    @foreach($kelasSiswas as $idx => $siswa)
+                                        @php
+                                            $catatanPiket = $piketKehadiranHariIni->get($siswa->id);
+                                            $statusSiswa = $catatanPiket?->status ?? 'Hadir';
+                                        @endphp
+                                        <div
+                                            x-show="matchesSearch(@js($siswa->nama), @js($siswa->nis))"
+                                            class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 rounded-xl border border-slate-200/80 bg-white p-3 shadow-2xs transition hover:border-emerald-300"
+                                        >
+                                            {{-- NOMOR & NAMA SISWA (FULL WIDTH DI MOBILE) --}}
+                                            <div class="flex items-center gap-2.5 w-full sm:flex-1 sm:min-w-0">
+                                                <span class="flex h-6 min-w-6 px-1.5 items-center justify-center rounded-full bg-emerald-50 text-[11px] font-bold text-emerald-800 border border-emerald-200/80 shrink-0">
+                                                    {{ $idx + 1 }}
+                                                </span>
+                                                <div class="min-w-0 flex-1">
+                                                    <p class="text-xs font-bold text-slate-800 break-words">
+                                                        {{ $siswa->nama }}
+                                                    </p>
+                                                    <p class="text-[11px] text-slate-400 truncate">
+                                                        NIS: {{ $siswa->nis ?? '-' }} &bull; {{ $siswa->jenis_kelamin }}
+                                                    </p>
+                                                </div>
+                                            </div>
+
+                                            {{-- PILIHAN STATUS H, S, I, A, D (FULL WIDTH DI MOBILE) --}}
+                                        <fieldset class="flex items-center gap-1 w-full sm:w-auto sm:shrink-0 sm:justify-end justify-between">
+                                            {{-- HADIR (H) --}}
+                                            <div class="flex-1 sm:flex-none">
+                                                <input
+                                                    type="radio"
+                                                    id="absensi_{{ $siswa->id }}_hadir"
+                                                    name="absensi[{{ $siswa->id }}]"
+                                                    value="Hadir"
+                                                    @checked($statusSiswa === 'Hadir')
+                                                    class="peer sr-only"
+                                                >
+                                                <label for="absensi_{{ $siswa->id }}_hadir" class="cursor-pointer flex h-7 w-full sm:w-7 items-center justify-center rounded-lg border text-xs font-bold transition peer-checked:border-emerald-600 peer-checked:bg-emerald-600 peer-checked:text-white border-slate-200 bg-white text-slate-600 hover:bg-slate-50" title="Hadir">
+                                                    H
+                                                </label>
+                                            </div>
+
+                                            {{-- SAKIT (S) --}}
+                                            <div class="flex-1 sm:flex-none">
+                                                <input
+                                                    type="radio"
+                                                    id="absensi_{{ $siswa->id }}_sakit"
+                                                    name="absensi[{{ $siswa->id }}]"
+                                                    value="Sakit"
+                                                    @checked($statusSiswa === 'Sakit')
+                                                    class="peer sr-only"
+                                                >
+                                                <label for="absensi_{{ $siswa->id }}_sakit" class="cursor-pointer flex h-7 w-full sm:w-7 items-center justify-center rounded-lg border text-xs font-bold transition peer-checked:border-amber-500 peer-checked:bg-amber-500 peer-checked:text-white border-slate-200 bg-white text-slate-600 hover:bg-slate-50" title="Sakit">
+                                                    S
+                                                </label>
+                                            </div>
+
+                                            {{-- IZIN (I) --}}
+                                            <div class="flex-1 sm:flex-none">
+                                                <input
+                                                    type="radio"
+                                                    id="absensi_{{ $siswa->id }}_izin"
+                                                    name="absensi[{{ $siswa->id }}]"
+                                                    value="Izin"
+                                                    @checked($statusSiswa === 'Izin')
+                                                    class="peer sr-only"
+                                                >
+                                                <label for="absensi_{{ $siswa->id }}_izin" class="cursor-pointer flex h-7 w-full sm:w-7 items-center justify-center rounded-lg border text-xs font-bold transition peer-checked:border-blue-500 peer-checked:bg-blue-500 peer-checked:text-white border-slate-200 bg-white text-slate-600 hover:bg-slate-50" title="Izin">
+                                                    I
+                                                </label>
+                                            </div>
+
+                                            {{-- ALPA (A) --}}
+                                            <div class="flex-1 sm:flex-none">
+                                                <input
+                                                    type="radio"
+                                                    id="absensi_{{ $siswa->id }}_alpa"
+                                                    name="absensi[{{ $siswa->id }}]"
+                                                    value="Alpa"
+                                                    @checked(in_array($statusSiswa, ['Alpa', 'Alfa'], true))
+                                                    class="peer sr-only"
+                                                >
+                                                <label for="absensi_{{ $siswa->id }}_alpa" class="cursor-pointer flex h-7 w-full sm:w-7 items-center justify-center rounded-lg border text-xs font-bold transition peer-checked:border-rose-500 peer-checked:bg-rose-500 peer-checked:text-white border-slate-200 bg-white text-slate-600 hover:bg-slate-50" title="Alpa">
+                                                    A
+                                                </label>
+                                            </div>
+
+                                            {{-- DISPENSASI (D) --}}
+                                            <div class="flex-1 sm:flex-none">
+                                                <input
+                                                    type="radio"
+                                                    id="absensi_{{ $siswa->id }}_dispensasi"
+                                                    name="absensi[{{ $siswa->id }}]"
+                                                    value="Dispensasi"
+                                                    @checked(in_array($statusSiswa, ['D', 'Dispensasi'], true))
+                                                    class="peer sr-only"
+                                                >
+                                                <label for="absensi_{{ $siswa->id }}_dispensasi" class="cursor-pointer flex h-7 w-full sm:w-7 items-center justify-center rounded-lg border text-xs font-bold transition peer-checked:border-indigo-600 peer-checked:bg-indigo-600 peer-checked:text-white border-slate-200 bg-white text-slate-600 hover:bg-slate-50" title="Dispensasi">
+                                                    D
+                                                </label>
+                                            </div>
+                                        </fieldset>
+                                        <label class="w-full sm:basis-full">
+                                            <span class="sr-only">Keterangan absensi {{ $siswa->nama }}</span>
+                                            <input
+                                                type="text"
+                                                name="absensi_catatan[{{ $siswa->id }}]"
+                                                maxlength="255"
+                                                value="{{ $catatanPiket?->catatan }}"
+                                                placeholder="Keterangan jika tidak hadir (opsional)"
+                                                class="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-xs text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100"
+                                            >
+                                        </label>
+                                    </div>
+                                @endforeach
+                                </div>
+                            @endif
+                        @empty
+                            <div class="p-6 text-center text-xs text-slate-400">
+                                Belum ada data siswa terdaftar.
+                            </div>
+                        @endforelse
+                    </div>
+                </div>
+            </div>
+
+{{-- 2. LAMPIRAN BUKTI HADIR DI KELAS (FOTO LIVE) --}}
             <div id="section-lampiran-logbook" class="rounded-2xl bg-white p-4 shadow-sm border border-slate-100 sm:p-5">
                 <div class="border-b border-slate-100 pb-3 flex items-center gap-2">
                     <span class="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-100 text-sm text-emerald-700">
@@ -630,177 +848,6 @@
                 </div>
             </div>
 
-            {{-- 3. PRESENSI KEHADIRAN SISWA --}}
-            <div class="rounded-2xl bg-white p-4 shadow-sm border border-slate-100 sm:p-5">
-                <div class="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 pb-3 mb-3">
-                    <div class="flex items-center gap-2">
-                        <span class="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-100 text-sm text-emerald-700">
-                            <i class="bi bi-people-fill"></i>
-                        </span>
-                        <h3 class="text-base font-bold text-slate-800">
-                            Presensi Kehadiran Siswa
-                        </h3>
-                    </div>
-
-                    {{-- LEGENDA STATUS ABSENSI DENGAN DISPENSASI (D) --}}
-                    <div class="flex flex-wrap items-center gap-1.5 text-[11px] font-semibold">
-                        <span class="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-0.5 text-emerald-700 border border-emerald-200">
-                            <span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span> H: Hadir
-                        </span>
-                        <span class="inline-flex items-center gap-1 rounded-md bg-amber-50 px-2 py-0.5 text-amber-700 border border-amber-200">
-                            <span class="h-1.5 w-1.5 rounded-full bg-amber-500"></span> S: Sakit
-                        </span>
-                        <span class="inline-flex items-center gap-1 rounded-md bg-blue-50 px-2 py-0.5 text-blue-700 border border-blue-200">
-                            <span class="h-1.5 w-1.5 rounded-full bg-blue-500"></span> I: Izin
-                        </span>
-                        <span class="inline-flex items-center gap-1 rounded-md bg-rose-50 px-2 py-0.5 text-rose-700 border border-rose-200">
-                            <span class="h-1.5 w-1.5 rounded-full bg-rose-500"></span> A: Alpa
-                        </span>
-                        <span class="inline-flex items-center gap-1 rounded-md bg-indigo-50 px-2 py-0.5 text-indigo-700 border border-indigo-200">
-                            <span class="h-1.5 w-1.5 rounded-full bg-indigo-500"></span> D: Dispensasi
-                        </span>
-                    </div>
-                </div>
-
-                {{-- INFO KELAS BELUM TERPILIH --}}
-                <div x-show="!selectedKelas" class="rounded-xl border border-dashed border-slate-200 bg-slate-50 p-6 text-center text-xs text-slate-500">
-                    <i class="bi bi-info-circle text-lg text-slate-400 block mb-1"></i>
-                    Pilih kelas terlebih dahulu untuk menampilkan daftar siswa.
-                </div>
-
-                {{-- SEARCH BAR TERPISAH (TIDAK STICKY, INDEPENDENT) --}}
-                <div x-show="selectedKelas" class="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
-                    <div class="relative flex items-center">
-                        <i class="bi bi-search absolute left-3 text-slate-400 text-xs"></i>
-                        <input
-                            type="search"
-                            x-model="searchSiswa"
-                            placeholder="Cari nama atau NIS siswa..."
-                            class="w-full rounded-lg border border-slate-200 bg-slate-50/80 py-2 pl-9 pr-3 text-xs text-slate-700 outline-none transition focus:border-emerald-600 focus:bg-white focus:ring-2 focus:ring-emerald-100"
-                        >
-                        <button
-                            type="button"
-                            x-show="searchSiswa"
-                            @click.stop="searchSiswa = ''"
-                            class="absolute right-2.5 text-slate-400 hover:text-slate-600 text-xs"
-                        >
-                            <i class="bi bi-x-circle-fill"></i>
-                        </button>
-                    </div>
-                </div>
-
-                {{-- CONTAINER PRESENSI SISWA (STANDALONE, SCROLLABLE) --}}
-                <div x-show="selectedKelas" class="relative rounded-xl border border-slate-200/80 bg-slate-50/60 overflow-hidden">
-                    {{-- LIST SISWA GROUPED BY KELAS DENGAN NOMOR ABSEN 1..N --}}
-                    <div class="p-3 space-y-2">
-                        @forelse($siswasByKelas as $kelasId => $kelasSiswas)
-                            @if(count($kelasSiswas) > 0)
-                                <div class="space-y-2" x-show="selectedKelas === @js((string) $kelasId)">
-                                    @foreach($kelasSiswas as $idx => $siswa)
-                                        <div
-                                            x-show="matchesSearch(@js($siswa->nama), @js($siswa->nis))"
-                                            class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 rounded-xl border border-slate-200/80 bg-white p-3 shadow-2xs transition hover:border-emerald-300"
-                                        >
-                                            {{-- NOMOR & NAMA SISWA (FULL WIDTH DI MOBILE) --}}
-                                            <div class="flex items-center gap-2.5 w-full sm:flex-1 sm:min-w-0">
-                                                <span class="flex h-6 min-w-6 px-1.5 items-center justify-center rounded-full bg-emerald-50 text-[11px] font-bold text-emerald-800 border border-emerald-200/80 shrink-0">
-                                                    {{ $idx + 1 }}
-                                                </span>
-                                                <div class="min-w-0 flex-1">
-                                                    <p class="text-xs font-bold text-slate-800 break-words">
-                                                        {{ $siswa->nama }}
-                                                    </p>
-                                                    <p class="text-[11px] text-slate-400 truncate">
-                                                        NIS: {{ $siswa->nis ?? '-' }} &bull; {{ $siswa->jenis_kelamin }}
-                                                    </p>
-                                                </div>
-                                            </div>
-
-                                            {{-- PILIHAN STATUS H, S, I, A, D (FULL WIDTH DI MOBILE) --}}
-                                            <fieldset class="flex items-center gap-1 w-full sm:w-auto sm:shrink-0 sm:justify-end justify-between">
-                                            {{-- HADIR (H) --}}
-                                            <div class="flex-1 sm:flex-none">
-                                                <input
-                                                    type="radio"
-                                                    id="absensi_{{ $siswa->id }}_hadir"
-                                                    name="absensi[{{ $siswa->id }}]"
-                                                    value="Hadir"
-                                                    checked
-                                                    class="peer sr-only"
-                                                >
-                                                <label for="absensi_{{ $siswa->id }}_hadir" class="cursor-pointer flex h-7 w-full sm:w-7 items-center justify-center rounded-lg border text-xs font-bold transition peer-checked:border-emerald-600 peer-checked:bg-emerald-600 peer-checked:text-white border-slate-200 bg-white text-slate-600 hover:bg-slate-50" title="Hadir">
-                                                    H
-                                                </label>
-                                            </div>
-
-                                            {{-- SAKIT (S) --}}
-                                            <div class="flex-1 sm:flex-none">
-                                                <input
-                                                    type="radio"
-                                                    id="absensi_{{ $siswa->id }}_sakit"
-                                                    name="absensi[{{ $siswa->id }}]"
-                                                    value="Sakit"
-                                                    class="peer sr-only"
-                                                >
-                                                <label for="absensi_{{ $siswa->id }}_sakit" class="cursor-pointer flex h-7 w-full sm:w-7 items-center justify-center rounded-lg border text-xs font-bold transition peer-checked:border-amber-500 peer-checked:bg-amber-500 peer-checked:text-white border-slate-200 bg-white text-slate-600 hover:bg-slate-50" title="Sakit">
-                                                    S
-                                                </label>
-                                            </div>
-
-                                            {{-- IZIN (I) --}}
-                                            <div class="flex-1 sm:flex-none">
-                                                <input
-                                                    type="radio"
-                                                    id="absensi_{{ $siswa->id }}_izin"
-                                                    name="absensi[{{ $siswa->id }}]"
-                                                    value="Izin"
-                                                    class="peer sr-only"
-                                                >
-                                                <label for="absensi_{{ $siswa->id }}_izin" class="cursor-pointer flex h-7 w-full sm:w-7 items-center justify-center rounded-lg border text-xs font-bold transition peer-checked:border-blue-500 peer-checked:bg-blue-500 peer-checked:text-white border-slate-200 bg-white text-slate-600 hover:bg-slate-50" title="Izin">
-                                                    I
-                                                </label>
-                                            </div>
-
-                                            {{-- ALPA (A) --}}
-                                            <div class="flex-1 sm:flex-none">
-                                                <input
-                                                    type="radio"
-                                                    id="absensi_{{ $siswa->id }}_alpa"
-                                                    name="absensi[{{ $siswa->id }}]"
-                                                    value="Alpa"
-                                                    class="peer sr-only"
-                                                >
-                                                <label for="absensi_{{ $siswa->id }}_alpa" class="cursor-pointer flex h-7 w-full sm:w-7 items-center justify-center rounded-lg border text-xs font-bold transition peer-checked:border-rose-500 peer-checked:bg-rose-500 peer-checked:text-white border-slate-200 bg-white text-slate-600 hover:bg-slate-50" title="Alpa">
-                                                    A
-                                                </label>
-                                            </div>
-
-                                            {{-- DISPENSASI (D) --}}
-                                            <div class="flex-1 sm:flex-none">
-                                                <input
-                                                    type="radio"
-                                                    id="absensi_{{ $siswa->id }}_dispensasi"
-                                                    name="absensi[{{ $siswa->id }}]"
-                                                    value="Dispensasi"
-                                                    class="peer sr-only"
-                                                >
-                                                <label for="absensi_{{ $siswa->id }}_dispensasi" class="cursor-pointer flex h-7 w-full sm:w-7 items-center justify-center rounded-lg border text-xs font-bold transition peer-checked:border-indigo-600 peer-checked:bg-indigo-600 peer-checked:text-white border-slate-200 bg-white text-slate-600 hover:bg-slate-50" title="Dispensasi">
-                                                    D
-                                                </label>
-                                            </div>
-                                        </fieldset>
-                                    </div>
-                                @endforeach
-                                </div>
-                            @endif
-                        @empty
-                            <div class="p-6 text-center text-xs text-slate-400">
-                                Belum ada data siswa terdaftar.
-                            </div>
-                        @endforelse
-                    </div>
-                </div>
-            </div>
 
             {{-- 4. CATATAN KHUSUS (OPSIONAL) --}}
             <div class="rounded-2xl bg-white p-4 shadow-sm border border-slate-100 sm:p-5">
@@ -817,13 +864,18 @@
             </div>
 
             {{-- SUBMIT BUTTON --}}
-            <button
-                type="submit"
+            <button type="submit"
                 class="flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-5 py-3.5 text-sm font-bold text-white shadow-sm transition hover:bg-emerald-700 active:scale-98"
             >
-                <i class="bi bi-send-fill"></i>
-                <span>Kirim Logbook &amp; Presensi Siswa</span>
+                <span>Kirim</span>
             </button>
+
+            <div x-show="previewModal" x-cloak @keydown.escape.window="previewModal = false" class="fixed inset-0 z-[80] flex items-end bg-slate-950/60 p-0 backdrop-blur-sm sm:items-center sm:justify-center sm:p-5">
+                <div class="max-h-[92dvh] w-full overflow-y-auto rounded-t-2xl bg-white shadow-2xl sm:max-w-2xl sm:rounded-2xl">
+                    <div class="sticky top-0 flex items-center justify-between border-b border-slate-100 bg-white px-4 py-3 sm:px-5"><div><h3 class="text-base font-bold text-slate-900">Pratinjau Logbook</h3><p class="text-xs text-slate-500">Periksa seluruh data sebelum dikirim.</p></div><button type="button" @click="previewModal = false" class="flex h-9 w-9 items-center justify-center rounded-full text-slate-500 hover:bg-slate-100"><i class="bi bi-x-lg"></i></button></div>
+                    <div class="space-y-4 p-4 sm:p-5"><div class="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4"><div class="rounded-xl bg-slate-50 p-3"><p class="text-[10px] font-bold uppercase text-slate-400">Tanggal</p><p class="mt-1 font-bold text-slate-800" x-text="selectedTanggal"></p></div><div class="rounded-xl bg-slate-50 p-3"><p class="text-[10px] font-bold uppercase text-slate-400">Kelas</p><p class="mt-1 font-bold text-slate-800" x-text="getKelasName(selectedKelas)"></p></div><div class="rounded-xl bg-slate-50 p-3"><p class="text-[10px] font-bold uppercase text-slate-400">Mapel</p><p class="mt-1 font-bold text-slate-800" x-text="getMapelName(selectedMapel)"></p></div><div class="rounded-xl bg-slate-50 p-3"><p class="text-[10px] font-bold uppercase text-slate-400">Jam</p><p class="mt-1 font-bold text-slate-800" x-text="'Ke-' + selectedJamKe + '–' + selectedJamSelesai"></p></div></div><div class="rounded-xl border border-slate-200 p-3"><p class="text-xs font-bold text-slate-700">Materi</p><p class="mt-1 text-sm leading-relaxed text-slate-600" x-text="$refs.materiInput?.value || '-' "></p></div><div class="rounded-xl border border-slate-200 p-3"><p class="text-xs font-bold text-slate-700">Ringkasan Absensi</p><div class="mt-2 flex flex-wrap gap-2 text-xs font-bold"><span class="rounded-full bg-emerald-100 px-2.5 py-1 text-emerald-800" x-text="attendanceCount('Hadir') + ' Hadir'"></span><span class="rounded-full bg-amber-100 px-2.5 py-1 text-amber-800" x-text="attendanceCount('Sakit') + ' Sakit'"></span><span class="rounded-full bg-blue-100 px-2.5 py-1 text-blue-800" x-text="attendanceCount('Izin') + ' Izin'"></span><span class="rounded-full bg-rose-100 px-2.5 py-1 text-rose-800" x-text="attendanceCount('Alpa') + ' Alpa'"></span><span class="rounded-full bg-indigo-100 px-2.5 py-1 text-indigo-800" x-text="attendanceCount('Dispensasi') + ' Dispensasi'"></span></div></div></div><div class="flex flex-col-reverse gap-2 border-t border-slate-100 p-4 sm:flex-row sm:justify-end sm:p-5"><button type="button" @click="previewModal = false" class="rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-100">Perbaiki Data</button><button type="button" @click="sendLogbook()" class="rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-emerald-700">Kirim Logbook</button></div>
+                </div>
+            </div>
         </form>
     </section>
 

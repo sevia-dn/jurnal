@@ -47,10 +47,6 @@
             <p class="text-sm text-gray-500 mt-1">Kelola jadwal pelajaran 48 kelas, alokasi jam KBM, dan penugasan piket guru & waka.</p>
         </div>
         <div class="flex items-center gap-2.5">
-            <a href="{{ route('admin.pengaturan') }}" class="inline-flex items-center gap-1.5 px-3.5 py-2 border border-slate-300 rounded-lg text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 transition shadow-xs">
-                <i class="bi bi-gear-fill text-slate-600"></i>
-                <span>Pengaturan</span>
-            </a>
             <a href="{{ route('dashboard.jadwal.download-template') }}" class="inline-flex items-center gap-1.5 px-3.5 py-2 border border-slate-300 rounded-lg text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 transition shadow-xs">
                 <i class="bi bi-download text-emerald-600"></i>
                 <span>Unduh Format Excel</span>

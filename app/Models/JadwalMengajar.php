@@ -19,7 +19,7 @@ class JadwalMengajar extends Model
         'jam_selesai',
     ];
 
-    public function guru()
+    public function user()
     {
         return $this->belongsTo(
             User::class,

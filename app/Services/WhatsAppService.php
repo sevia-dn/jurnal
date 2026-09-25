@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Dispensasi;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -12,20 +13,15 @@ class WhatsAppService
     /**
      * Kirim pesan notifikasi dispensasi ke nomor WA milik Waka
      */
-    public function sendDispensasiNotificationToWaka(Dispensasi $dispensasi, ?User $waka = null): bool
+    public function sendDispensasiNotificationToWaka(Dispensasi $dispensasi): int
     {
-        // Cari Waka jika tidak dispesifikasikan
-        if (! $waka) {
-            $waka = User::where('is_waka', true)->orWhere('role', 'waka')->first();
-        }
-
-        if (! $waka || ! $waka->no_hp) {
-            Log::warning('WhatsAppService: Tidak ditemukan Waka atau nomor HP Waka kosong.', [
-                'dispensasi_id' => $dispensasi->id,
-            ]);
-        }
-
-        $targetPhone = $waka?->no_hp ?? '081234567890';
+        $tanggalPenugasan = Carbon::parse($dispensasi->tanggal)->toDateString();
+        $wakasTerjadwal = User::wakaKesiswaan()
+            ->whereHas('jadwalPikets', function ($query) use ($tanggalPenugasan): void {
+                $query->whereDate('tanggal', $tanggalPenugasan)->where('tipe', 'waka');
+            })
+            ->get();
+        $wakas = $wakasTerjadwal->filter(fn (User $waka): bool => filled($waka->no_hp));
         $approvalUrl = route('dispensasi.approval', ['token' => $dispensasi->token_approval]);
         $namaSiswa = $dispensasi->siswa?->nama ?? $dispensasi->nama;
         $kelasSiswa = $dispensasi->siswa?->kelas?->nama_kelas ?? '-';
@@ -43,31 +39,53 @@ class WhatsAppService
             ."👉 {$approvalUrl}\n\n"
             .'_Pesan otomatis dari Sistem Jurnal Sekolah_';
 
-        // 1. Simpan Log Simulasi WhatsApp (Untuk testing & dev)
-        Log::info('=== SIMULASI WHATSAPP NOTIFICATION ===', [
-            'to_user' => $waka?->name ?? 'Waka Kesiswaan',
-            'no_hp' => $targetPhone,
-            'approval_url' => $approvalUrl,
-            'message' => $message,
-        ]);
+        if ($wakasTerjadwal->isEmpty()) {
+            Log::warning('WhatsAppService: Tidak ada Wakasek Kesiswaan terjadwal untuk tanggal dispensasi.', [
+                'dispensasi_id' => $dispensasi->id,
+                'tanggal' => $tanggalPenugasan,
+                'approval_url' => $approvalUrl,
+            ]);
+
+            return 0;
+        }
+
+        if ($wakas->isEmpty()) {
+            Log::warning('WhatsAppService: Wakasek Kesiswaan terjadwal belum memiliki nomor WhatsApp.', [
+                'dispensasi_id' => $dispensasi->id,
+                'tanggal' => $tanggalPenugasan,
+                'waka' => $wakasTerjadwal->pluck('name')->all(),
+                'approval_url' => $approvalUrl,
+            ]);
+
+            return 0;
+        }
 
         // 2. Jika konfigurasi WA Gateway di .env diaktifkan (Fonnte/Wablas/dll), eksekusi HTTP Request
         $gatewayUrl = config('services.whatsapp.url');
         $gatewayApiKey = config('services.whatsapp.api_key');
 
-        if ($gatewayUrl && $gatewayApiKey) {
-            try {
-                Http::withHeaders([
-                    'Authorization' => $gatewayApiKey,
-                ])->post($gatewayUrl, [
-                    'target' => $targetPhone,
-                    'message' => $message,
-                ]);
-            } catch (\Exception $e) {
-                Log::error('WhatsAppService Error: '.$e->getMessage());
+        foreach ($wakas as $waka) {
+            Log::info('=== NOTIFIKASI WHATSAPP DISPENSASI ===', [
+                'to_user' => $waka->name,
+                'no_hp' => $waka->no_hp,
+                'approval_url' => $approvalUrl,
+                'message' => $message,
+            ]);
+
+            if ($gatewayUrl && $gatewayApiKey) {
+                try {
+                    Http::withHeaders([
+                        'Authorization' => $gatewayApiKey,
+                    ])->post($gatewayUrl, [
+                        'target' => $waka->no_hp,
+                        'message' => $message,
+                    ]);
+                } catch (\Exception $e) {
+                    Log::error('WhatsAppService Error: '.$e->getMessage());
+                }
             }
         }
 
-        return true;
+        return $wakas->count();
     }
 }

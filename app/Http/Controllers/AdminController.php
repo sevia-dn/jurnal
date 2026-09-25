@@ -17,6 +17,7 @@ use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Maatwebsite\Excel\Facades\Excel;
@@ -986,6 +987,8 @@ class AdminController extends Controller
 
     public function shiftTimeJadwal(Request $request)
     {
+        $this->ensureAdminAccess();
+
         $validated = $request->validate([
             'hari' => 'required|in:Senin,Jumat',
             'mode' => 'required|in:maju,normal',
@@ -1018,55 +1021,59 @@ class AdminController extends Controller
         $targetKeyword = ($hari === 'Jumat') ? 'pembiasaan' : 'upacara';
 
         if ($mode === 'maju') {
-            // Mode Maju: Upacara/Pembiasaan ditandai ditiadakan, sesi lain dimajukan
-            foreach ($allKelasIds as $kId) {
-                $lessons = JadwalPelajaran::where('id_kelas', $kId)
-                    ->where('hari', $hari)
-                    ->get();
+            DB::transaction(function () use ($allKelasIds, $hari, $targetKeyword, $minutes): void {
+                // Mode maju tetap memperbarui jadwal administrasi. Guru dan validasi jurnal
+                // membaca durasi yang sama melalui ScheduleTimeService.
+                foreach ($allKelasIds as $kId) {
+                    $lessons = JadwalPelajaran::where('id_kelas', $kId)
+                        ->where('hari', $hari)
+                        ->get();
 
-                foreach ($lessons as $l) {
-                    $isTargetActivity = str_contains(strtolower($l->mapel), $targetKeyword);
-                    if ($isTargetActivity) {
-                        $l->update(['status' => 'ditiadakan']);
-                    } else {
-                        $newStart = date('H:i:s', max(0, strtotime($l->jam_mulai) - ($minutes * 60)));
-                        $newEnd = date('H:i:s', max(0, strtotime($l->jam_selesai) - ($minutes * 60)));
-                        $l->update([
-                            'jam_mulai' => $newStart,
-                            'jam_selesai' => $newEnd,
-                            'status' => 'aktif',
-                        ]);
+                    foreach ($lessons as $lesson) {
+                        $isTargetActivity = str_contains(mb_strtolower($lesson->mapel), $targetKeyword);
+                        if ($isTargetActivity) {
+                            $lesson->update(['status' => 'ditiadakan']);
+                        } else {
+                            $lesson->update([
+                                'jam_mulai' => date('H:i:s', max(0, strtotime($lesson->jam_mulai) - ($minutes * 60))),
+                                'jam_selesai' => date('H:i:s', max(0, strtotime($lesson->jam_selesai) - ($minutes * 60))),
+                                'status' => 'aktif',
+                            ]);
+                        }
                     }
                 }
-            }
+            });
 
             Pengaturan::setValue($hariKey.'_is_maju', 1);
             Pengaturan::setValue($hariKey.'_shifted_minutes', $minutes);
             $msg = "Mode Jam Maju hari {$hari} berhasil diaktifkan untuk SELURUH KELAS ({$targetKeyword} ditiadakan, jam pelajaran dimajukan {$minutes} menit).";
         } else {
             // Mode Normal: Kembalikan waktu dengan menambah shifted_minutes yang tersimpan
-            $shiftedMinutes = (int) Pengaturan::getValue($hariKey.'_shifted_minutes', $minutes);
+            $shiftedMinutes = (int) Pengaturan::getValue($hariKey.'_shifted_minutes', 0);
+            if ($shiftedMinutes <= 0) {
+                $shiftedMinutes = $minutes;
+            }
 
-            foreach ($allKelasIds as $kId) {
-                $lessons = JadwalPelajaran::where('id_kelas', $kId)
-                    ->where('hari', $hari)
-                    ->get();
+            DB::transaction(function () use ($allKelasIds, $hari, $targetKeyword, $shiftedMinutes): void {
+                foreach ($allKelasIds as $kId) {
+                    $lessons = JadwalPelajaran::where('id_kelas', $kId)
+                        ->where('hari', $hari)
+                        ->get();
 
-                foreach ($lessons as $l) {
-                    $isTargetActivity = str_contains(strtolower($l->mapel), $targetKeyword);
-                    if ($isTargetActivity) {
-                        $l->update(['status' => 'aktif']);
-                    } else {
-                        $newStart = date('H:i:s', strtotime($l->jam_mulai) + ($shiftedMinutes * 60));
-                        $newEnd = date('H:i:s', strtotime($l->jam_selesai) + ($shiftedMinutes * 60));
-                        $l->update([
-                            'jam_mulai' => $newStart,
-                            'jam_selesai' => $newEnd,
-                            'status' => 'aktif',
-                        ]);
+                    foreach ($lessons as $lesson) {
+                        $isTargetActivity = str_contains(mb_strtolower($lesson->mapel), $targetKeyword);
+                        if ($isTargetActivity) {
+                            $lesson->update(['status' => 'aktif']);
+                        } else {
+                            $lesson->update([
+                                'jam_mulai' => date('H:i:s', strtotime($lesson->jam_mulai) + ($shiftedMinutes * 60)),
+                                'jam_selesai' => date('H:i:s', strtotime($lesson->jam_selesai) + ($shiftedMinutes * 60)),
+                                'status' => 'aktif',
+                            ]);
+                        }
                     }
                 }
-            }
+            });
 
             Pengaturan::setValue($hariKey.'_is_maju', 0);
             Pengaturan::setValue($hariKey.'_shifted_minutes', 0);
@@ -1084,6 +1091,8 @@ class AdminController extends Controller
     // =========================================================================
     public function pengaturan()
     {
+        $this->ensureAdminAccess();
+
         $shiftSenin = (int) Pengaturan::getValue('shift_senin_minutes', 40);
         $shiftJumat = (int) Pengaturan::getValue('shift_jumat_minutes', 30);
         $isSeninMaju = (bool) Pengaturan::getValue('senin_is_maju', 0);
@@ -1091,7 +1100,6 @@ class AdminController extends Controller
         $isJumatMaju = (bool) Pengaturan::getValue('jumat_is_maju', 0);
         $jumatShiftedMinutes = (int) Pengaturan::getValue('jumat_shifted_minutes', $shiftJumat);
 
-        $tenggatStatus = (int) Pengaturan::getValue('tenggat_status', 1);
         $tenggatOpsi = (string) Pengaturan::getValue('tenggat_opsi', 'terbatas_jam');
 
         $totalKelas = Kelas::count();
@@ -1103,7 +1111,6 @@ class AdminController extends Controller
             'seninShiftedMinutes',
             'isJumatMaju',
             'jumatShiftedMinutes',
-            'tenggatStatus',
             'tenggatOpsi',
             'totalKelas'
         ));
@@ -1111,6 +1118,8 @@ class AdminController extends Controller
 
     public function updatePengaturan(Request $request)
     {
+        $this->ensureAdminAccess();
+
         // Pengaturan Kebijakan Tenggat Waktu Pengisian Jurnal
         if ($request->has('tenggat_form') || $request->has('tenggat_opsi') || $request->input('action_type') === 'tenggat') {
             $validated = $request->validate([
@@ -1120,8 +1129,6 @@ class AdminController extends Controller
                 'tenggat_opsi.in' => 'Pilihan opsi kebijakan tidak valid.',
             ]);
 
-            $status = $request->boolean('tenggat_status') ? 1 : 0;
-            Pengaturan::setValue('tenggat_status', $status);
             Pengaturan::setValue('tenggat_opsi', $validated['tenggat_opsi']);
 
             return redirect()->route('admin.pengaturan')->with('success', 'Kebijakan tenggat waktu pengisian jurnal berhasil diperbarui.');
@@ -1138,10 +1145,46 @@ class AdminController extends Controller
             'shift_jumat_minutes.min' => 'Menit minimal adalah 5 menit.',
         ]);
 
+        $this->synchronizeActiveShiftDuration('Senin', (int) Pengaturan::getValue('shift_senin_minutes', 40), $validated['shift_senin_minutes']);
+        $this->synchronizeActiveShiftDuration('Jumat', (int) Pengaturan::getValue('shift_jumat_minutes', 30), $validated['shift_jumat_minutes']);
+
         Pengaturan::setValue('shift_senin_minutes', $validated['shift_senin_minutes']);
         Pengaturan::setValue('shift_jumat_minutes', $validated['shift_jumat_minutes']);
 
         return redirect()->route('admin.pengaturan')->with('success', 'Pengaturan durasi pemajuan jam berhasil disimpan.');
+    }
+
+    private function ensureAdminAccess(): void
+    {
+        abort_unless(Auth::user()?->role === 'admin', 403);
+    }
+
+    private function synchronizeActiveShiftDuration(string $hari, int $previousMinutes, int $updatedMinutes): void
+    {
+        $dayKey = mb_strtolower($hari);
+        if ($previousMinutes === $updatedMinutes || ! (bool) Pengaturan::getValue($dayKey.'_is_maju', 0)) {
+            return;
+        }
+
+        $targetKeyword = $hari === 'Jumat' ? 'pembiasaan' : 'upacara';
+        $adjustment = $previousMinutes - $updatedMinutes;
+
+        DB::transaction(function () use ($hari, $targetKeyword, $adjustment): void {
+            JadwalPelajaran::where('hari', $hari)
+                ->get()
+                ->each(function (JadwalPelajaran $lesson) use ($targetKeyword, $adjustment): void {
+                    if (str_contains(mb_strtolower($lesson->mapel), $targetKeyword)) {
+                        return;
+                    }
+
+                    $lesson->update([
+                        'jam_mulai' => date('H:i:s', strtotime($lesson->jam_mulai) + ($adjustment * 60)),
+                        'jam_selesai' => date('H:i:s', strtotime($lesson->jam_selesai) + ($adjustment * 60)),
+                    ]);
+                });
+        });
+
+        Pengaturan::setValue($dayKey.'_shifted_minutes', $updatedMinutes);
     }
 
     // IMPORT JADWAL (EXCEL / CSV)

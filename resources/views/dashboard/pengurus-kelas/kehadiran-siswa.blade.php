@@ -28,7 +28,6 @@
                 Data Presensi Siswa {{ $kelas->nama_kelas ?? '' }}
                 <span class="text-sm font-semibold text-slate-500">({{ $siswas->count() }} Siswa)</span>
             </h1>
-            <p class="mt-1 text-xs text-slate-500">Daftar presensi siswa berdasarkan catatan logbook KBM terakhir.</p>
         </div>
 
         {{-- Search Input --}}
@@ -66,7 +65,23 @@
                 @php
                     $noAbsen = $index + 1;
                     $noAbsenStr = sprintf('%02d', $noAbsen);
-                    $status = $absensiTerakhir->get($siswa->id, 'Hadir');
+                    $rawRecord = $absensiTerakhir->get($siswa->id);
+                    $rawStatus = is_object($rawRecord) ? $rawRecord->status : (is_string($rawRecord) ? $rawRecord : 'Hadir');
+                    $status = match(strtoupper(trim((string) $rawStatus))) {
+                        'S', 'SAKIT' => 'Sakit',
+                        'I', 'IZIN' => 'Izin',
+                        'A', 'ALPA', 'ALFA' => 'Alpa',
+                        'D', 'DISPENSASI' => 'Dispensasi',
+                        default => 'Hadir',
+                    };
+                    $catatanAbsen = is_object($rawRecord) ? $rawRecord->catatan : null;
+
+                    // Override: jika ada dispensasi aktif & disetujui hari ini → paksa status Dispensasi
+                    $dispensasiSiswa = $dispensasiAktifHariIni->get($siswa->id);
+                    if ($dispensasiSiswa) {
+                        $status = 'Dispensasi';
+                        $catatanAbsen = 'Dispensasi disetujui: ' . $dispensasiSiswa->alasan;
+                    }
                 @endphp
                 <li
                     x-show="matches('{{ addslashes($siswa->nama) }}', '{{ $siswa->nis }}', {{ $noAbsen }})"
@@ -79,20 +94,20 @@
                         <div class="min-w-0">
                             <p class="truncate text-xs sm:text-sm font-bold text-slate-800">{{ $siswa->nama }}</p>
                             <p class="text-[11px] text-slate-400">NISN: {{ $siswa->nis }} · L/P: {{ $siswa->jenis_kelamin }}</p>
+                            @if($catatanAbsen)
+                                <p class="text-[11px] text-slate-500 italic mt-0.5">Ket: {{ $catatanAbsen }}</p>
+                            @endif
                         </div>
                     </div>
 
-                    <div class="flex shrink-0 items-center gap-1.5">
-                        <span class="rounded-full px-2.5 py-1 text-xs font-bold
-                            @if($status === 'Sakit') bg-amber-100 text-amber-800 border border-amber-200
-                            @elseif($status === 'Izin') bg-blue-100 text-blue-800 border border-blue-200
-                            @elseif($status === 'Dispensasi') bg-indigo-100 text-indigo-800 border border-indigo-200
-                            @elseif($status === 'Alpa') bg-rose-100 text-rose-800 border border-rose-200
-                            @else bg-emerald-100 text-emerald-800 border border-emerald-200 @endif
-                        ">
-                            {{ $status }}
-                        </span>
-                    </div>
+                    <fieldset class="flex shrink-0 items-center gap-1" aria-label="Status absensi {{ $siswa->nama }}">
+                        @foreach(['Hadir' => 'H', 'Sakit' => 'S', 'Izin' => 'I', 'Alpa' => 'A', 'Dispensasi' => 'D'] as $option => $label)
+                            <label class="cursor-not-allowed">
+                                <input type="radio" name="status_{{ $siswa->id }}" value="{{ $option }}" @checked($status === $option) disabled class="peer sr-only">
+                                <span class="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 bg-white text-[11px] font-bold text-slate-400 transition peer-checked:border-emerald-600 peer-checked:bg-emerald-600 peer-checked:text-white peer-checked:shadow-sm">{{ $label }}</span>
+                            </label>
+                        @endforeach
+                    </fieldset>
                 </li>
             @endforeach
         </ul>

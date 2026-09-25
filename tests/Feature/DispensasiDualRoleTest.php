@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Dispensasi;
+use App\Models\JadwalPiket;
 use App\Models\JurnalMengajar;
 use App\Models\Kelas;
 use App\Models\Mapel;
@@ -36,6 +37,16 @@ class DispensasiDualRoleTest extends TestCase
             'password' => bcrypt('password'),
             'role' => 'guru',
             'is_waka' => true,
+        ]);
+
+        JadwalPiket::create([
+            'user_id' => $guruPiket->id,
+            'hari' => now('Asia/Jakarta')->locale('id')->translatedFormat('l'),
+            'tanggal' => now('Asia/Jakarta')->toDateString(),
+            'tipe' => 'guru',
+            'shift' => 1,
+            'jam_mulai' => '07:00:00',
+            'jam_selesai' => '15:00:00',
         ]);
 
         $kelas = Kelas::create([

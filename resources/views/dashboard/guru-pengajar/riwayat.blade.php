@@ -419,9 +419,9 @@
                                                         'bg-amber-100 text-amber-800 border border-amber-200': siswa.status === 'Sakit',
                                                         'bg-blue-100 text-blue-800 border border-blue-200': siswa.status === 'Izin',
                                                         'bg-rose-100 text-rose-800 border border-rose-200': siswa.status === 'Alpa',
-                                                        'bg-indigo-100 text-indigo-800 border border-indigo-200': siswa.status === 'Dispensasi',
+                                                        'bg-indigo-100 text-indigo-800 border border-indigo-200': siswa.status === 'Dispensasi' || siswa.status === 'D',
                                                     }"
-                                                    x-text="siswa.status === 'Sakit' ? 'Sakit (S)' : (siswa.status === 'Izin' ? 'Izin (I)' : (siswa.status === 'Alpa' ? 'Alpa (A)' : (siswa.status === 'Dispensasi' ? 'Dispensasi (D)' : siswa.status)))"
+                                                    x-text="siswa.status === 'Sakit' ? 'Sakit (S)' : (siswa.status === 'Izin' ? 'Izin (I)' : (siswa.status === 'Alpa' ? 'Alpa (A)' : (siswa.status === 'Dispensasi' || siswa.status === 'D' ? 'Dispensasi (D)' : siswa.status)))"
                                                 ></span>
                                             </div>
                                         </template>

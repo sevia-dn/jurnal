@@ -8,9 +8,14 @@ use App\Models\JurnalMengajar;
 use App\Models\KehadiranGuru;
 use App\Models\Kelas;
 use App\Models\Mapel;
+use App\Models\Notifikasi;
+use App\Models\PiketKehadiranSiswa;
 use App\Models\Siswa;
 use App\Models\TeacherAttendance;
 use App\Models\User;
+use App\Services\LogbookDeadlinePolicy;
+use App\Services\PiketScheduleService;
+use App\Services\ScheduleTimeService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -18,74 +23,14 @@ use Illuminate\Support\Facades\Auth;
 class GuruController extends Controller
 {
     /**
-     * Mengambil slot waktu (mulai & selesai) untuk jam pelajaran tertentu
-     * sesuai aturan jadwal KBM SMKN 1 Boyolangu:
-     * - Senin s.d. Kamis: 1 JP = 40 menit (sampai jam ke-10, pulang 15:00)
-     * - Jumat: 1 JP = 30 menit (Kelas XI sampai jam ke-12 pulang 15:00, Kelas X sampai jam ke-13 pulang 15:30)
-     * sesuai aturan jadwal KBM resmi SMKN 1 Boyolangu:
-     * - Senin s.d. Kamis:
-     *   - Jam 1-4: @ 40 menit (07:00 - 09:40)
-     *   - Istirahat 1: 09:40 - 10:00
-     *   - Jam 5-7: @ 35 menit (10:00 - 11:45)
-     *   - Istirahat 2 (Ishoma): 11:45 - 13:15
-     *   - Jam 8-10: @ 35 menit (13:15 - 15:00)
-     * - Jumat:
-     *   - Jam 1-5: @ 30 menit (07:00 - 09:30)
-     *   - Istirahat 1: 09:30 - 09:50
-     *   - Jam 6-8: @ 30 menit (09:50 - 11:20)
-     *   - Istirahat 2 (Sholat Jumat): 11:20 - 13:00
-     *   - Jam 9-12 (Kelas XI pulang 15:10 setelah jam ke-12)
-     *   - Jam 9-13 (Kelas X pulang 15:35 setelah jam ke-13)
-     */
-    public static function getJamSlot(string $hari, int $jamKe): array
-    {
-        $isJumat = in_array(strtolower(trim($hari)), ['jumat', 'friday']);
-
-        if (! $isJumat) {
-            $seninKamis = [
-                1 => ['start' => '07:00', 'end' => '07:40'],
-                2 => ['start' => '07:40', 'end' => '08:20'],
-                3 => ['start' => '08:20', 'end' => '09:00'],
-                4 => ['start' => '09:00', 'end' => '09:40'],
-                // Istirahat 09:40 - 10:00
-                5 => ['start' => '10:00', 'end' => '10:35'],
-                6 => ['start' => '10:35', 'end' => '11:10'],
-                7 => ['start' => '11:10', 'end' => '11:45'],
-                // Ishoma 11:45 - 13:15
-                8 => ['start' => '13:15', 'end' => '13:50'],
-                9 => ['start' => '13:50', 'end' => '14:25'],
-                10 => ['start' => '14:25', 'end' => '15:00'],
-            ];
-
-            return $seninKamis[$jamKe] ?? ['start' => '07:00', 'end' => '15:00'];
-        }
-
-        $jumat = [
-            1 => ['start' => '07:00', 'end' => '07:30'],
-            2 => ['start' => '07:30', 'end' => '08:00'],
-            3 => ['start' => '08:00', 'end' => '08:30'],
-            4 => ['start' => '08:30', 'end' => '09:00'],
-            5 => ['start' => '09:00', 'end' => '09:30'],
-            // Istirahat 09:30 - 09:50
-            6 => ['start' => '09:50', 'end' => '10:20'],
-            7 => ['start' => '10:20', 'end' => '10:50'],
-            8 => ['start' => '10:50', 'end' => '11:20'],
-            // Sholat Jumat 11:20 - 13:00
-            9 => ['start' => '13:00', 'end' => '13:30'],
-            10 => ['start' => '13:30', 'end' => '14:00'],
-            11 => ['start' => '14:00', 'end' => '14:30'],
-            12 => ['start' => '14:30', 'end' => '15:10'],
-            13 => ['start' => '15:10', 'end' => '15:35'],
-        ];
-
-        return $jumat[$jamKe] ?? ['start' => '07:00', 'end' => '15:35'];
-    }
-
-    /**
      * Halaman utama guru (Dashboard pribadi guru)
      */
-    public function beranda(Request $request)
-    {
+    public function beranda(
+        Request $request,
+        PiketScheduleService $piketScheduleService,
+        LogbookDeadlinePolicy $deadlinePolicy,
+        ScheduleTimeService $scheduleTimeService,
+    ) {
         Carbon::setLocale('id');
 
         $user = Auth::user();
@@ -94,8 +39,9 @@ class GuruController extends Controller
         $hariIni = $now->translatedFormat('l');
         $currentTime = $now->format('H:i');
         $currentFullTime = $now->format('H:i:s');
+        $logbookPolicy = $deadlinePolicy->configuration();
 
-        $isPiketActive = $user->isPiketActive();
+        $isPiketActive = $piketScheduleService->isScheduledNow($user);
         $isWaka = $user->isWaka();
 
         // Absensi guru hari ini (via TeacherAttendance untuk form storeAbsen)
@@ -131,8 +77,8 @@ class GuruController extends Controller
 
         // Cek status waktu dan status pengisian jurnal per jadwal hari ini
         foreach ($jadwals as $jadwal) {
-            $slotMulai = self::getJamSlot($hariIni, (int) $jadwal->jam_mulai);
-            $slotSelesai = self::getJamSlot($hariIni, (int) $jadwal->jam_selesai);
+            $slotMulai = $scheduleTimeService->slot($hariIni, (int) $jadwal->jam_mulai);
+            $slotSelesai = $scheduleTimeService->slot($hariIni, (int) $jadwal->jam_selesai);
 
             $jadwal->waktu_mulai = $slotMulai['start'];
             $jadwal->waktu_selesai = $slotSelesai['end'];
@@ -177,6 +123,10 @@ class GuruController extends Controller
         $siswasByKelas = Siswa::orderBy('nama')
             ->get(['id', 'nama', 'nis', 'jenis_kelamin', 'kelas_id'])
             ->groupBy('kelas_id');
+        $piketKehadiranHariIni = PiketKehadiranSiswa::query()
+            ->whereDate('tanggal', $todayDate)
+            ->get()
+            ->keyBy('siswa_id');
 
         return view('dashboard.guru-pengajar.utama', compact(
             'user',
@@ -196,10 +146,12 @@ class GuruController extends Controller
             'mapels',
             'siswas',
             'siswasByKelas',
+            'piketKehadiranHariIni',
             'hariIni',
             'todayDate',
             'currentTime',
             'currentFullTime',
+            'logbookPolicy',
         ));
     }
 
@@ -232,6 +184,24 @@ class GuruController extends Controller
             'success',
             'Kehadiran masuk berhasil dilaporkan pada pukul '.substr($jamSekarang, 0, 5).' WIB.'
         );
+    }
+
+    public function markNotificationRead(Notifikasi $notifikasi)
+    {
+        abort_unless($notifikasi->id_user === Auth::id(), 404);
+
+        $notifikasi->update(['is_read' => true]);
+
+        return redirect()->route('guru.riwayat');
+    }
+
+    public function markAllNotificationsRead()
+    {
+        Notifikasi::where('id_user', Auth::id())
+            ->where('is_read', false)
+            ->update(['is_read' => true]);
+
+        return back();
     }
 
     /**

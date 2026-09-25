@@ -22,8 +22,8 @@ class DispensasiApprovalController extends Controller
         $user = Auth::user();
 
         // Pastikan hanya Waka yang bisa menyetujui
-        if (! $user->isWaka() && $user->role !== 'admin') {
-            return redirect()->route('guru')->with('error', 'Halaman ini khusus untuk Waka / Administrasi.');
+        if (! $user->isWaka()) {
+            return redirect()->route('guru')->with('error', 'Halaman ini khusus untuk Wakasek Kesiswaan.');
         }
 
         return view('dashboard.dispensasi.approval', compact('dispensasi'));
@@ -36,7 +36,7 @@ class DispensasiApprovalController extends Controller
     {
         $user = Auth::user();
 
-        if (! $user->isWaka() && $user->role !== 'admin') {
+        if (! $user->isWaka()) {
             return back()->with('error', 'Anda tidak memiliki wewenang untuk menyetujui dispensasi.');
         }
 
