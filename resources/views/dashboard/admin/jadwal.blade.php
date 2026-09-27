@@ -180,32 +180,41 @@
                     </form>
                 </div>
 
-                <!-- Navigasi Tab Hari Interaktif (Senin - Jumat & Semua) -->
-                <div class="flex flex-wrap items-center gap-1.5 border-b border-slate-100 bg-slate-50/80 p-3">
-                    <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider mr-1 text-[11px]">Pilih Hari:</span>
-                    @foreach(['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat'] as $hari)
-                        @php
-                            $countHari = $jadwals->where('hari', $hari)->count();
-                        @endphp
+                <!-- Navigasi Tab Hari Interaktif (Senin - Jumat & Semua) & Pencarian -->
+                <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 bg-slate-50/80 p-3">
+                    <div class="flex flex-wrap items-center gap-1.5">
+                        <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider mr-1 text-[11px]">Pilih Hari:</span>
+                        @foreach(['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat'] as $hari)
+                            @php
+                                $countHari = $jadwals->where('hari', $hari)->count();
+                            @endphp
+                            <button type="button"
+                                    onclick="switchHariTab('{{ $hari }}')"
+                                    id="tab-btn-{{ $hari }}"
+                                    class="day-tab-btn px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer border border-transparent">
+                                <span>{{ $hari }}</span>
+                                <span id="tab-badge-{{ $hari }}" class="day-badge px-1.5 py-0.2 rounded-full text-[10px] font-bold">
+                                    {{ $countHari }}
+                                </span>
+                            </button>
+                        @endforeach
                         <button type="button"
-                                onclick="switchHariTab('{{ $hari }}')"
-                                id="tab-btn-{{ $hari }}"
+                                onclick="switchHariTab('Semua')"
+                                id="tab-btn-Semua"
                                 class="day-tab-btn px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer border border-transparent">
-                            <span>{{ $hari }}</span>
-                            <span id="tab-badge-{{ $hari }}" class="day-badge px-1.5 py-0.2 rounded-full text-[10px] font-bold">
-                                {{ $countHari }}
+                            <span>Semua Hari</span>
+                            <span id="tab-badge-Semua" class="day-badge px-1.5 py-0.2 rounded-full text-[10px] font-bold">
+                                {{ $jadwals->count() }}
                             </span>
                         </button>
-                    @endforeach
-                    <button type="button"
-                            onclick="switchHariTab('Semua')"
-                            id="tab-btn-Semua"
-                            class="day-tab-btn px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer border border-transparent">
-                        <span>Semua Hari</span>
-                        <span id="tab-badge-Semua" class="day-badge px-1.5 py-0.2 rounded-full text-[10px] font-bold">
-                            {{ $jadwals->count() }}
-                        </span>
-                    </button>
+                    </div>
+
+                    {{-- Input Pencarian Jadwal --}}
+                    <div class="relative w-full sm:w-56">
+                        <i class="bi bi-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none"></i>
+                        <input type="text" id="cariJadwalInput" value="{{ $search ?? '' }}" oninput="filterJadwalTable()" placeholder="Cari mapel, guru..." autocomplete="off"
+                               class="w-full pl-8 pr-3 py-1.5 text-xs border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 text-slate-700 shadow-2xs">
+                    </div>
                 </div>
 
                 <!-- Info Header Hari Aktif -->
@@ -864,8 +873,48 @@
             modal.classList.remove('flex');
             modal.classList.add('hidden');
         }
-    }
     let currentSelectedHari = "{{ $selectedHari ?? 'Senin' }}";
+
+    function filterJadwalTable() {
+        const query = (document.getElementById('cariJadwalInput')?.value || '').toLowerCase().trim();
+        const hari = currentSelectedHari || 'Senin';
+        const rows = document.querySelectorAll('.schedule-row');
+        let visibleCount = 0;
+
+        rows.forEach(row => {
+            const rowHari = row.getAttribute('data-hari');
+            const matchesDay = (hari === 'Semua' || rowHari === hari);
+            const matchesQuery = !query || row.textContent.toLowerCase().includes(query);
+
+            if (matchesDay && matchesQuery) {
+                row.classList.remove('hidden');
+                visibleCount++;
+            } else {
+                row.classList.add('hidden');
+            }
+        });
+
+        // Tampilkan/sembunyikan empty state
+        const emptyFiltered = document.getElementById('rowEmptyFiltered');
+        const emptyDayName = document.getElementById('emptyDayName');
+        const btnDayName = document.getElementById('btnDayName');
+
+        if (visibleCount === 0 && rows.length > 0) {
+            if (emptyFiltered) {
+                emptyFiltered.classList.remove('hidden');
+                if (emptyDayName) emptyDayName.textContent = query ? `dengan kata kunci "${query}"` : hari;
+                if (btnDayName) btnDayName.textContent = hari;
+            }
+        } else {
+            if (emptyFiltered) emptyFiltered.classList.add('hidden');
+        }
+
+        // Update footer text
+        const footerText = document.getElementById('footerCountText');
+        if (footerText) {
+            footerText.textContent = `Menampilkan ${visibleCount} sesi jadwal pelajaran`;
+        }
+    }
 
     function switchHariTab(hari) {
         currentSelectedHari = hari;
@@ -910,34 +959,7 @@
             activeBadge.classList.add('bg-white/25', 'text-white');
         }
 
-        // Filter baris dalam tabel
-        const rows = document.querySelectorAll('.schedule-row');
-        let visibleCount = 0;
-
-        rows.forEach(row => {
-            const rowHari = row.getAttribute('data-hari');
-            if (hari === 'Semua' || rowHari === hari) {
-                row.classList.remove('hidden');
-                visibleCount++;
-            } else {
-                row.classList.add('hidden');
-            }
-        });
-
-        // Tampilkan/sembunyikan empty state
-        const emptyFiltered = document.getElementById('rowEmptyFiltered');
-        const emptyDayName = document.getElementById('emptyDayName');
-        const btnDayName = document.getElementById('btnDayName');
-
-        if (visibleCount === 0 && rows.length > 0) {
-            if (emptyFiltered) {
-                emptyFiltered.classList.remove('hidden');
-                if (emptyDayName) emptyDayName.textContent = hari;
-                if (btnDayName) btnDayName.textContent = hari;
-            }
-        } else {
-            if (emptyFiltered) emptyFiltered.classList.add('hidden');
-        }
+        filterJadwalTable();
 
         // Update judul header & footer teks
         const titleEl = document.getElementById('activeHariTitle');

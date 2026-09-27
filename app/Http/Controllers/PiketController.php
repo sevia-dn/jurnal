@@ -316,7 +316,8 @@ class PiketController extends Controller
 
             return [
                 'id' => $s->id,
-                'nis' => $s->nis,
+                'nis' => $s->nis ?? $s->nisn,
+                'nisn' => $s->nisn ?? $s->nis,
                 'name' => $s->nama,
                 'gender' => $s->jenis_kelamin,
                 'class' => $selectedKelas?->nama_kelas ?? 'Umum',

@@ -213,7 +213,7 @@ class LogbookController extends Controller
     public function history(Request $request)
     {
         $user = Auth::user();
-        $keyword = trim($request->query('keyword', ''));
+        $keyword = trim((string) $request->query('keyword', $request->query('search', '')));
         $filterStart = $request->query('start_date');
         $filterEnd = $request->query('end_date');
 
@@ -224,6 +224,7 @@ class LogbookController extends Controller
             $query->where(function ($q) use ($keyword) {
                 $q->where('materi', 'like', "%{$keyword}%")
                     ->orWhere('catatan', 'like', "%{$keyword}%")
+                    ->orWhere('tanggal', 'like', "%{$keyword}%")
                     ->orWhereHas('mapel', function ($m) use ($keyword) {
                         $m->where('nama_mapel', 'like', "%{$keyword}%");
                     })

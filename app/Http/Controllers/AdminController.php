@@ -75,6 +75,7 @@ class AdminController extends Controller
         if ($search) {
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('username', 'like', "%{$search}%")
                     ->orWhere('nip', 'like', "%{$search}%")
                     ->orWhere('no_hp', 'like', "%{$search}%")
                     ->orWhereHas('mapel', function ($m) use ($search) {
@@ -84,6 +85,13 @@ class AdminController extends Controller
                         $sub->select('id_user')
                             ->from('jadwal_pelajarans')
                             ->where('mapel', 'like', "%{$search}%");
+                    })
+                    ->orWhereIn('id', function ($sub) use ($search) {
+                        $sub->select('id_user')
+                            ->from('jadwal_mengajars')
+                            ->whereIn('id_mapel', function ($mSub) use ($search) {
+                                $mSub->select('id')->from('mapels')->where('nama_mapel', 'like', "%{$search}%");
+                            });
                     });
             });
         }
@@ -408,7 +416,11 @@ class AdminController extends Controller
         if ($search) {
             $query->where(function ($q) use ($search) {
                 $q->where('nama', 'like', "%{$search}%")
-                    ->orWhere('nisn', 'like', "%{$search}%");
+                    ->orWhere('nisn', 'like', "%{$search}%")
+                    ->orWhere('nis', 'like', "%{$search}%")
+                    ->orWhereHas('kelas', function ($k) use ($search) {
+                        $k->where('nama_kelas', 'like', "%{$search}%");
+                    });
             });
         }
 
@@ -606,7 +618,17 @@ class AdminController extends Controller
         if ($search) {
             $query->where(function ($q) use ($search) {
                 $q->where('nama_mapel', 'like', "%{$search}%")
-                    ->orWhere('kode_mapel', 'like', "%{$search}%");
+                    ->orWhere('kode_mapel', 'like', "%{$search}%")
+                    ->orWhereHas('gurus', function ($g) use ($search) {
+                        $g->where('name', 'like', "%{$search}%");
+                    })
+                    ->orWhereIn('id', function ($sub) use ($search) {
+                        $sub->select('id_mapel')
+                            ->from('jadwal_pelajarans')
+                            ->whereIn('id_user', function ($uSub) use ($search) {
+                                $uSub->select('id')->from('users')->where('name', 'like', "%{$search}%");
+                            });
+                    });
             });
         }
 
@@ -830,10 +852,20 @@ class AdminController extends Controller
         $selectedHari = $hari ?? 'Senin';
         $hariList = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
 
+        $search = $request->query('search');
+
         $query = JadwalPelajaran::with(['kelas', 'guru', 'mapelItem']);
 
         if ($selectedKelas) {
             $query->where('id_kelas', $selectedKelas->id_kelas);
+        }
+
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('mapel', 'like', "%{$search}%")
+                    ->orWhereHas('guru', fn ($g) => $g->where('name', 'like', "%{$search}%"))
+                    ->orWhereHas('mapelItem', fn ($m) => $m->where('nama_mapel', 'like', "%{$search}%"));
+            });
         }
 
         $jadwals = $query->orderByRaw("CASE hari WHEN 'Senin' THEN 1 WHEN 'Selasa' THEN 2 WHEN 'Rabu' THEN 3 WHEN 'Kamis' THEN 4 WHEN 'Jumat' THEN 5 WHEN 'Sabtu' THEN 6 ELSE 7 END")
@@ -874,7 +906,8 @@ class AdminController extends Controller
             'shiftSeninMinutes',
             'shiftJumatMinutes',
             'isSeninMaju',
-            'isJumatMaju'
+            'isJumatMaju',
+            'search'
         ));
     }
 
@@ -1697,6 +1730,7 @@ class AdminController extends Controller
                 $q->where('name', 'like', "%{$search}%")
                     ->orWhere('username', 'like', "%{$search}%")
                     ->orWhere('nip', 'like', "%{$search}%")
+                    ->orWhere('no_hp', 'like', "%{$search}%")
                     ->orWhereHas('mapel', function ($m) use ($search) {
                         $m->where('nama_mapel', 'like', "%{$search}%");
                     })

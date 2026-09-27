@@ -177,7 +177,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const selectedStatus = statusFilter.value;
 
         const filtered = studentsData.filter(s => {
-            const matchSearch = s.name.toLowerCase().includes(searchQuery) || s.nis.includes(searchQuery);
+            const matchSearch = !searchQuery
+                || String(s.name || '').toLowerCase().includes(searchQuery)
+                || String(s.nis || '').toLowerCase().includes(searchQuery)
+                || String(s.nisn || '').toLowerCase().includes(searchQuery);
             const matchStatus = selectedStatus === 'all' || displayStatus(s.status) === selectedStatus;
             return matchSearch && matchStatus;
         });

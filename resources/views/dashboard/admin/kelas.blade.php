@@ -300,7 +300,8 @@
                                 data-id="{{ $s->id }}"
                                 data-kelas-id="{{ $s->kelas_id }}"
                                 data-nama="{{ strtolower($s->nama) }}"
-                                data-nis="{{ $s->nisn }}"
+                                data-nis="{{ $s->nis }}"
+                                data-nisn="{{ $s->nisn }}"
                                 style="{{ $isMatchCurrent ? '' : 'display: none;' }}">
                                 <td class="p-4 text-center text-gray-500 row-siswa-no">{{ $isMatchCurrent ? $ssrVisibleIndex : '' }}</td>
                                 <td class="p-4 text-gray-900 font-medium nama-siswa-text">{{ $s->nama }}</td>
@@ -831,9 +832,10 @@
             const rowKelasId = row.dataset.kelasId;
             const nama = row.dataset.nama || '';
             const nis = row.dataset.nis || '';
+            const nisn = row.dataset.nisn || '';
 
             const matchesClass = Boolean(currentActiveKelasId) && String(rowKelasId) === String(currentActiveKelasId);
-            const matchesQuery = !query || nama.includes(query) || nis.includes(query);
+            const matchesQuery = !query || nama.includes(query) || nis.includes(query) || nisn.includes(query);
 
             if (matchesClass && matchesQuery) {
                 row.style.display = '';

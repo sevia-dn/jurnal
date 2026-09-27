@@ -151,6 +151,8 @@ class PengurusKelasController extends Controller
                 $q->where(function ($journalQuery) use ($search) {
                     $journalQuery
                         ->where('materi', 'like', "%{$search}%")
+                        ->orWhere('catatan', 'like', "%{$search}%")
+                        ->orWhere('tanggal', 'like', "%{$search}%")
                         ->orWhereHas('user', fn ($userQuery) => $userQuery->where('name', 'like', "%{$search}%"))
                         ->orWhereHas('mapel', fn ($mapelQuery) => $mapelQuery->where('nama_mapel', 'like', "%{$search}%"));
                 });

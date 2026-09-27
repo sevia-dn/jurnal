@@ -85,10 +85,12 @@
             }
         },
 
-        matchesSearch(nama, nis) {
+        matchesSearch(nama, nis, nisn) {
             if (!this.searchSiswa || this.searchSiswa.trim() === '') return true;
             const query = this.searchSiswa.toLowerCase().trim();
-            return String(nama || '').toLowerCase().includes(query) || (nis && String(nis).toLowerCase().includes(query));
+            return String(nama || '').toLowerCase().includes(query)
+                || (nis && String(nis).toLowerCase().includes(query))
+                || (nisn && String(nisn).toLowerCase().includes(query));
         },
 
         attendanceCount(status) {
@@ -661,7 +663,7 @@
                                             $statusSiswa = $catatanPiket?->status ?? 'Hadir';
                                         @endphp
                                         <div
-                                            x-show="matchesSearch(@js($siswa->nama), @js($siswa->nis))"
+                                            x-show="matchesSearch(@js($siswa->nama), @js($siswa->nis), @js($siswa->nisn))"
                                             class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 rounded-xl border border-slate-200/80 bg-white p-3 shadow-2xs transition hover:border-emerald-300"
                                         >
                                             {{-- NOMOR & NAMA SISWA (FULL WIDTH DI MOBILE) --}}
