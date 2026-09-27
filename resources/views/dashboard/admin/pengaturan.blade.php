@@ -50,7 +50,6 @@
                 <span class="text-slate-400">/</span>
                 <span class="text-slate-600">Kebijakan & Jadwal</span>
             </div>
-            <h1 class="text-2xl sm:text-3xl font-bold text-slate-900">Pengaturan Sistem</h1>
             <p class="text-sm text-slate-500 mt-1">Kelola kebijakan batas waktu pengisian jurnal guru dan penyesuaian jam pelajaran sekolah.</p>
         </div>
         <div class="flex items-center gap-3">

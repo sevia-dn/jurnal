@@ -36,16 +36,11 @@
             }
         }"
         id="riwayat"
-        class="mx-auto w-full max-w-7xl px-4 py-5 sm:px-6 lg:px-8"
+        class="mx-auto w-full max-w-7xl px-4 py-3 sm:px-6 lg:px-8"
     >
 
         {{-- HEADER RINGKAS --}}
-        <section class="flex items-center justify-between">
-            <div>
-                <h1 class="text-lg font-bold text-slate-900 sm:text-xl">
-                    Riwayat &amp; Rekap Jurnal
-                </h1>
-            </div>
+        <section class="flex items-center justify-end mb-2">
             <span class="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 border border-emerald-200">
                 Total {{ $riwayatJurnals->count() }} Data
             </span>

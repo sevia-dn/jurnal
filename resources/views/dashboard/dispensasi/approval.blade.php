@@ -20,8 +20,7 @@
             </span>
             <span class="text-xs text-purple-300 font-mono">ID: #DISP-{{ $dispensasi->id }}</span>
         </div>
-        <h1 class="mt-3 text-2xl font-bold sm:text-3xl">Persetujuan Dispensasi Siswa</h1>
-        <p class="mt-1 text-sm text-purple-200">Silakan tinjau alasan dan dokumen pengajuan dispensasi dari Guru Piket.</p>
+        <p class="mt-2 text-sm text-purple-200">Silakan tinjau alasan dan dokumen pengajuan dispensasi dari Guru Piket.</p>
     </div>
 
     @if(session('success'))

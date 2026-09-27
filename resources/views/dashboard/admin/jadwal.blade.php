@@ -41,10 +41,9 @@
 
 
 
-    <div class="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+    <div class="mb-3.5 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-            <h1 class="text-2xl font-bold text-gray-900">Manajemen Jadwal</h1>
-            <p class="text-sm text-gray-500 mt-1">Kelola jadwal pelajaran 48 kelas, alokasi jam KBM, dan penugasan piket guru & waka.</p>
+            <p class="text-sm text-gray-500">Kelola jadwal pelajaran 48 kelas, alokasi jam KBM, dan penugasan piket guru & waka.</p>
         </div>
         <div class="flex items-center gap-2.5">
             <a href="{{ route('dashboard.jadwal.download-template') }}" class="inline-flex items-center gap-1.5 px-3.5 py-2 border border-slate-300 rounded-lg text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 transition shadow-xs">

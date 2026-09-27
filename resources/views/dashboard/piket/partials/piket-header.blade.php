@@ -5,13 +5,12 @@
     $description = $description ?? 'Pantau kegiatan piket hari ini.';
 @endphp
 
-<header class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+<header class="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
     <div>
         <div class="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.16em] text-emerald-700">
             <span class="h-2 w-2 rounded-full bg-emerald-500"></span>
             <span>{{ $subtitle }}</span>
         </div>
-        <h1 class="mt-1 text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl">{{ $title }}</h1>
         <p class="mt-1 hidden text-sm text-slate-500 sm:block">{{ $description }}</p>
     </div>
 

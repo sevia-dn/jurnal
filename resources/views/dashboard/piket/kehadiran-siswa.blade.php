@@ -30,9 +30,8 @@
 
 
         <!-- Top Filter & Controls Card -->
-        <div class="mb-6 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between rounded-2xl bg-white p-4 border border-slate-200 shadow-2xs">
+        <div class="mb-3 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between rounded-2xl bg-white p-3.5 border border-slate-200 shadow-2xs">
 
-            <h1 class="text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl">Rekap Kehadiran Siswa</h1>
             <div>
 
 

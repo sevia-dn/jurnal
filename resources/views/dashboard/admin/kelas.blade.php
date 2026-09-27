@@ -70,10 +70,9 @@
     @endif
 
     {{-- ================= HEADER UTAMA ================= --}}
-    <div id="viewHeaderKelas" class="{{ $isSiswaViewOpen ? 'hidden' : 'flex' }} flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
+    <div id="viewHeaderKelas" class="{{ $isSiswaViewOpen ? 'hidden' : 'flex' }} flex-col md:flex-row md:items-center justify-between mb-3.5 gap-4">
         <div>
-            <h1 class="text-2xl font-bold text-gray-900">Manajemen Data Kelas</h1>
-            <p class="text-sm text-gray-500 mt-1">Kelola informasi kelas, nama guru, dan jumlah siswa aktif.</p>
+            <p class="text-sm text-gray-500">Kelola informasi kelas, nama guru, dan jumlah siswa aktif.</p>
         </div>
         <div class="flex items-center gap-2.5 flex-wrap">
             {{-- Search Bar Kelas --}}

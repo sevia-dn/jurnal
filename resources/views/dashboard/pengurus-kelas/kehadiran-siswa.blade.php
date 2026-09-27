@@ -21,13 +21,9 @@
     class="mx-auto w-full max-w-5xl px-4 py-6 pb-24 sm:px-6 lg:px-8"
 >
 
-    <header class="mb-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+    <header class="mb-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
         <div>
-            <p class="text-xs font-bold text-emerald-700 uppercase tracking-wider">{{ $tanggalFormatted }}</p>
-            <h1 class="mt-1 text-xl font-extrabold text-slate-900 sm:text-2xl">
-                Data Presensi Siswa {{ $kelas->nama_kelas ?? '' }}
-                <span class="text-sm font-semibold text-slate-500">({{ $siswas->count() }} Siswa)</span>
-            </h1>
+            <p class="text-xs font-bold text-emerald-700 uppercase tracking-wider">{{ $tanggalFormatted }} <span class="text-xs font-semibold text-slate-500">({{ $siswas->count() }} Siswa)</span></p>
         </div>
 
         {{-- Search Input --}}

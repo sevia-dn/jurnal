@@ -11,11 +11,10 @@
 @endsection
 
 @section('content')
-    <div class="mx-auto w-full max-w-6xl px-4 py-6 pb-24 sm:px-6 lg:px-8">
-        <header class="mb-5">
+    <div class="mx-auto w-full max-w-6xl px-4 py-3 pb-24 sm:px-6 lg:px-8">
+        <header class="mb-3 flex items-center justify-between">
             <p class="text-xs font-bold uppercase tracking-wider text-emerald-700">{{ $kelas?->nama_kelas ?? 'Kelas' }}</p>
-            <h1 class="mt-1 text-2xl font-extrabold text-slate-900">Riwayat Logbook</h1>
-            <p class="mt-1 text-sm text-slate-500">Daftar seluruh logbook yang dikirim guru pengajar untuk kelas ini.</p>
+            <p class="text-xs text-slate-500">Daftar seluruh logbook dikirim guru pengajar</p>
         </header>
 
         <form method="GET" action="{{ route('pengurus-kelas.jurnal-detail') }}" class="mb-5 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">

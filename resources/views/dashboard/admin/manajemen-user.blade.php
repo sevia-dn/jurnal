@@ -41,10 +41,9 @@
     @endif
 
     <!-- Header & Action -->
-    <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div class="mb-3.5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-            <h1 class="text-2xl font-bold text-gray-900">Manajemen Pengguna Sistem</h1>
-            <p class="mt-1 text-sm text-gray-500">Kelola seluruh akun pengguna: Admin, Guru Pengajar, dan Sekretaris Kelas.</p>
+            <p class="text-sm text-gray-500">Kelola seluruh akun pengguna: Admin, Guru Pengajar, dan Sekretaris Kelas.</p>
         </div>
         <button type="button" @click="openAdd()" class="inline-flex items-center justify-center gap-2 rounded-xl bg-[#1BA886] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#15896d] cursor-pointer">
             <i class="bi bi-person-plus text-base"></i>

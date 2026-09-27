@@ -54,10 +54,9 @@
     @endif
 
     {{-- Header Halaman --}}
-    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-3.5">
         <div>
-            <h1 class="text-2xl font-bold text-gray-900">Manajemen Data Guru</h1>
-            <p class="text-sm text-gray-500 mt-1">Kelola data pengajar, import via Excel, dan edit masal (batch action).</p>
+            <p class="text-sm text-gray-500">Kelola data pengajar, import via Excel, dan edit masal (batch action).</p>
         </div>
         <div class="flex items-center gap-2.5 flex-wrap">
             {{-- Tombol Download Template Excel --}}

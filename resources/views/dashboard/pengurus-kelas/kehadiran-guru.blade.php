@@ -11,11 +11,8 @@
 @section('content')
 <div class="mx-auto w-full max-w-4xl px-4 py-6 sm:px-6 lg:px-8">
 
-    <header class="mb-6">
+    <header class="mb-3">
         <p class="text-xs font-bold text-emerald-700 uppercase tracking-wider">{{ $tanggalFormatted }}</p>
-        <h1 class="mt-1 text-xl font-extrabold text-slate-900 sm:text-2xl">
-            Status Kehadiran Guru Kelas {{ $kelas->nama_kelas ?? '' }}
-        </h1>
         <p class="mt-1 text-xs text-slate-500">Pantau kehadiran guru yang mengajar di kelas hari ini.</p>
     </header>
 

@@ -15,12 +15,11 @@
     <div class="mx-auto max-w-5xl">
 
         {{-- BACK BUTTON & HEADER --}}
-        <div class="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div class="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div>
                 <a href="{{ route('dashboard.piket') }}" class="inline-flex items-center gap-2 text-sm font-semibold text-emerald-700 transition hover:text-emerald-800">
                     <i class="bi bi-arrow-left"></i>Kembali ke halaman utama piket
                 </a>
-                <h1 class="mt-2 text-2xl font-extrabold text-slate-900">Daftar Kehadiran Guru</h1>
                 <p class="mt-0.5 text-xs text-slate-500">Daftar guru yang hadir atau tidak hadir pada hari ini berdasarkan jurnal dan laporan piket.</p>
             </div>
 

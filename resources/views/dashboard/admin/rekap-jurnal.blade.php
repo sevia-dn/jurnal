@@ -49,10 +49,9 @@
     @endphp
 
     <!-- Header Halaman -->
-    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-3.5">
       <div>
-        <h1 class="text-2xl font-extrabold text-slate-900">Rekap Jurnal Mengajar</h1>
-        <p class="text-sm text-slate-500 mt-1">Pantau riwayat mengajar guru yang telah lalu, status keterisian jurnal, dan jam kosong.</p>
+        <p class="text-sm text-slate-500">Pantau riwayat mengajar guru yang telah lalu, status keterisian jurnal, dan jam kosong.</p>
       </div>
       <div class="flex flex-wrap items-center gap-2.5">
         <!-- Badge Periode Terpilih -->

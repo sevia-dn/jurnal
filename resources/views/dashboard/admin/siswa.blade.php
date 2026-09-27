@@ -79,10 +79,9 @@
     @endif
 
     <!-- Header Halaman -->
-    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-3.5">
         <div>
-            <h1 class="text-2xl font-bold text-gray-900">Manajemen Data Siswa</h1>
-            <p class="text-sm text-gray-500 mt-1">Kelola data siswa, filter per kelas, dan lakukan aksi masal (batch action).</p>
+            <p class="text-sm text-gray-500">Kelola data siswa, filter per kelas, dan lakukan aksi masal (batch action).</p>
         </div>
         <form method="GET" action="{{ route('dashboard.siswa') }}" class="flex items-center gap-2 flex-wrap">
             <select name="kelas_id" onchange="this.form.submit()" class="border border-gray-300 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-400 bg-white">

@@ -48,10 +48,9 @@
     </style>
 
     {{-- Header Halaman --}}
-    <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-3.5 gap-4">
         <div>
-            <h1 class="text-2xl font-bold text-gray-900">Manajemen Mata Pelajaran</h1>
-            <p class="text-sm text-gray-500 mt-1">Kelola seluruh mata pelajaran jurusan dan mapel biasa di sekolah.</p>
+            <p class="text-sm text-gray-500">Kelola seluruh mata pelajaran jurusan dan mapel biasa di sekolah.</p>
         </div>
         <form method="GET" action="{{ route('dashboard.mapel') }}" autocomplete="off" class="flex items-center gap-2">
             @if(request('kategori'))
