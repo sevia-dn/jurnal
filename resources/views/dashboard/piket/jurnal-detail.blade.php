@@ -25,7 +25,7 @@
         };
         $namaGuru = $jurnal->guru?->name ?? 'Guru Pengajar';
         $initials = collect(preg_split('/\s+/', trim($namaGuru)))->filter()->take(2)->map(fn ($name) => mb_strtoupper(mb_substr($name, 0, 1)))->implode('');
-        $jamText = $jurnal->jam_selesai && $jurnal->jam_selesai !== $jurnal->jam_ke ? "Jam ke {$jurnal->jam_ke}–{$jurnal->jam_selesai}" : "Jam ke {$jurnal->jam_ke}";
+        $jamText = $jurnal->jam_selesai && $jurnal->jam_selesai !== $jurnal->jam_ke ? "Jam ke-{$jurnal->jam_ke} s/d {$jurnal->jam_selesai}" : "Jam ke-{$jurnal->jam_ke}";
         $lampiranUrl = $jurnal->lampiran ? asset('storage/'.$jurnal->lampiran) : null;
         $lampiranExtension = $jurnal->lampiran ? strtolower(pathinfo($jurnal->lampiran, PATHINFO_EXTENSION)) : null;
     @endphp

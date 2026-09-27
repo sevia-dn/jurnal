@@ -46,6 +46,9 @@
         9 => 'September', 10 => 'Oktober', 11 => 'November', 12 => 'Desember'
       ];
       $currentBulanNama = $namaBulan[$bulan] ?? 'Bulan ' . $bulan;
+      $opsiBulanRekap = collect($namaBulan)->map(fn ($nama, $nomor) => ['value' => (string) $nomor, 'label' => $nama]);
+      $opsiGuruRekap = $gurus->map(fn ($guru) => ['value' => (string) $guru->id, 'label' => $guru->name.' ('.($guru->nip ?? 'Guru').')']);
+      $opsiKelasRekap = $kelases->map(fn ($kelas) => ['value' => (string) $kelas->id_kelas, 'label' => 'Kelas '.$kelas->nama_kelas]);
     @endphp
 
     <!-- Header Halaman -->
@@ -257,49 +260,25 @@
             <!-- Filter Bulan (Bulanan) -->
             <div id="filterBulanGroup" class="{{ ($periode ?? 'harian') === 'bulanan' ? '' : 'hidden' }}">
               <label class="block text-xs font-semibold text-slate-600 mb-1">Pilih Bulan</label>
-              <select name="bulan" class="w-full text-xs bg-white border border-slate-300 rounded-lg px-3 py-2 text-slate-700 outline-none focus:border-[#155d50] focus:ring-1 focus:ring-[#155d50] cursor-pointer">
-                @foreach($namaBulan as $bNum => $bNama)
-                  <option value="{{ $bNum }}" {{ ($bulan == $bNum) ? 'selected' : '' }}>
-                    {{ $bNama }}
-                  </option>
-                @endforeach
-              </select>
+              <x-searchable-select name="bulan" :options="$opsiBulanRekap" :selected="$bulan" placeholder="Cari bulan" />
             </div>
 
             <!-- Filter Tahun (Bulanan) -->
             <div id="filterTahunGroup" class="{{ ($periode ?? 'harian') === 'bulanan' ? '' : 'hidden' }}">
               <label class="block text-xs font-semibold text-slate-600 mb-1">Tahun</label>
-              <select name="tahun" class="w-full text-xs bg-white border border-slate-300 rounded-lg px-3 py-2 text-slate-700 outline-none focus:border-[#155d50] focus:ring-1 focus:ring-[#155d50] cursor-pointer">
-                @for($y = 2026; $y <= max(2030, now()->year + 2); $y++)
-                  <option value="{{ $y }}" {{ ($tahun == $y) ? 'selected' : '' }}>{{ $y }}</option>
-                @endfor
-              </select>
+              <input type="number" name="tahun" min="2026" max="2100" value="{{ $tahun }}" inputmode="numeric" class="w-full text-xs bg-white border border-slate-300 rounded-lg px-3 py-2 text-slate-700 outline-none focus:border-[#155d50] focus:ring-1 focus:ring-[#155d50]">
             </div>
 
             <!-- Filter Guru -->
             <div>
               <label class="block text-xs font-semibold text-slate-600 mb-1">Pilih Guru</label>
-              <select name="guru_id" class="w-full text-xs bg-white border border-slate-300 rounded-lg px-3 py-2 text-slate-700 outline-none focus:border-[#155d50] focus:ring-1 focus:ring-[#155d50] cursor-pointer">
-                <option value="all">Semua Guru</option>
-                @foreach($gurus as $g)
-                  <option value="{{ $g->id }}" {{ ($guruId == $g->id) ? 'selected' : '' }}>
-                    {{ $g->name }}
-                  </option>
-                @endforeach
-              </select>
+              <x-searchable-select name="guru_id" :options="$opsiGuruRekap" :selected="$guruId === 'all' ? null : $guruId" placeholder="Cari guru (kosongkan untuk semua)" />
             </div>
 
             <!-- Filter Kelas -->
             <div>
               <label class="block text-xs font-semibold text-slate-600 mb-1">Kelas</label>
-              <select name="kelas_id" class="w-full text-xs bg-white border border-slate-300 rounded-lg px-3 py-2 text-slate-700 outline-none focus:border-[#155d50] focus:ring-1 focus:ring-[#155d50] cursor-pointer">
-                <option value="all">Semua Kelas</option>
-                @foreach($kelases as $k)
-                  <option value="{{ $k->id_kelas }}" {{ ($kelasId == $k->id_kelas) ? 'selected' : '' }}>
-                    Kelas {{ $k->nama_kelas }}
-                  </option>
-                @endforeach
-              </select>
+              <x-searchable-select name="kelas_id" :options="$opsiKelasRekap" :selected="$kelasId === 'all' ? null : $kelasId" placeholder="Cari kelas (kosongkan untuk semua)" />
             </div>
 
             <!-- Filter Keterlambatan -->

@@ -12,6 +12,13 @@
 
 @section('content')
 <div class="p-6 font-sans sm:p-10 lg:p-8 xl:p-10">
+    @php
+        $opsiKelasJadwal = $kelases->map(fn ($kelas) => ['value' => (string) $kelas->id_kelas, 'label' => $kelas->nama_kelas.' (Wali: '.($kelas->wali_kelas ?? 'Belum ada').')']);
+        $opsiHariJadwal = collect($hariList)->map(fn ($hari) => ['value' => $hari, 'label' => $hari]);
+        $opsiJamJadwal = collect(range(0, 13))->map(fn ($jam) => ['value' => (string) $jam, 'label' => $jam === 0 ? 'Jam Ke-0 (Kegiatan / Istirahat / Upacara)' : 'Jam Ke-'.$jam]);
+        $opsiMapelJadwal = $mapels->map(fn ($mapel) => ['value' => (string) $mapel->id, 'label' => '['.ucfirst($mapel->kategori ?? 'biasa').'] '.$mapel->nama_mapel]);
+        $opsiGuruJadwal = $gurus->map(fn ($guru) => ['value' => (string) $guru->id, 'label' => $guru->name.' ('.($guru->nip ?? 'Guru').')']);
+    @endphp
 
     <!-- Notifikasi Flash Message -->
     @if(session('success'))
@@ -71,33 +78,18 @@
 
                     <div>
                         <label class="mb-1.5 block text-sm font-medium text-slate-700">Pilih Kelas <span class="text-red-500">*</span></label>
-                        <select id="formAddKelasId" name="kelas_id" required class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-[#155d50] focus:ring-2 focus:ring-[#155d50]/10 cursor-pointer">
-                            @foreach($kelases as $k)
-                                <option value="{{ $k->id_kelas }}" {{ (old('kelas_id', optional($selectedKelas)->id_kelas) == $k->id_kelas) ? 'selected' : '' }}>
-                                    {{ $k->nama_kelas }} (Wali: {{ $k->wali_kelas ?? 'Belum ada' }})
-                                </option>
-                            @endforeach
-                        </select>
+                        <x-searchable-select id="formAddKelasId" name="kelas_id" :options="$opsiKelasJadwal" :selected="old('kelas_id', optional($selectedKelas)->id_kelas)" placeholder="Cari kelas" required />
                     </div>
 
                     <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
                         <div>
                             <label class="mb-1.5 block text-sm font-medium text-slate-700">Pilih Hari <span class="text-red-500">*</span></label>
-                            <select id="formAddHari" name="hari" onchange="applyScheduleTimePresets('add')" required class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-[#155d50] focus:ring-2 focus:ring-[#155d50]/10 cursor-pointer">
-                                @foreach($hariList as $hari)
-                                    <option value="{{ $hari }}" {{ old('hari', $selectedHari ?? 'Senin') == $hari ? 'selected' : '' }}>{{ $hari }}</option>
-                                @endforeach
-                            </select>
+                            <x-searchable-select id="formAddHari" name="hari" :options="$opsiHariJadwal" :selected="old('hari', $selectedHari ?? 'Senin')" placeholder="Cari hari" onchange="applyScheduleTimePresets('add')" required />
                         </div>
 
                         <div>
                             <label class="mb-1.5 block text-sm font-medium text-slate-700">Jam Pelajaran Ke- <span class="text-red-500">*</span></label>
-                            <select id="formAddJamKe" name="jam_ke" onchange="applyScheduleTimePresets('add')" class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-[#155d50] focus:ring-2 focus:ring-[#155d50]/10 cursor-pointer">
-                                <option value="0" {{ old('jam_ke') === '0' ? 'selected' : '' }}>Jam Ke-0 (Khusus Kegiatan / Istirahat / Upacara)</option>
-                                @for($i = 1; $i <= 13; $i++)
-                                    <option value="{{ $i }}" {{ old('jam_ke') == $i ? 'selected' : '' }}>Jam Ke-{{ $i }}</option>
-                                @endfor
-                            </select>
+                            <x-searchable-select id="formAddJamKe" name="jam_ke" :options="$opsiJamJadwal" :selected="old('jam_ke', 1)" placeholder="Cari jam pelajaran" onchange="applyScheduleTimePresets('add')" required />
                         </div>
                     </div>
 
@@ -115,36 +107,12 @@
 
                     <div>
                         <label class="mb-1.5 block text-sm font-medium text-slate-700">Mata Pelajaran / Kegiatan <span class="text-red-500">*</span></label>
-                        <select name="mapel_id" id="formAddMapelId" required onchange="handleMapelSelection(this, 'add')" class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-[#155d50] focus:ring-2 focus:ring-[#155d50]/10 cursor-pointer">
-                            <option value="">-- Pilih Mata Pelajaran / Kegiatan --</option>
-                            @if($mapels->where('kategori', 'kegiatan')->isNotEmpty())
-                                <optgroup label="--- Kegiatan Khusus Sekolah (Upacara, Istirahat, Pembiasaan) ---">
-                                    @foreach($mapels->where('kategori', 'kegiatan') as $m)
-                                        <option value="{{ $m->id }}" data-kategori="kegiatan" {{ old('mapel_id') == $m->id ? 'selected' : '' }}>{{ $m->nama_mapel }}</option>
-                                    @endforeach
-                                </optgroup>
-                            @endif
-                            <optgroup label="--- Mapel Jurusan ---">
-                                @foreach($mapels->where('kategori', 'jurusan') as $m)
-                                    <option value="{{ $m->id }}" data-kategori="jurusan" {{ old('mapel_id') == $m->id ? 'selected' : '' }}>{{ $m->nama_mapel }}</option>
-                                @endforeach
-                            </optgroup>
-                            <optgroup label="--- Mapel Biasa ---">
-                                @foreach($mapels->whereNotIn('kategori', ['jurusan', 'kegiatan']) as $m)
-                                    <option value="{{ $m->id }}" data-kategori="biasa" {{ old('mapel_id') == $m->id ? 'selected' : '' }}>{{ $m->nama_mapel }}</option>
-                                @endforeach
-                            </optgroup>
-                        </select>
+                        <x-searchable-select id="formAddMapelId" name="mapel_id" :options="$opsiMapelJadwal" :selected="old('mapel_id')" placeholder="Cari mata pelajaran atau kegiatan" onchange="handleMapelSelection(this, 'add')" required />
                     </div>
 
                     <div>
                         <label class="mb-1.5 block text-sm font-medium text-slate-700">Guru Pengampu <span class="text-xs text-slate-400 font-normal">(Wajib untuk mapel, opsional untuk kegiatan)</span></label>
-                        <select name="guru_id" id="formAddGuruId" class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-[#155d50] focus:ring-2 focus:ring-[#155d50]/10 cursor-pointer">
-                            <option value="">-- Tanpa Guru / Khusus Kegiatan --</option>
-                            @foreach($gurus as $g)
-                                <option value="{{ $g->id }}" {{ old('guru_id') == $g->id ? 'selected' : '' }}>{{ $g->name }} ({{ $g->nip ?? 'Guru' }})</option>
-                            @endforeach
-                        </select>
+                        <x-searchable-select id="formAddGuruId" name="guru_id" :options="$opsiGuruJadwal" :selected="old('guru_id')" placeholder="Cari guru pengampu" />
                     </div>
 
                     <button type="submit" class="w-full rounded-lg bg-[#155d50] px-4 py-3 text-sm font-semibold text-white shadow-sm transition duration-200 hover:bg-[#0b2b24] cursor-pointer inline-flex items-center justify-center gap-2">
@@ -170,13 +138,7 @@
                     <form method="GET" action="{{ route('dashboard.jadwal') }}" class="w-full sm:w-auto">
                         <input type="hidden" name="hari" id="filterInputHari" value="{{ $selectedHari ?? 'Senin' }}">
                         <label class="sr-only">Pilih Kelas</label>
-                        <select name="kelas_id" onchange="this.form.submit()" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none transition focus:border-[#155d50] focus:ring-2 focus:ring-[#155d50]/10 sm:w-56 cursor-pointer">
-                            @foreach($kelases as $k)
-                                <option value="{{ $k->id_kelas }}" {{ optional($selectedKelas)->id_kelas == $k->id_kelas ? 'selected' : '' }}>
-                                    Kelas {{ $k->nama_kelas }}
-                                </option>
-                            @endforeach
-                        </select>
+                        <x-searchable-select name="kelas_id" :options="$opsiKelasJadwal" :selected="optional($selectedKelas)->id_kelas" placeholder="Cari kelas" onchange="this.form.submit()" />
                     </form>
                 </div>
 
@@ -308,7 +270,7 @@
                                                 </span>
                                             @else
                                                 <span class="px-2.5 py-1 rounded-md text-xs font-bold bg-[#155d50]/10 text-[#155d50] border border-[#155d50]/20 whitespace-nowrap">
-                                                    Jam Ke-{{ $j->jam_ke }}
+                                                    {{ $j->jam_ke_formatted }}
                                                 </span>
                                             @endif
                                             <span class="text-[10px] text-slate-400 mt-1 font-semibold">{{ $j->hari }}</span>
@@ -389,7 +351,7 @@
                                                 </svg>
                                             </button>
                                             <!-- Tombol Hapus (Nonaktifkan) -->
-                                            <button type="button" onclick="openDeleteModal('{{ $j->id_jadwal }}', '{{ addslashes($j->mapel) }} ({{ $j->hari }} - {{ $j->jam_ke > 0 ? 'Jam Ke-' . $j->jam_ke : 'Kegiatan' }})')"
+                                            <button type="button" onclick="openDeleteModal('{{ $j->id_jadwal }}', '{{ addslashes($j->mapel) }} ({{ $j->hari }} - {{ addslashes($j->jam_ke_formatted) }})')"
                                                     class="text-gray-400 hover:text-red-600 transition p-1 cursor-pointer" title="Nonaktifkan Jadwal">
                                                 <svg class="w-5 h-5 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
@@ -1001,17 +963,28 @@
 
 
 
+    const mapelCategories = @json($mapels->mapWithKeys(fn ($mapel) => [(string) $mapel->id => $mapel->kategori ?? 'biasa']));
+
     function handleMapelSelection(selectElement, type) {
-        const selectedOption = selectElement.options[selectElement.selectedIndex];
-        const kategori = selectedOption ? selectedOption.getAttribute('data-kategori') : '';
+        const selectedOption = selectElement.options ? selectElement.options[selectElement.selectedIndex] : null;
+        const kategori = mapelCategories[selectElement.value] ?? (selectedOption ? selectedOption.getAttribute('data-kategori') : '');
         const text = selectedOption ? selectedOption.textContent.toLowerCase() : '';
 
         const jamKeEl = (type === 'add') ? document.getElementById('formAddJamKe') : document.getElementById('editJamKe');
         const guruEl = (type === 'add') ? document.getElementById('formAddGuruId') : document.getElementById('editGuruId');
 
         if (kategori === 'kegiatan' || text.includes('istirahat') || text.includes('upacara') || text.includes('pembiasaan')) {
-            if (jamKeEl) jamKeEl.value = '0';
-            if (guruEl) guruEl.value = '';
+            if (jamKeEl) {
+                jamKeEl.value = '0';
+                jamKeEl.dispatchEvent(new Event('input', { bubbles: true }));
+                jamKeEl.dispatchEvent(new Event('change', { bubbles: true }));
+                window.dispatchEvent(new CustomEvent('searchable-select-value', { detail: { id: jamKeEl.id, value: '0' } }));
+            }
+            if (guruEl) {
+                guruEl.value = '';
+                guruEl.dispatchEvent(new Event('input', { bubbles: true }));
+                window.dispatchEvent(new CustomEvent('searchable-select-value', { detail: { id: guruEl.id, value: '' } }));
+            }
         }
     }
 

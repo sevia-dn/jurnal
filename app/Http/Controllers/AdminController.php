@@ -1363,11 +1363,8 @@ class AdminController extends Controller
     {
         $periode = $request->query('periode', 'harian');
         $tanggal = $request->query('tanggal', now()->toDateString());
-        $bulan = (int) $request->query('bulan', now()->month);
-        $tahun = (int) $request->query('tahun', max(2026, now()->year));
-        if ($tahun < 2026) {
-            $tahun = 2026;
-        }
+        $bulan = min(12, max(1, (int) $request->query('bulan', now()->month)));
+        $tahun = min(2100, max(2026, (int) $request->query('tahun', max(2026, now()->year))));
         $guruId = $request->query('guru_id');
         $kelasId = $request->query('kelas_id');
         $kehadiran = $request->query('kehadiran', 'all');

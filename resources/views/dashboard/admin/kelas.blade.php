@@ -70,23 +70,23 @@
     @endif
 
     {{-- ================= HEADER UTAMA ================= --}}
-    <div id="viewHeaderKelas" class="{{ $isSiswaViewOpen ? 'hidden' : 'flex' }} mb-6 flex-col items-start justify-between gap-4 border-b border-slate-200 pb-5 lg:flex-row lg:items-center lg:gap-6">
+    <div id="viewHeaderKelas" class="{{ $isSiswaViewOpen ? 'hidden' : 'flex' }} mb-4 flex-col items-start gap-3 lg:flex-row lg:items-center">
 
         <div class="flex items-center gap-2.5 flex-wrap">
             {{-- Search Bar Kelas --}}
-            <form method="GET" action="{{ route('dashboard.kelas') }}" autocomplete="off" class="flex items-center gap-1">
+            <form method="GET" action="{{ route('dashboard.kelas') }}" autocomplete="off" class="w-full sm:w-80">
                 <div class="relative">
                     <i class="bi bi-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
                     <input type="text" name="search" value="{{ request('search') }}" onkeyup="filterAndSortTableKelas(this.value)" placeholder="Cari kelas, wali..." autocomplete="off"
-                           class="border border-gray-300 rounded-xl pl-8 pr-3 py-2 text-xs w-48 focus:outline-none focus:ring-2 focus:ring-emerald-400">
+                           class="w-full border border-gray-300 rounded-xl pl-8 pr-3 py-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-400">
                 </div>
                 @if(request('search'))
                     <a href="{{ route('dashboard.kelas') }}" class="text-xs text-rose-500 hover:underline px-1">Reset</a>
                 @endif
             </form>
 
-            <button onclick="openModal('modalTambahKelas')" class="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg flex items-center gap-2 text-sm font-medium transition shadow-sm">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <button onclick="openModal('modalTambahKelas')" class="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg flex items-center gap-1.5 text-xs font-semibold transition shadow-sm">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
                 </svg>
                 Tambah Kelas Baru

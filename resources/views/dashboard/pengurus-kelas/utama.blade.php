@@ -84,7 +84,7 @@
                 @foreach($jurnalAntrean as $ja)
                     @php
                         $jamText = ($ja->jam_selesai && $ja->jam_selesai > $ja->jam_ke)
-                            ? "Jam ke-{$ja->jam_ke}-{$ja->jam_selesai}"
+                            ? "Jam ke-{$ja->jam_ke} s/d {$ja->jam_selesai}"
                             : "Jam ke-{$ja->jam_ke}";
                         $tgl = \Carbon\Carbon::parse($ja->tanggal)->format('d/m/y');
                     @endphp
@@ -153,8 +153,8 @@
                 @foreach($jadwals as $jadwal)
                     @php
                         $jamText = ($jadwal->jam_selesai && $jadwal->jam_selesai > $jadwal->jam_mulai)
-                            ? "Jam ke {$jadwal->jam_mulai}-{$jadwal->jam_selesai}"
-                            : "Jam ke {$jadwal->jam_mulai}";
+                            ? "Jam ke-{$jadwal->jam_mulai} s/d {$jadwal->jam_selesai}"
+                            : "Jam ke-{$jadwal->jam_mulai}";
                         $jurnal = isset($jurnalHariIni) ? $jurnalHariIni->get($jadwal->jam_mulai) : null;
                         $hasJurnal = (bool) $jurnal;
                         $statusValidasi = $jurnal?->status_validasi;

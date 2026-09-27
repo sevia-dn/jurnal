@@ -219,7 +219,7 @@
                                         </div>
                                     </div>
                                     <div class="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs font-medium text-slate-500">
-                                        <span><i class="bi bi-clock mr-1 text-slate-400"></i>Jam {{ $journal->jam_ke }}{{ $journal->jam_selesai && $journal->jam_selesai !== $journal->jam_ke ? '–'.$journal->jam_selesai : '' }}</span>
+                                        <span><i class="bi bi-clock mr-1 text-slate-400"></i>Jam ke-{{ $journal->jam_ke }}{{ $journal->jam_selesai && $journal->jam_selesai !== $journal->jam_ke ? ' s/d '.$journal->jam_selesai : '' }}</span>
                                         <span class="line-clamp-1"><i class="bi bi-book mr-1 text-slate-400"></i>{{ $journal->materi }}</span>
                                     </div>
                                 </div>

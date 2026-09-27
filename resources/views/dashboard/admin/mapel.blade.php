@@ -47,36 +47,6 @@
         }
     </style>
 
-    {{-- Header Halaman --}}
-    <div class="mb-6 flex flex-col items-start justify-between gap-4 border-b border-slate-200 pb-5 lg:flex-row lg:items-center lg:gap-6">
-        <form method="GET" action="{{ route('dashboard.mapel') }}" autocomplete="off" class="flex items-center gap-2">
-            @if(request('kategori'))
-                <input type="hidden" name="kategori" value="{{ request('kategori') }}">
-            @endif
-            <input type="text" name="search" value="{{ request('search') }}" onkeyup="filterAndSortTableMapel(this.value)" placeholder="Cari kode, nama, guru..." autocomplete="off"
-                   class="border border-gray-300 rounded-lg px-3 py-2 text-sm w-60 focus:outline-none focus:ring-2 focus:ring-emerald-400 bg-white shadow-sm">
-            @if(request('search'))
-                <a href="{{ route('dashboard.mapel', ['kategori' => request('kategori')]) }}" class="text-xs text-gray-500 hover:text-red-600">Reset</a>
-            @endif
-        </form>
-    </div>
-
-    {{-- Kategori Filter Tabs --}}
-    <div class="flex flex-wrap items-center gap-2 mb-6">
-        <a href="{{ route('dashboard.mapel', array_filter(['search' => request('search')])) }}"
-           class="px-4 py-2 rounded-lg text-sm font-medium transition !no-underline {{ !request('kategori') ? 'bg-emerald-600 !text-white shadow-sm' : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200' }}">
-            Semua Mapel ({{ $counts['total'] }})
-        </a>
-        <a href="{{ route('dashboard.mapel', array_filter(['kategori' => 'jurusan', 'search' => request('search')])) }}"
-           class="px-4 py-2 rounded-lg text-sm font-medium transition !no-underline {{ request('kategori') === 'jurusan' ? 'bg-blue-600 !text-white shadow-sm' : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200' }}">
-            <span class="inline-block w-2 h-2 rounded-full bg-blue-400 mr-1.5"></span> Mapel Jurusan ({{ $counts['jurusan'] }})
-        </a>
-        <a href="{{ route('dashboard.mapel', array_filter(['kategori' => 'biasa', 'search' => request('search')])) }}"
-           class="px-4 py-2 rounded-lg text-sm font-medium transition !no-underline {{ in_array(request('kategori'), ['biasa', 'umum', 'pilihan']) ? 'bg-emerald-700 !text-white shadow-sm' : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200' }}">
-            <span class="inline-block w-2 h-2 rounded-full bg-emerald-400 mr-1.5"></span> Mapel Biasa ({{ $counts['biasa'] }})
-        </a>
-    </div>
-
     {{-- ================= FORM TAMBAH MAPEL ================= --}}
     <div class="bg-emerald-50/70 border border-emerald-100 rounded-xl p-6 mb-8 shadow-sm">
         <h2 class="text-lg font-semibold text-emerald-900 mb-4 flex items-center gap-2">
@@ -168,6 +138,22 @@
     </div>
 
     {{-- ================= TABEL DAFTAR MAPEL ================= --}}
+    <div class="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <form method="GET" action="{{ route('dashboard.mapel') }}" autocomplete="off" class="w-full max-w-md">
+            @if(request('kategori'))
+                <input type="hidden" name="kategori" value="{{ request('kategori') }}">
+            @endif
+            <div class="relative">
+                <i class="bi bi-search pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
+                <input type="text" name="search" value="{{ request('search') }}" onkeyup="filterAndSortTableMapel(this.value)" placeholder="Cari kode, nama mapel, atau guru..." autocomplete="off" class="w-full rounded-lg border border-gray-300 bg-white py-2.5 pl-8 pr-3 text-xs shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-400">
+            </div>
+        </form>
+        <div class="flex flex-wrap items-center gap-1.5">
+            <a href="{{ route('dashboard.mapel', array_filter(['search' => request('search')])) }}" class="rounded-lg px-3 py-2 text-xs font-semibold transition !no-underline {{ !request('kategori') ? 'bg-emerald-600 !text-white shadow-sm' : 'border border-gray-200 bg-white text-gray-700 hover:bg-gray-100' }}">Semua ({{ $counts['total'] }})</a>
+            <a href="{{ route('dashboard.mapel', array_filter(['kategori' => 'jurusan', 'search' => request('search')])) }}" class="rounded-lg px-3 py-2 text-xs font-semibold transition !no-underline {{ request('kategori') === 'jurusan' ? 'bg-blue-600 !text-white shadow-sm' : 'border border-gray-200 bg-white text-gray-700 hover:bg-gray-100' }}">Jurusan ({{ $counts['jurusan'] }})</a>
+            <a href="{{ route('dashboard.mapel', array_filter(['kategori' => 'biasa', 'search' => request('search')])) }}" class="rounded-lg px-3 py-2 text-xs font-semibold transition !no-underline {{ in_array(request('kategori'), ['biasa', 'umum', 'pilihan']) ? 'bg-emerald-700 !text-white shadow-sm' : 'border border-gray-200 bg-white text-gray-700 hover:bg-gray-100' }}">Biasa ({{ $counts['biasa'] }})</a>
+        </div>
+    </div>
     <div class="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
         <div class="overflow-x-auto">
             <table class="w-full text-left border-collapse">

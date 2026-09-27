@@ -12,6 +12,12 @@
 
 @section('content')
 <div class="p-6 font-sans sm:p-10 lg:p-8 xl:p-10">
+    @php
+        $opsiKelasSiswa = $kelasList->map(fn ($kelas) => [
+            'value' => (string) $kelas->id_kelas,
+            'label' => $kelas->nama_kelas,
+        ]);
+    @endphp
 
     {{-- Alerts --}}
     @if(session('success'))
@@ -78,28 +84,6 @@
         </div>
     @endif
 
-    <!-- Header Halaman -->
-    <div class="mb-6 flex flex-col items-start justify-between gap-4 border-b border-slate-200 pb-5 lg:flex-row lg:items-center lg:gap-6">
-        <form method="GET" action="{{ route('dashboard.siswa') }}" class="flex items-center gap-2 flex-wrap">
-            <select name="kelas_id" onchange="this.form.submit()" class="border border-gray-300 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-400 bg-white">
-                <option value="">-- Semua Kelas --</option>
-                @foreach($kelasList as $itemKelas)
-                    <option value="{{ $itemKelas->id_kelas }}" {{ request('kelas_id') == $itemKelas->id_kelas ? 'selected' : '' }}>
-                        {{ $itemKelas->nama_kelas }}
-                    </option>
-                @endforeach
-            </select>
-            <div class="relative">
-                <i class="bi bi-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
-                <input type="text" name="search" value="{{ request('search') }}" onkeyup="filterAndSortTableSiswa(this.value)" placeholder="Cari NISN, nama..." autocomplete="off"
-                       class="border border-gray-300 rounded-xl pl-8 pr-3 py-2 text-xs w-48 focus:outline-none focus:ring-2 focus:ring-emerald-400">
-            </div>
-            @if(request('search') || request('kelas_id'))
-                <a href="{{ route('dashboard.siswa') }}" class="text-xs text-rose-500 hover:underline px-1">Reset</a>
-            @endif
-        </form>
-    </div>
-
     <!-- Form Tambah Siswa -->
     <div class="bg-white rounded-2xl shadow-xs border border-gray-200 p-6 mb-6">
         <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
@@ -124,12 +108,7 @@
 
                 <div>
                     <label class="block text-xs font-medium text-gray-700 mb-1">Kelas <span class="text-rose-500">*</span></label>
-                    <select id="tambahKelasSiswa" name="kelas_id" required class="w-full px-3 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-400 text-xs outline-none bg-white transition">
-                        <option value="" disabled {{ !old('kelas_id') && !request('kelas_id') ? 'selected' : '' }}>-- Pilih Kelas --</option>
-                        @foreach($kelasList as $itemKelas)
-                            <option value="{{ $itemKelas->id_kelas }}" {{ old('kelas_id', request('kelas_id')) == $itemKelas->id_kelas ? 'selected' : '' }}>{{ $itemKelas->nama_kelas }}</option>
-                        @endforeach
-                    </select>
+                    <x-searchable-select id="tambahKelasSiswa" name="kelas_id" :options="$opsiKelasSiswa" :selected="old('kelas_id', request('kelas_id'))" placeholder="Cari kelas" required />
                 </div>
 
                 <div>
@@ -175,6 +154,24 @@
             </button>
         </div>
     </div>
+
+    <!-- Filter Daftar Siswa -->
+    <form method="GET" action="{{ route('dashboard.siswa') }}" class="mb-3 grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)_auto] sm:items-end">
+        <div>
+            <label class="mb-1 block text-xs font-semibold text-slate-600">Filter kelas</label>
+            <x-searchable-select name="kelas_id" :options="$opsiKelasSiswa" :selected="request('kelas_id')" placeholder="Cari atau pilih kelas" onchange="this.form.submit()" />
+        </div>
+        <div>
+            <label class="mb-1 block text-xs font-semibold text-slate-600">Cari siswa</label>
+            <div class="relative">
+                <i class="bi bi-search pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
+                <input type="text" name="search" value="{{ request('search') }}" onkeyup="filterAndSortTableSiswa(this.value)" placeholder="Cari NISN atau nama siswa..." autocomplete="off" class="w-full rounded-xl border border-gray-300 py-2.5 pl-8 pr-3 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-400">
+            </div>
+        </div>
+        @if(request('search') || request('kelas_id'))
+            <a href="{{ route('dashboard.siswa') }}" class="pb-2 text-xs text-rose-500 hover:underline">Reset</a>
+        @endif
+    </form>
 
     <!-- Tabel Daftar Siswa -->
     <div class="bg-white rounded-2xl shadow-xs border border-gray-200 overflow-hidden">

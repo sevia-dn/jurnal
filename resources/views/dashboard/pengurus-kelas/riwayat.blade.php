@@ -82,7 +82,7 @@
                                 <p class="mt-2 line-clamp-2 text-sm leading-relaxed text-slate-600">{{ $jurnal->materi ?: 'Tidak ada materi yang dicatat.' }}</p>
                                 <div class="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs font-medium text-slate-500">
                                     <span><i class="bi bi-calendar3 mr-1"></i>{{ \Carbon\Carbon::parse($jurnal->tanggal)->translatedFormat('d F Y') }}</span>
-                                    <span><i class="bi bi-clock mr-1"></i>Jam ke-{{ $jurnal->jam_ke }}{{ $jurnal->jam_selesai && $jurnal->jam_selesai !== $jurnal->jam_ke ? '-'.$jurnal->jam_selesai : '' }}</span>
+                                    <span><i class="bi bi-clock mr-1"></i>Jam ke-{{ $jurnal->jam_ke }}{{ $jurnal->jam_selesai && $jurnal->jam_selesai !== $jurnal->jam_ke ? ' s/d '.$jurnal->jam_selesai : '' }}</span>
                                     <span class="font-semibold text-emerald-700"><i class="bi bi-people mr-1"></i>{{ $jurnal->jumlah_hadir ?? 0 }} hadir</span>
                                 </div>
                             </div>

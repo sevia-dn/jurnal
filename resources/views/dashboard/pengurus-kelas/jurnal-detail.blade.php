@@ -69,8 +69,8 @@
             }
             $tanggalLong = \Carbon\Carbon::parse($jurnal->tanggal)->translatedFormat('l, d F Y');
             $jamText = ($jurnal->jam_selesai && $jurnal->jam_selesai > $jurnal->jam_ke)
-                ? "Jam ke {$jurnal->jam_ke}-{$jurnal->jam_selesai}"
-                : "Jam ke {$jurnal->jam_ke}";
+                ? "Jam ke-{$jurnal->jam_ke} s/d {$jurnal->jam_selesai}"
+                : "Jam ke-{$jurnal->jam_ke}";
         @endphp
 
         {{-- HEADER LOGBOOK --}}

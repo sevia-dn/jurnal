@@ -6,6 +6,7 @@ use App\Models\JadwalMengajar;
 use App\Models\Kelas;
 use App\Models\Mapel;
 use App\Models\User;
+use App\Services\ScheduleSynchronizationService;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -589,23 +590,26 @@ class JadwalMengajarSeeder extends Seeder
                 ['XI RPL 1', 'Jumat', 6, 7, 'Bahasa Jepang', 'Sulistyowati, SS'],
                 ['XI RPL 1', 'Jumat', 8, 9, 'Bahasa Inggris', 'Isti Mufadah, S.Pd'],
                 ['XI RPL 1', 'Jumat', 10, 13, 'Matematika', 'Lutfia Marsalina, S.Pd.I, M.Pd.'],
-                ['XI RPL 2', 'Senin', 5, 6, 'Bahasa Inggris', 'Fajar Wahyu Pratiwi, S.S'],
-                ['XI RPL 2', 'Senin', 7, 13, 'Konsentrasi RPL', 'Badrus Sulaiman, S.Pd.'],
+                // XI RPL 2 (Sesuai PDF Jadwal Resmi KBM)
+                ['XI RPL 2', 'Senin', 2, 4, 'Kreativitas, Inovasi, dan Kewirausahaan', 'Anisa Kusumawati, S.Pd'],
+                ['XI RPL 2', 'Senin', 5, 7, 'Bahasa Inggris', 'Fajar Wahyu Pratiwi, S.S'],
+                ['XI RPL 2', 'Senin', 8, 10, 'Konsentrasi RPL', 'Badrus Sulaiman, S.Pd.'],
                 ['XI RPL 2', 'Selasa', 1, 3, 'Matematika', 'Lutfia Marsalina, S.Pd.I, M.Pd.'],
                 ['XI RPL 2', 'Selasa', 4, 5, 'Bahasa Inggris', 'Fajar Wahyu Pratiwi, S.S'],
                 ['XI RPL 2', 'Selasa', 6, 7, 'PJOK', 'Zainul Arifin,S.Pd'],
-                ['XI RPL 2', 'Selasa', 8, 13, 'Konsentrasi RPL', 'Badrus Sulaiman, S.Pd.'],
+                ['XI RPL 2', 'Selasa', 8, 10, 'Konsentrasi RPL', 'Badrus Sulaiman, S.Pd.'],
                 ['XI RPL 2', 'Rabu', 1, 4, 'Konsentrasi RPL', 'Kurnila Putri Islamawati, S.Pd'],
                 ['XI RPL 2', 'Rabu', 5, 6, 'Mapel Pilihan RPL', 'Hendro Suwignyo, ST'],
                 ['XI RPL 2', 'Rabu', 7, 8, 'Pendidikan Pancasila', 'Wiwik Yuniarsih, S.Pd'],
-                ['XI RPL 2', 'Rabu', 9, 13, 'Sejarah', 'Erna Qoriah, S.E.'],
+                ['XI RPL 2', 'Rabu', 9, 10, 'Sejarah', 'Erna Qoriah, S.E.'],
                 ['XI RPL 2', 'Kamis', 1, 2, 'Bahasa Jepang', 'Sulistyowati, SS'],
                 ['XI RPL 2', 'Kamis', 3, 4, 'BK', 'Widodo, S.Pd'],
                 ['XI RPL 2', 'Kamis', 5, 6, 'Bahasa Jawa', 'Laili Ermawati, S.Pd'],
-                ['XI RPL 2', 'Kamis', 7, 13, 'Konsentrasi RPL', 'Kurnila Putri Islamawati, S.Pd'],
+                ['XI RPL 2', 'Kamis', 7, 10, 'Konsentrasi RPL', 'Kurnila Putri Islamawati, S.Pd'],
                 ['XI RPL 2', 'Jumat', 2, 4, 'Bahasa Indonesia', 'Winartin, S.Pd'],
                 ['XI RPL 2', 'Jumat', 5, 7, 'Pendidikan Agama Islam dan Budi Pekerti', 'Mufatiroh, S.Ag'],
                 ['XI RPL 2', 'Jumat', 8, 10, 'Konsentrasi RPL', 'Badrus Sulaiman, S.Pd.'],
+                ['XI RPL 2', 'Jumat', 11, 12, 'Kreativitas, Inovasi, dan Kewirausahaan', 'Anisa Kusumawati, S.Pd'],
                 ['XI TKJ 1', 'Senin', 2, 3, 'Bahasa Jepang', 'Sulistyowati, SS'],
                 ['XI TKJ 1', 'Senin', 4, 6, 'Bahasa Indonesia', 'Sri Rahayu, S.Pd'],
                 ['XI TKJ 1', 'Senin', 7, 13, 'Konsentrasi TKJ', 'Siti Munawaroh, S.Kom.,M.Pd'],
@@ -1047,5 +1051,7 @@ class JadwalMengajarSeeder extends Seeder
                 );
             }
         });
+
+        app(ScheduleSynchronizationService::class)->synchronizeAdminSchedules();
     }
 }

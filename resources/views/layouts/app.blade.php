@@ -18,6 +18,46 @@
                 extend: { fontFamily: { sans: ['Inter', 'sans-serif'] } }
             }
         }
+
+        function searchableSelect(selected, label, options) {
+            return {
+                selected: selected ? String(selected) : '',
+                query: label || '',
+                options,
+                open: false,
+                filteredOptions() {
+                    const keyword = this.query.toLowerCase().trim();
+
+                    return keyword ? this.options.filter((option) => option.label.toLowerCase().includes(keyword)) : this.options;
+                },
+                choose(option) {
+                    this.selected = option.value;
+                    this.query = option.label;
+                    this.open = false;
+                    this.$nextTick(() => this.$refs.value.dispatchEvent(new Event('change', { bubbles: true })));
+                },
+                clear() {
+                    this.selected = '';
+                    this.query = '';
+                    this.open = false;
+                    this.$nextTick(() => this.$refs.value.dispatchEvent(new Event('change', { bubbles: true })));
+                },
+                setExternalValue(detail) {
+                    if (!detail || this.$refs.value.id !== detail.id) {
+                        return;
+                    }
+
+                    const option = this.options.find((item) => item.value === String(detail.value));
+                    if (option) {
+                        this.selected = option.value;
+                        this.query = option.label;
+                    } else {
+                        this.selected = '';
+                        this.query = '';
+                    }
+                },
+            };
+        }
     </script>
     <style>[x-cloak] { display: none !important; }</style>
 </head>

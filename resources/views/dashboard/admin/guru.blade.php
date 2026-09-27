@@ -13,6 +13,12 @@
 @section('content')
 
 <div class="p-6 font-sans sm:p-10 lg:p-8 xl:p-10">
+    @php
+        $opsiMapelGuru = collect($mapels ?? [])->map(fn ($mapel) => [
+            'value' => (string) $mapel->id,
+            'label' => $mapel->nama_mapel.' ('.$mapel->kode_mapel.')',
+        ]);
+    @endphp
 
     {{-- Alert Notifikasi --}}
     @if(session('success'))
@@ -53,36 +59,6 @@
         </div>
     @endif
 
-    {{-- Header Halaman --}}
-    <div class="mb-6 flex flex-col items-start justify-between gap-4 border-b border-slate-200 pb-5 lg:flex-row lg:items-center lg:gap-6">
-
-        <div class="flex items-center gap-2.5 flex-wrap">
-            {{-- Tombol Download Template Excel --}}
-            <a href="{{ route('dashboard.guru.download-template') }}" class="px-3.5 py-2 text-xs font-semibold text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition shadow-2xs flex items-center gap-1.5 !no-underline" title="Unduh format file Excel/CSV">
-                <i class="bi bi-download text-sm text-emerald-600"></i>
-                <span>Template Excel</span>
-            </a>
-
-            {{-- Tombol Import Guru (Excel) --}}
-            <button type="button" onclick="openModal('modalImportGuru')" class="px-4 py-2 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition shadow-2xs flex items-center gap-1.5 cursor-pointer">
-                <i class="bi bi-file-earmark-excel-fill text-sm"></i>
-                <span>Import Guru</span>
-            </button>
-
-            {{-- Search Bar --}}
-            <form method="GET" action="{{ route('dashboard.guru') }}" autocomplete="off" class="flex items-center gap-1">
-                <div class="relative">
-                    <i class="bi bi-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
-                    <input type="text" name="search" value="{{ request('search') }}" onkeyup="filterAndSortTableGuru(this.value)" placeholder="Cari NIP, nama..." autocomplete="off"
-                           class="border border-gray-300 rounded-xl pl-8 pr-3 py-2 text-xs w-48 focus:outline-none focus:ring-2 focus:ring-emerald-400">
-                </div>
-                @if(request('search'))
-                    <a href="{{ route('dashboard.guru') }}" class="text-xs text-rose-500 hover:underline px-1">Reset</a>
-                @endif
-            </form>
-        </div>
-    </div>
-
     {{-- ================= FORM TAMBAH GURU BARU ================= --}}
     <div class="bg-white border border-gray-200 rounded-2xl shadow-xs p-6 mb-6">
         <h2 class="text-base font-bold text-gray-800 mb-4 flex items-center gap-2">
@@ -106,15 +82,7 @@
 
             <div class="flex flex-col">
                 <label class="text-xs font-medium text-gray-700 mb-1">Mata Pelajaran (Opsional)</label>
-                <select name="mapel_id"
-                        class="w-full h-10 border border-gray-300 rounded-xl px-3 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-400 bg-white cursor-pointer">
-                    <option value="">-- Pilih Mata Pelajaran --</option>
-                    @foreach($mapels ?? [] as $mapel)
-                        <option value="{{ $mapel->id }}" {{ old('mapel_id') == $mapel->id ? 'selected' : '' }}>
-                            {{ $mapel->nama_mapel }} ({{ $mapel->kode_mapel }})
-                        </option>
-                    @endforeach
-                </select>
+                <x-searchable-select name="mapel_id" :options="$opsiMapelGuru" :selected="old('mapel_id')" placeholder="Cari mata pelajaran" />
             </div>
 
             <div class="flex flex-col">
@@ -165,6 +133,17 @@
     </div>
 
     {{-- ================= TABEL DAFTAR GURU ================= --}}
+    <div class="mb-3 flex items-center justify-between gap-3">
+        <form method="GET" action="{{ route('dashboard.guru') }}" autocomplete="off" class="w-full max-w-md">
+            <div class="relative">
+                <i class="bi bi-search pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
+                <input type="text" name="search" value="{{ request('search') }}" onkeyup="filterAndSortTableGuru(this.value)" placeholder="Cari NIP, nama, mata pelajaran, atau nomor HP..." autocomplete="off" class="w-full rounded-xl border border-gray-300 py-2.5 pl-8 pr-3 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-400">
+            </div>
+        </form>
+        @if(request('search'))
+            <a href="{{ route('dashboard.guru') }}" class="shrink-0 px-1 text-xs text-rose-500 hover:underline">Reset</a>
+        @endif
+    </div>
     <div class="bg-white border border-gray-200 rounded-2xl shadow-xs overflow-hidden">
         <div class="overflow-x-auto">
             <table class="w-full text-left border-collapse">
@@ -247,63 +226,6 @@
         </div>
     </div>
 
-</div>
-
-{{-- ================= MODAL IMPORT GURU (EXCEL) ================= --}}
-<div id="modalImportGuru" class="fixed inset-0 z-50 hidden items-center justify-center bg-gray-900/60 backdrop-blur-xs p-4">
-    <div class="bg-white rounded-2xl shadow-xl border border-gray-100 max-w-lg w-full p-6 relative animate-in fade-in zoom-in duration-150">
-        <div class="flex items-center justify-between mb-4 pb-3 border-b border-gray-100">
-            <div class="flex items-center gap-2.5">
-                <div class="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center">
-                    <i class="bi bi-file-earmark-excel-fill text-lg"></i>
-                </div>
-                <div>
-                    <h3 class="text-base font-bold text-gray-900">Import Data Guru (Excel / CSV)</h3>
-                    <p class="text-xs text-gray-500">Unggah file spreadsheet untuk menambahkan guru masal.</p>
-                </div>
-            </div>
-            <button type="button" onclick="closeModal('modalImportGuru')" class="text-gray-400 hover:text-gray-600 p-1 cursor-pointer">
-                <i class="bi bi-x-lg"></i>
-            </button>
-        </div>
-
-        <form action="{{ route('dashboard.guru.import') }}" method="POST" enctype="multipart/form-data" class="space-y-4">
-            @csrf
-
-            <div class="p-4 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-600 leading-relaxed">
-                <div class="font-bold text-slate-800 mb-1 flex items-center gap-1.5">
-                    <i class="bi bi-info-circle-fill text-emerald-600"></i>
-                    <span>Panduan Format Kolom:</span>
-                </div>
-                <p>Gunakan format kolom header pada baris pertama:</p>
-                <div class="mt-2 font-mono bg-white p-2 rounded-lg border border-slate-200 text-slate-700">
-                    nip, nama, mapel, no_hp
-                </div>
-                <div class="mt-2 text-right">
-                    <a href="{{ route('dashboard.guru.download-template') }}" class="text-emerald-700 font-bold hover:underline inline-flex items-center gap-1">
-                        <i class="bi bi-download"></i> Unduh Contoh File Template (.csv)
-                    </a>
-                </div>
-            </div>
-
-            <div>
-                <label class="block text-xs font-semibold text-gray-700 mb-1.5">Pilih File Spreadsheet <span class="text-rose-500">*</span></label>
-                <input type="file" name="file" required accept=".xlsx,.xls,.csv"
-                       class="w-full text-xs text-gray-700 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-emerald-600 file:text-white hover:file:bg-emerald-700 file:cursor-pointer border border-gray-300 rounded-xl cursor-pointer">
-                <span class="text-[11px] text-gray-400 mt-1 block">Mendukung format .xlsx, .xls, atau .csv (Maksimal 10 MB).</span>
-            </div>
-
-            <div class="flex justify-end gap-2.5 pt-3 border-t border-gray-100">
-                <button type="button" onclick="closeModal('modalImportGuru')" class="px-4 py-2.5 text-xs font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl transition cursor-pointer">
-                    Batal
-                </button>
-                <button type="submit" class="px-5 py-2.5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition shadow-xs flex items-center gap-1.5 cursor-pointer">
-                    <i class="bi bi-cloud-arrow-up-fill"></i>
-                    <span>Proses Import</span>
-                </button>
-            </div>
-        </form>
-    </div>
 </div>
 
 {{-- ================= MODAL BATCH EDIT MAPEL ================= --}}

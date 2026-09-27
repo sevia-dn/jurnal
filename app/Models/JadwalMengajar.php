@@ -45,4 +45,13 @@ class JadwalMengajar extends Model
             'id'
         );
     }
+
+    public function getJamKeFormattedAttribute(): string
+    {
+        if ($this->jam_selesai && $this->jam_selesai > $this->jam_mulai) {
+            return "Jam Ke-{$this->jam_mulai} s/d {$this->jam_selesai}";
+        }
+
+        return "Jam Ke-{$this->jam_mulai}";
+    }
 }

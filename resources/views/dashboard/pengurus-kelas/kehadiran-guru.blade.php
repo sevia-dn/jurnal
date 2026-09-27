@@ -37,8 +37,8 @@
                     $jurnal = $jurnalHariIni->get($jadwal->jam_mulai);
                     $hasJurnal = (bool) $jurnal;
                     $jamText = ($jadwal->jam_selesai && $jadwal->jam_selesai > $jadwal->jam_mulai)
-                        ? "Jam ke {$jadwal->jam_mulai}-{$jadwal->jam_selesai}"
-                        : "Jam ke {$jadwal->jam_mulai}";
+                        ? "Jam ke-{$jadwal->jam_mulai} s/d {$jadwal->jam_selesai}"
+                        : "Jam ke-{$jadwal->jam_mulai}";
                 @endphp
 
                 <article class="flex items-center gap-3.5 rounded-2xl border {{ $hasJurnal ? 'border-emerald-200 bg-emerald-50/30' : 'border-slate-200 bg-white' }} p-4 shadow-2xs">

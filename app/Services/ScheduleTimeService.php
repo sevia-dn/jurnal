@@ -16,7 +16,7 @@ class ScheduleTimeService
 
         $slots = $isJumat ? $this->jumatSlots() : $this->weekdaySlots();
         $slot = $slots[$jamKe] ?? ($isJumat
-            ? ['start' => '07:00', 'end' => '15:35']
+            ? ['start' => '07:00', 'end' => '15:30']
             : ['start' => '07:00', 'end' => '15:00']);
 
         $minutes = $this->advancedMinutes($hari);
@@ -49,26 +49,26 @@ class ScheduleTimeService
     /**
      * @return array<int, array{start: string, end: string}>
      */
-    private function weekdaySlots(): array
+    public function weekdaySlots(): array
     {
         return [
             1 => ['start' => '07:00', 'end' => '07:40'],
             2 => ['start' => '07:40', 'end' => '08:20'],
             3 => ['start' => '08:20', 'end' => '09:00'],
             4 => ['start' => '09:00', 'end' => '09:40'],
-            5 => ['start' => '10:00', 'end' => '10:35'],
-            6 => ['start' => '10:35', 'end' => '11:10'],
-            7 => ['start' => '11:10', 'end' => '11:45'],
-            8 => ['start' => '13:15', 'end' => '13:50'],
-            9 => ['start' => '13:50', 'end' => '14:25'],
-            10 => ['start' => '14:25', 'end' => '15:00'],
+            5 => ['start' => '10:00', 'end' => '10:40'],
+            6 => ['start' => '10:40', 'end' => '11:20'],
+            7 => ['start' => '11:20', 'end' => '12:00'],
+            8 => ['start' => '13:00', 'end' => '13:40'],
+            9 => ['start' => '13:40', 'end' => '14:20'],
+            10 => ['start' => '14:20', 'end' => '15:00'],
         ];
     }
 
     /**
      * @return array<int, array{start: string, end: string}>
      */
-    private function jumatSlots(): array
+    public function jumatSlots(): array
     {
         return [
             1 => ['start' => '07:00', 'end' => '07:30'],
@@ -82,9 +82,50 @@ class ScheduleTimeService
             9 => ['start' => '13:00', 'end' => '13:30'],
             10 => ['start' => '13:30', 'end' => '14:00'],
             11 => ['start' => '14:00', 'end' => '14:30'],
-            12 => ['start' => '14:30', 'end' => '15:10'],
-            13 => ['start' => '15:10', 'end' => '15:35'],
+            12 => ['start' => '14:30', 'end' => '15:00'],
+            13 => ['start' => '15:00', 'end' => '15:30'],
         ];
+    }
+
+    /**
+     * Mendapatkan nomor jam ke (slot) berdasarkan waktu jam selesai.
+     */
+    public function slotNumberFromEndTime(string $hari, string $endTime): ?int
+    {
+        $isJumat = mb_strtolower(trim($hari)) === 'jumat';
+        $slots = $isJumat ? $this->jumatSlots() : $this->weekdaySlots();
+        $minutes = $this->advancedMinutes($hari);
+        $normalizedEnd = substr(trim($endTime), 0, 5);
+
+        foreach ($slots as $num => $slot) {
+            $slotEnd = $minutes > 0 ? $this->shiftEarlier($slot['end'], $minutes) : $slot['end'];
+            if ($slotEnd === $normalizedEnd) {
+                return $num;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Format tampilan rentang jam ke, misal "Jam Ke-2 s/d 4" atau "Jam Ke-1".
+     */
+    public function formatJamKeRange(string $hari, int $jamKeMulai, ?string $jamSelesaiTime = null, ?int $jamKeSelesai = null): string
+    {
+        if ($jamKeMulai <= 0) {
+            return 'Kegiatan Khusus';
+        }
+
+        $endSlot = $jamKeSelesai;
+        if ($endSlot === null && $jamSelesaiTime !== null) {
+            $endSlot = $this->slotNumberFromEndTime($hari, $jamSelesaiTime);
+        }
+
+        if ($endSlot !== null && $endSlot > $jamKeMulai) {
+            return "Jam Ke-{$jamKeMulai} s/d {$endSlot}";
+        }
+
+        return "Jam Ke-{$jamKeMulai}";
     }
 
     private function dayKey(string $hari): ?string
