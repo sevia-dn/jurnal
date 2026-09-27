@@ -546,8 +546,9 @@
         const lowerTerm = (term || '').toLowerCase().trim();
 
         rows.forEach(row => {
-            const text = row.textContent.toLowerCase();
-            if (!lowerTerm || text.includes(lowerTerm)) {
+            const nip = row.querySelector('td:nth-child(2)')?.textContent.toLowerCase() || '';
+            const nama = row.querySelector('td:nth-child(3)')?.textContent.toLowerCase() || '';
+            if (!lowerTerm || nip.includes(lowerTerm) || nama.includes(lowerTerm)) {
                 row.style.display = '';
             } else {
                 row.style.display = 'none';

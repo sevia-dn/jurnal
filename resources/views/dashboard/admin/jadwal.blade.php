@@ -873,6 +873,8 @@
             modal.classList.remove('flex');
             modal.classList.add('hidden');
         }
+    }
+
     let currentSelectedHari = "{{ $selectedHari ?? 'Senin' }}";
 
     function filterJadwalTable() {
@@ -883,7 +885,7 @@
 
         rows.forEach(row => {
             const rowHari = row.getAttribute('data-hari');
-            const matchesDay = (hari === 'Semua' || rowHari === hari);
+            const matchesDay = hari === 'Semua' || rowHari === hari;
             const matchesQuery = !query || row.textContent.toLowerCase().includes(query);
 
             if (matchesDay && matchesQuery) {
@@ -914,6 +916,8 @@
         if (footerText) {
             footerText.textContent = `Menampilkan ${visibleCount} sesi jadwal pelajaran`;
         }
+
+        return visibleCount;
     }
 
     function switchHariTab(hari) {
@@ -959,7 +963,7 @@
             activeBadge.classList.add('bg-white/25', 'text-white');
         }
 
-        filterJadwalTable();
+        const visibleCount = filterJadwalTable();
 
         // Update judul header & footer teks
         const titleEl = document.getElementById('activeHariTitle');

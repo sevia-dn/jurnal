@@ -176,7 +176,7 @@
 
         <!-- Pagination Footer -->
         <div class="bg-gray-50 p-4 border-t border-gray-100 flex justify-between items-center text-sm text-gray-500">
-            <span>Menampilkan {{ count($kelasList) }} kelas</span>
+            <span id="kelasCountText">Menampilkan {{ count($kelasList) }} kelas</span>
         </div>
     </div>
 
@@ -863,14 +863,17 @@
         const rows = Array.from(tableBody.querySelectorAll('tr[onclick*="showStudents"]'));
         const lowerTerm = (term || '').toLowerCase().trim();
 
+        let visibleCount = 0;
         rows.forEach(row => {
-            const text = row.textContent.toLowerCase();
-            if (!lowerTerm || text.includes(lowerTerm)) {
-                row.style.display = '';
-            } else {
-                row.style.display = 'none';
-            }
+            const namaKelas = row.querySelector('td:nth-child(3)')?.textContent.toLowerCase() || '';
+            const namaWali = row.querySelector('td:nth-child(4)')?.textContent.toLowerCase() || '';
+            const matches = !lowerTerm || namaKelas.includes(lowerTerm) || namaWali.includes(lowerTerm);
+            row.style.display = matches ? '' : 'none';
+            if (matches) visibleCount++;
         });
+
+        const countText = document.getElementById('kelasCountText');
+        if (countText) countText.textContent = `Menampilkan ${visibleCount} dari ${rows.length} kelas`;
 
         // Re-sort visible rows alphabetically by nama_kelas A-Z
         rows.sort((a, b) => {

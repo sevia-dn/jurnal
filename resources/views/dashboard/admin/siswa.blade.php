@@ -623,23 +623,14 @@
 
         let visibleCount = 0;
         rows.forEach(row => {
-            const text = row.textContent.toLowerCase();
-            if (!lowerTerm || text.includes(lowerTerm)) {
-                row.style.display = '';
-                visibleCount++;
-            } else {
-                row.style.display = 'none';
+            // Cache teks tiap baris agar tidak membaca ulang seluruh DOM setiap ketikan.
+            if (!row.dataset.searchText) {
+                row.dataset.searchText = row.textContent.toLowerCase();
             }
+            const matches = !lowerTerm || row.dataset.searchText.includes(lowerTerm);
+            row.style.display = matches ? '' : 'none';
+            if (matches) visibleCount++;
         });
-
-        // Re-sort visible rows alphabetically by nama A-Z
-        rows.sort((a, b) => {
-            const namaA = (a.querySelector('td:nth-child(3)')?.innerText || '').trim();
-            const namaB = (b.querySelector('td:nth-child(3)')?.innerText || '').trim();
-            return namaA.localeCompare(namaB, 'id', { sensitivity: 'base' });
-        });
-
-        rows.forEach(row => tableBody.appendChild(row));
 
         if (emptyRow) {
             if (visibleCount === 0) {

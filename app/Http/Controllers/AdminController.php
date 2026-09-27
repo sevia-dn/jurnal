@@ -75,24 +75,7 @@ class AdminController extends Controller
         if ($search) {
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
-                    ->orWhere('username', 'like', "%{$search}%")
-                    ->orWhere('nip', 'like', "%{$search}%")
-                    ->orWhere('no_hp', 'like', "%{$search}%")
-                    ->orWhereHas('mapel', function ($m) use ($search) {
-                        $m->where('nama_mapel', 'like', "%{$search}%");
-                    })
-                    ->orWhereIn('id', function ($sub) use ($search) {
-                        $sub->select('id_user')
-                            ->from('jadwal_pelajarans')
-                            ->where('mapel', 'like', "%{$search}%");
-                    })
-                    ->orWhereIn('id', function ($sub) use ($search) {
-                        $sub->select('id_user')
-                            ->from('jadwal_mengajars')
-                            ->whereIn('id_mapel', function ($mSub) use ($search) {
-                                $mSub->select('id')->from('mapels')->where('nama_mapel', 'like', "%{$search}%");
-                            });
-                    });
+                    ->orWhere('nip', 'like', "%{$search}%");
             });
         }
 
