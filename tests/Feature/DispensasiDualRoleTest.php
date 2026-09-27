@@ -57,8 +57,8 @@ class DispensasiDualRoleTest extends TestCase
             'tanggal' => now('Asia/Jakarta')->toDateString(),
             'tipe' => 'guru',
             'shift' => 1,
-            'jam_mulai' => '07:00:00',
-            'jam_selesai' => '15:00:00',
+            'jam_mulai' => '00:00:00',
+            'jam_selesai' => '23:59:59',
         ]);
         JadwalPiket::create([
             'user_id' => $waka->id,
@@ -66,8 +66,8 @@ class DispensasiDualRoleTest extends TestCase
             'tanggal' => now('Asia/Jakarta')->toDateString(),
             'tipe' => 'waka',
             'shift' => 1,
-            'jam_mulai' => '07:00:00',
-            'jam_selesai' => '15:00:00',
+            'jam_mulai' => '00:00:00',
+            'jam_selesai' => '23:59:59',
         ]);
 
         $kelas = Kelas::create([
@@ -119,7 +119,7 @@ class DispensasiDualRoleTest extends TestCase
         Http::assertSent(function (ClientRequest $request) use ($dispensasi): bool {
             return $request->url() === 'https://gateway.test/send'
                 && $request['target'] === '081233334444'
-                && str_contains($request['message'], route('guru.utama', ['dispensasi' => $dispensasi->token_approval]))
+                && str_contains($request['message'], route('dispensasi.approval', ['token' => $dispensasi->token_approval]))
                 && str_contains($request['message'], 'Guru Piket Test');
         });
         Http::assertSentCount(2);
