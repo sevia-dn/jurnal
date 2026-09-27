@@ -172,6 +172,12 @@ Route::middleware('auth')->group(function () {
         Route::get('/pengaturan', [AdminController::class, 'pengaturan'])->name('admin.pengaturan');
         Route::post('/pengaturan', [AdminController::class, 'updatePengaturan'])->name('admin.pengaturan.update');
 
+        // --- LAPORAN GANTI PASSWORD (NOTIFIKASI NAVBAR ADMIN) ---
+        Route::post('/admin/laporan-ganti-pw/{id}/terima', [AdminController::class, 'terimaResetPassword'])->name('admin.laporan-pw.terima');
+        Route::post('/admin/laporan-ganti-pw/{id}/tolak', [AdminController::class, 'tolakResetPassword'])->name('admin.laporan-pw.tolak');
+        Route::post('/laporan-ganti-pw/{id}/terima', [AdminController::class, 'terimaResetPassword']);
+        Route::post('/laporan-ganti-pw/{id}/tolak', [AdminController::class, 'tolakResetPassword']);
+
     });
 
     // ==========================================

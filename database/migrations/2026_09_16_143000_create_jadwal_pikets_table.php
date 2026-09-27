@@ -11,17 +11,37 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('jadwal_pikets', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('user_id')->constrained('users')->cascadeOnDelete();
-            $table->string('hari'); // Senin, Selasa, Rabu, Kamis, Jumat, Sabtu
-            $table->unsignedTinyInteger('bulan')->nullable(); // 1-12
-            $table->unsignedSmallInteger('tahun')->nullable(); // 2026
-            $table->unsignedTinyInteger('shift')->default(1); // 1: 07:00-11:00, 2: 11:00-15:00
-            $table->time('jam_mulai')->default('07:00:00');
-            $table->time('jam_selesai')->default('11:00:00');
-            $table->timestamps();
-        });
+        if (! Schema::hasTable('jadwal_pikets')) {
+            Schema::create('jadwal_pikets', function (Blueprint $table) {
+                $table->id();
+                $table->foreignId('user_id')->constrained('users')->cascadeOnDelete();
+                $table->string('hari'); // Senin, Selasa, Rabu, Kamis, Jumat, Sabtu
+                $table->unsignedTinyInteger('bulan')->nullable(); // 1-12
+                $table->unsignedSmallInteger('tahun')->nullable(); // 2026
+                $table->unsignedTinyInteger('shift')->default(1); // 1: 07:00-11:00, 2: 11:00-15:00
+                $table->time('jam_mulai')->default('07:00:00');
+                $table->time('jam_selesai')->default('11:00:00');
+                $table->timestamps();
+            });
+        } else {
+            Schema::table('jadwal_pikets', function (Blueprint $table) {
+                if (! Schema::hasColumn('jadwal_pikets', 'bulan')) {
+                    $table->unsignedTinyInteger('bulan')->nullable()->after('hari');
+                }
+                if (! Schema::hasColumn('jadwal_pikets', 'tahun')) {
+                    $table->unsignedSmallInteger('tahun')->nullable()->after('bulan');
+                }
+                if (! Schema::hasColumn('jadwal_pikets', 'shift')) {
+                    $table->unsignedTinyInteger('shift')->default(1)->after('tahun');
+                }
+                if (! Schema::hasColumn('jadwal_pikets', 'jam_mulai')) {
+                    $table->time('jam_mulai')->default('07:00:00')->after('shift');
+                }
+                if (! Schema::hasColumn('jadwal_pikets', 'jam_selesai')) {
+                    $table->time('jam_selesai')->default('11:00:00')->after('jam_mulai');
+                }
+            });
+        }
     }
 
     /**
