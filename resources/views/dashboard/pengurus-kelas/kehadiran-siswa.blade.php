@@ -97,10 +97,10 @@
                     </div>
 
                     <fieldset class="flex shrink-0 items-center gap-1" aria-label="Status absensi {{ $siswa->nama }}">
-                        @foreach(['Hadir' => 'H', 'Sakit' => 'S', 'Izin' => 'I', 'Alpa' => 'A', 'Dispensasi' => 'D'] as $option => $label)
+                        @foreach(['Hadir' => ['label' => 'H', 'cls' => 'peer-checked:border-emerald-600 peer-checked:bg-emerald-600 peer-checked:text-white'], 'Sakit' => ['label' => 'S', 'cls' => 'peer-checked:border-amber-500 peer-checked:bg-amber-500 peer-checked:text-white'], 'Izin' => ['label' => 'I', 'cls' => 'peer-checked:border-blue-500 peer-checked:bg-blue-500 peer-checked:text-white'], 'Alpa' => ['label' => 'A', 'cls' => 'peer-checked:border-rose-500 peer-checked:bg-rose-500 peer-checked:text-white'], 'Dispensasi' => ['label' => 'D', 'cls' => 'peer-checked:border-indigo-600 peer-checked:bg-indigo-600 peer-checked:text-white']] as $option => $cfg)
                             <label class="cursor-not-allowed">
                                 <input type="radio" name="status_{{ $siswa->id }}" value="{{ $option }}" @checked($status === $option) disabled class="peer sr-only">
-                                <span class="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 bg-white text-[11px] font-bold text-slate-400 transition peer-checked:border-emerald-600 peer-checked:bg-emerald-600 peer-checked:text-white peer-checked:shadow-sm">{{ $label }}</span>
+                                <span class="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 bg-white text-[11px] font-bold text-slate-400 transition {{ $cfg['cls'] }} peer-checked:shadow-sm">{{ $cfg['label'] }}</span>
                             </label>
                         @endforeach
                     </fieldset>

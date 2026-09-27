@@ -69,16 +69,14 @@
                     <p class="truncate text-[11px] text-[#AEE5D4]">{{ $roleLabel }}</p>
                 </div>
             </div>
-        </div>
+        
 
-<form action="{{ route('logout') }}" method="POST" class="m-0 p-0">
-    @csrf
-    <button type="submit"
-            title="Keluar"
-            class="inline-flex items-center justify-center p-1 text-white transition hover:text-slate-300 focus:outline-none focus:ring-2 focus:ring-white/50 rounded">
-        <i class="bi bi-box-arrow-right text-xl" aria-hidden="true"></i>
-    </button>
-</form>
+      <form action="{{ route('logout') }}" method="POST" class="m-0 shrink-0">
+        @csrf
+        <button type="submit" class="flex h-9 w-9 items-center justify-center rounded-lg border-0 bg-transparent text-rose-200 transition-colors hover:bg-rose-500/20 hover:text-white" title="Keluar">
+          <i class="bi bi-box-arrow-right text-lg"></i>
+        </button>
+      </form>
         </div>
     </div>
 </aside>

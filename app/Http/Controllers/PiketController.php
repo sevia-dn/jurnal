@@ -286,14 +286,27 @@ class PiketController extends Controller
             ->get()
             ->keyBy('siswa_id');
 
-        // Absensi jurnal tetap menjadi data per sesi pembelajaran.
+        // Absensi jurnal tetap menjadi data per sesi pembelajaran (ambil status non-hadir prioritas tertinggi).
+        $priorityMap = [
+            'D' => 5,
+            'DISPENSASI' => 5,
+            'SAKIT' => 4,
+            'S' => 4,
+            'IZIN' => 3,
+            'I' => 3,
+            'ALPA' => 2,
+            'ALFA' => 2,
+            'A' => 2,
+            'HADIR' => 1,
+            'H' => 1,
+        ];
         $absensiRecords = Absensi::whereIn('id_siswa', $siswas->pluck('id'))
             ->whereHas('jurnal', function ($q) use ($tanggal) {
                 $q->whereDate('tanggal', $tanggal);
             })
-            ->orderBy('id', 'asc')
             ->get()
-            ->keyBy('id_siswa');
+            ->groupBy('id_siswa')
+            ->map(fn ($records) => $records->sortByDesc(fn ($r) => $priorityMap[strtoupper(trim((string) $r->status))] ?? 0)->first());
 
         $studentsData = $siswas->map(function ($s) use ($dispensasis, $kehadiranPiket, $absensiRecords, $selectedKelas) {
             $dispen = $dispensasis->get($s->id);

@@ -76,11 +76,9 @@ class PengurusKelasController extends Controller
         $perluPersetujuan = $perluPersetujuanQuery->count();
 
         // 3. Kehadiran Siswa
-        $totalSiswa = $kelas?->jumlah_siswa ?? ($kelasId ? Siswa::where('kelas_id', $kelasId)->count() : 36);
-        $siswaHadirTerakhir = 0;
-        $jurnalTerakhir = null;
         $totalSiswa = $kelas?->jumlah_siswa ?? ($kelasId ? Siswa::where('kelas_id', $kelasId)->count() : 0);
         $siswaHadirTerakhir = null;
+        $jurnalTerakhir = null;
         if ($kelasId) {
             $jurnalTerakhir = JurnalMengajar::where('id_kelas', $kelasId)
                 ->whereDate('tanggal', $now->toDateString())
@@ -100,7 +98,6 @@ class PengurusKelasController extends Controller
                 }
             }
         }
-        $kehadiranSiswaText = $jurnalTerakhir ? "{$siswaHadirTerakhir}/{$totalSiswa}" : "-/{$totalSiswa}";
         $kehadiranSiswaText = $siswaHadirTerakhir !== null ? "{$siswaHadirTerakhir}/{$totalSiswa}" : "-/{$totalSiswa}";
 
         // Daftar jurnal yang menunggu validasi (untuk quick action di dashboard)
@@ -303,13 +300,25 @@ class PengurusKelasController extends Controller
                 ->pluck('id_jurnal');
 
             if ($jurnalHariIni->isNotEmpty()) {
-                $priority = ['D' => 4, 'S' => 3, 'I' => 2, 'A' => 1, 'H' => 0];
+                $priority = [
+                    'D' => 5,
+                    'DISPENSASI' => 5,
+                    'SAKIT' => 4,
+                    'S' => 4,
+                    'IZIN' => 3,
+                    'I' => 3,
+                    'ALPA' => 2,
+                    'ALFA' => 2,
+                    'A' => 2,
+                    'HADIR' => 1,
+                    'H' => 1,
+                ];
                 $absensiTerakhir = Absensi::whereIn('id_jurnal', $jurnalHariIni)
                     ->get()
                     ->groupBy('id_siswa')
                     ->map(function ($records) use ($priority) {
                         // Ambil record dengan status prioritas tertinggi
-                        return $records->sortByDesc(fn ($r) => $priority[strtoupper(trim($r->status))] ?? 0)->first();
+                        return $records->sortByDesc(fn ($r) => $priority[strtoupper(trim((string) $r->status))] ?? 0)->first();
                     });
             }
         }

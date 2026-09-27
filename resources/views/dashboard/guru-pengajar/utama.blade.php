@@ -94,9 +94,34 @@
         },
 
         attendanceCount(status) {
-            if (!this.$refs.logbookForm) return 0;
-            return [...this.$refs.logbookForm.querySelectorAll('input[type=radio]:checked')]
+            if (!this.$refs.logbookForm || !this.selectedKelas) return 0;
+            const container = this.$refs.logbookForm.querySelector(`[data-kelas-container="${this.selectedKelas}"]`);
+            if (!container) return 0;
+            return [...container.querySelectorAll('input[type=radio]:checked')]
                 .filter((input) => input.value === status).length;
+        },
+
+        getAbsentStudentsList() {
+            if (!this.$refs.logbookForm || !this.selectedKelas) return [];
+            const container = this.$refs.logbookForm.querySelector(`[data-kelas-container="${this.selectedKelas}"]`);
+            if (!container) return [];
+            const list = [];
+            const rows = container.querySelectorAll('[data-siswa-row]');
+            rows.forEach((row) => {
+                const checked = row.querySelector('input[type=radio]:checked');
+                if (checked && checked.value !== 'Hadir') {
+                    const nama = row.getAttribute('data-siswa-nama') || 'Siswa';
+                    const nis = row.getAttribute('data-siswa-nis') || '-';
+                    const noteInput = row.querySelector('input[name^="absensi_catatan"]');
+                    list.push({
+                        nama: nama,
+                        nis: nis,
+                        status: checked.value,
+                        catatan: noteInput ? noteInput.value.trim() : ''
+                    });
+                }
+            });
+            return list;
         },
 
         async startCamera() {
@@ -656,7 +681,7 @@
                     <div class="custom-scrollbar max-h-[min(52dvh,34rem)] space-y-2 overflow-y-auto p-3">
                         @forelse($siswasByKelas as $kelasId => $kelasSiswas)
                             @if(count($kelasSiswas) > 0)
-                                <div class="space-y-2" x-show="selectedKelas === @js((string) $kelasId)">
+                                <div class="space-y-2" x-show="selectedKelas === @js((string) $kelasId)" data-kelas-container="{{ $kelasId }}">
                                     @foreach($kelasSiswas as $idx => $siswa)
                                         @php
                                             $catatanPiket = $piketKehadiranHariIni->get($siswa->id);
@@ -664,6 +689,9 @@
                                         @endphp
                                         <div
                                             x-show="matchesSearch(@js($siswa->nama), @js($siswa->nis), @js($siswa->nisn))"
+                                            data-siswa-row
+                                            data-siswa-nama="{{ $siswa->nama }}"
+                                            data-siswa-nis="{{ $siswa->nis ?? '-' }}"
                                             class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 rounded-xl border border-slate-200/80 bg-white p-3 shadow-2xs transition hover:border-emerald-300"
                                         >
                                             {{-- NOMOR & NAMA SISWA (FULL WIDTH DI MOBILE) --}}
@@ -690,6 +718,7 @@
                                                     id="absensi_{{ $siswa->id }}_hadir"
                                                     name="absensi[{{ $siswa->id }}]"
                                                     value="Hadir"
+                                                    :disabled="selectedKelas !== '{{ (string) $kelasId }}'"
                                                     @checked($statusSiswa === 'Hadir')
                                                     class="peer sr-only"
                                                 >
@@ -705,6 +734,7 @@
                                                     id="absensi_{{ $siswa->id }}_sakit"
                                                     name="absensi[{{ $siswa->id }}]"
                                                     value="Sakit"
+                                                    :disabled="selectedKelas !== '{{ (string) $kelasId }}'"
                                                     @checked($statusSiswa === 'Sakit')
                                                     class="peer sr-only"
                                                 >
@@ -720,6 +750,7 @@
                                                     id="absensi_{{ $siswa->id }}_izin"
                                                     name="absensi[{{ $siswa->id }}]"
                                                     value="Izin"
+                                                    :disabled="selectedKelas !== '{{ (string) $kelasId }}'"
                                                     @checked($statusSiswa === 'Izin')
                                                     class="peer sr-only"
                                                 >
@@ -735,6 +766,7 @@
                                                     id="absensi_{{ $siswa->id }}_alpa"
                                                     name="absensi[{{ $siswa->id }}]"
                                                     value="Alpa"
+                                                    :disabled="selectedKelas !== '{{ (string) $kelasId }}'"
                                                     @checked(in_array($statusSiswa, ['Alpa', 'Alfa'], true))
                                                     class="peer sr-only"
                                                 >
@@ -750,6 +782,7 @@
                                                     id="absensi_{{ $siswa->id }}_dispensasi"
                                                     name="absensi[{{ $siswa->id }}]"
                                                     value="Dispensasi"
+                                                    :disabled="selectedKelas !== '{{ (string) $kelasId }}'"
                                                     @checked(in_array($statusSiswa, ['D', 'Dispensasi'], true))
                                                     class="peer sr-only"
                                                 >
@@ -764,6 +797,7 @@
                                                 type="text"
                                                 name="absensi_catatan[{{ $siswa->id }}]"
                                                 maxlength="255"
+                                                :disabled="selectedKelas !== '{{ (string) $kelasId }}'"
                                                 value="{{ $catatanPiket?->catatan }}"
                                                 placeholder="Keterangan jika tidak hadir (opsional)"
                                                 class="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-xs text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100"
@@ -872,12 +906,138 @@
                 <span>Kirim</span>
             </button>
 
-            <div x-show="previewModal" x-cloak @keydown.escape.window="previewModal = false" class="fixed inset-0 z-[80] flex items-end bg-slate-950/60 p-0 backdrop-blur-sm sm:items-center sm:justify-center sm:p-5">
-                <div class="max-h-[92dvh] w-full overflow-y-auto rounded-t-2xl bg-white shadow-2xl sm:max-w-2xl sm:rounded-2xl">
-                    <div class="sticky top-0 flex items-center justify-between border-b border-slate-100 bg-white px-4 py-3 sm:px-5"><div><h3 class="text-base font-bold text-slate-900">Pratinjau Logbook</h3><p class="text-xs text-slate-500">Periksa seluruh data sebelum dikirim.</p></div><button type="button" @click="previewModal = false" class="flex h-9 w-9 items-center justify-center rounded-full text-slate-500 hover:bg-slate-100"><i class="bi bi-x-lg"></i></button></div>
-                    <div class="space-y-4 p-4 sm:p-5"><div class="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4"><div class="rounded-xl bg-slate-50 p-3"><p class="text-[10px] font-bold uppercase text-slate-400">Tanggal</p><p class="mt-1 font-bold text-slate-800" x-text="selectedTanggal"></p></div><div class="rounded-xl bg-slate-50 p-3"><p class="text-[10px] font-bold uppercase text-slate-400">Kelas</p><p class="mt-1 font-bold text-slate-800" x-text="getKelasName(selectedKelas)"></p></div><div class="rounded-xl bg-slate-50 p-3"><p class="text-[10px] font-bold uppercase text-slate-400">Mapel</p><p class="mt-1 font-bold text-slate-800" x-text="getMapelName(selectedMapel)"></p></div><div class="rounded-xl bg-slate-50 p-3"><p class="text-[10px] font-bold uppercase text-slate-400">Jam</p><p class="mt-1 font-bold text-slate-800" x-text="'Ke-' + selectedJamKe + '–' + selectedJamSelesai"></p></div></div><div class="rounded-xl border border-slate-200 p-3"><p class="text-xs font-bold text-slate-700">Materi</p><p class="mt-1 text-sm leading-relaxed text-slate-600" x-text="$refs.materiInput?.value || '-' "></p></div><div class="rounded-xl border border-slate-200 p-3"><p class="text-xs font-bold text-slate-700">Ringkasan Absensi</p><div class="mt-2 flex flex-wrap gap-2 text-xs font-bold"><span class="rounded-full bg-emerald-100 px-2.5 py-1 text-emerald-800" x-text="attendanceCount('Hadir') + ' Hadir'"></span><span class="rounded-full bg-amber-100 px-2.5 py-1 text-amber-800" x-text="attendanceCount('Sakit') + ' Sakit'"></span><span class="rounded-full bg-blue-100 px-2.5 py-1 text-blue-800" x-text="attendanceCount('Izin') + ' Izin'"></span><span class="rounded-full bg-rose-100 px-2.5 py-1 text-rose-800" x-text="attendanceCount('Alpa') + ' Alpa'"></span><span class="rounded-full bg-indigo-100 px-2.5 py-1 text-indigo-800" x-text="attendanceCount('Dispensasi') + ' Dispensasi'"></span></div></div></div><div class="flex flex-col-reverse gap-2 border-t border-slate-100 p-4 sm:flex-row sm:justify-end sm:p-5"><button type="button" @click="previewModal = false" class="rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-100">Perbaiki Data</button><button type="button" @click="sendLogbook()" class="rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-emerald-700">Kirim Logbook</button></div>
+            <template x-teleport="body">
+                <div
+                    x-show="previewModal"
+                    x-cloak
+                    @keydown.escape.window="previewModal = false"
+                    class="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/70 p-3 sm:p-5 backdrop-blur-xs"
+                    @click.self="previewModal = false"
+                >
+                    <div
+                        class="flex w-full max-w-xl max-h-[90vh] flex-col overflow-hidden rounded-2xl bg-white shadow-2xl"
+                        @click.stop
+                    >
+                        {{-- Header Fixed --}}
+                        <div class="flex shrink-0 items-center justify-between border-b border-slate-100 bg-white px-4 py-3.5 sm:px-5">
+                            <div>
+                                <h3 class="text-base font-bold text-slate-900">Pratinjau Logbook</h3>
+                                <p class="text-xs text-slate-500">Periksa rincian data sebelum dikirim.</p>
+                            </div>
+                            <button
+                                type="button"
+                                @click="previewModal = false"
+                                class="flex h-8 w-8 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                                aria-label="Tutup"
+                            >
+                                <i class="bi bi-x-lg text-sm"></i>
+                            </button>
+                        </div>
+
+                        {{-- Body Scrollable --}}
+                        <div class="flex-1 overflow-y-auto custom-scrollbar p-4 sm:p-5 space-y-4">
+                            {{-- Info Grid --}}
+                            <div class="grid grid-cols-2 gap-2.5 text-sm sm:grid-cols-4">
+                                <div class="rounded-xl bg-slate-50 p-2.5 border border-slate-100">
+                                    <p class="text-[10px] font-bold uppercase text-slate-400">Tanggal</p>
+                                    <p class="mt-0.5 text-xs font-bold text-slate-800" x-text="selectedTanggal"></p>
+                                </div>
+                                <div class="rounded-xl bg-slate-50 p-2.5 border border-slate-100">
+                                    <p class="text-[10px] font-bold uppercase text-slate-400">Kelas</p>
+                                    <p class="mt-0.5 text-xs font-bold text-slate-800" x-text="getKelasName(selectedKelas)"></p>
+                                </div>
+                                <div class="rounded-xl bg-slate-50 p-2.5 border border-slate-100">
+                                    <p class="text-[10px] font-bold uppercase text-slate-400">Mapel</p>
+                                    <p class="mt-0.5 text-xs font-bold text-slate-800" x-text="getMapelName(selectedMapel)"></p>
+                                </div>
+                                <div class="rounded-xl bg-slate-50 p-2.5 border border-slate-100">
+                                    <p class="text-[10px] font-bold uppercase text-slate-400">Jam</p>
+                                    <p class="mt-0.5 text-xs font-bold text-slate-800" x-text="'Ke-' + selectedJamKe + (selectedJamSelesai && selectedJamSelesai != selectedJamKe ? '–' + selectedJamSelesai : '')"></p>
+                                </div>
+                            </div>
+
+                            {{-- Materi --}}
+                            <div class="rounded-xl border border-slate-200 p-3">
+                                <p class="text-xs font-bold text-slate-700">Materi / Pokok Pembahasan</p>
+                                <p class="mt-1 text-xs leading-relaxed text-slate-600 whitespace-pre-line" x-text="$refs.materiInput?.value || '-' "></p>
+                            </div>
+
+                            {{-- Ringkasan Absensi --}}
+                            <div class="rounded-xl border border-slate-200 bg-slate-50/50 p-3.5 space-y-3">
+                                <div>
+                                    <p class="text-xs font-bold text-slate-700">Ringkasan Kehadiran Siswa</p>
+                                    <div class="mt-2 flex flex-wrap gap-1.5 text-xs font-bold">
+                                        <span class="rounded-full bg-emerald-100 px-2.5 py-0.5 text-emerald-800" x-text="attendanceCount('Hadir') + ' Hadir'"></span>
+                                        <span class="rounded-full bg-amber-100 px-2.5 py-0.5 text-amber-800" x-text="attendanceCount('Sakit') + ' Sakit'"></span>
+                                        <span class="rounded-full bg-blue-100 px-2.5 py-0.5 text-blue-800" x-text="attendanceCount('Izin') + ' Izin'"></span>
+                                        <span class="rounded-full bg-rose-100 px-2.5 py-0.5 text-rose-800" x-text="attendanceCount('Alpa') + ' Alpa'"></span>
+                                        <span class="rounded-full bg-indigo-100 px-2.5 py-0.5 text-indigo-800" x-text="attendanceCount('Dispensasi') + ' Dispensasi'"></span>
+                                    </div>
+                                </div>
+
+                                {{-- DAFTAR SISWA TIDAK HADIR --}}
+                                <div class="border-t border-slate-200 pt-2.5">
+                                    <template x-if="getAbsentStudentsList().length > 0">
+                                        <div>
+                                            <p class="text-[11px] font-bold text-slate-700 mb-1.5 flex items-center gap-1">
+                                                <i class="bi bi-person-x-fill text-amber-600"></i>
+                                                <span x-text="'Siswa tidak hadir (' + getAbsentStudentsList().length + ' orang):'"></span>
+                                            </p>
+                                            <div class="space-y-1.5 max-h-40 overflow-y-auto custom-scrollbar pr-1">
+                                                <template x-for="(s, idx) in getAbsentStudentsList()" :key="idx">
+                                                    <div class="flex items-center justify-between rounded-lg bg-white border border-slate-200 px-2.5 py-1.5 text-xs shadow-2xs">
+                                                        <div class="min-w-0 flex-1 pr-2">
+                                                            <span class="font-bold text-slate-800" x-text="s.nama"></span>
+                                                            <span class="text-[10px] text-slate-400 ml-1" x-text="'(NIS: ' + s.nis + ')'"></span>
+                                                            <template x-if="s.catatan">
+                                                                <p class="text-[10px] text-slate-500 italic mt-0.5" x-text="'Ket: ' + s.catatan"></p>
+                                                            </template>
+                                                        </div>
+                                                        <span
+                                                            class="shrink-0 rounded-md px-2 py-0.5 text-[10px] font-bold"
+                                                            :class="{
+                                                                'bg-amber-100 text-amber-800 border border-amber-200': s.status === 'Sakit',
+                                                                'bg-blue-100 text-blue-800 border border-blue-200': s.status === 'Izin',
+                                                                'bg-rose-100 text-rose-800 border border-rose-200': s.status === 'Alpa',
+                                                                'bg-indigo-100 text-indigo-800 border border-indigo-200': s.status === 'Dispensasi',
+                                                            }"
+                                                            x-text="s.status"
+                                                        ></span>
+                                                    </div>
+                                                </template>
+                                            </div>
+                                        </div>
+                                    </template>
+                                    <template x-if="getAbsentStudentsList().length === 0">
+                                        <p class="text-[11px] text-emerald-700 font-semibold flex items-center gap-1.5 bg-emerald-50 rounded-lg p-2 border border-emerald-100">
+                                            <i class="bi bi-check-circle-fill text-emerald-600"></i>
+                                            <span>Semua siswa hadir di kelas (Nihil tidak hadir).</span>
+                                        </p>
+                                    </template>
+                                </div>
+                            </div>
+                        </div>
+
+                        {{-- Footer Fixed --}}
+                        <div class="flex shrink-0 flex-col-reverse gap-2 border-t border-slate-100 bg-slate-50 p-4 sm:flex-row sm:justify-end sm:p-5">
+                            <button
+                                type="button"
+                                @click="previewModal = false"
+                                class="rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-200/60 transition"
+                            >
+                                Perbaiki Data
+                            </button>
+                            <button
+                                type="button"
+                                @click="sendLogbook()"
+                                class="rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-emerald-700 transition"
+                            >
+                                Kirim Logbook
+                            </button>
+                        </div>
+                    </div>
                 </div>
-            </div>
+            </template>
         </form>
     </section>
 
