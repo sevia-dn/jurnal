@@ -11,7 +11,7 @@
 @endsection
 
 @section('content')
-<div class="p-6 sm:p-10 font-sans">
+<div class="p-6 font-sans sm:p-10 lg:p-8 xl:p-10">
 
     <!-- Notifikasi Alert -->
     @if(session('success'))
@@ -49,11 +49,12 @@
     @endphp
 
     <!-- Header Halaman -->
-    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-3.5">
-      <div>
-        <p class="text-sm text-slate-500">Pantau riwayat mengajar guru yang telah lalu, status keterisian jurnal, dan jam kosong.</p>
-      </div>
+    <div class="mb-6 flex flex-col items-start justify-between gap-4 border-b border-slate-200 pb-5 lg:flex-row lg:items-center lg:gap-6">
       <div class="flex flex-wrap items-center gap-2.5">
+        <a href="{{ route('dashboard.rekap-jurnal.download-pdf', request()->query()) }}" class="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3.5 py-2 text-xs font-bold text-slate-700 shadow-xs transition hover:bg-slate-50">
+          <i class="bi bi-file-earmark-pdf text-rose-600"></i>
+          <span>Unduh Rekap PDF</span>
+        </a>
         <!-- Badge Periode Terpilih -->
         <div class="inline-flex items-center gap-2 px-3.5 py-2 bg-emerald-50 border border-emerald-200 rounded-full text-xs font-bold text-emerald-800 shadow-xs">
           <i class="bi bi-calendar-check text-emerald-700"></i>
@@ -67,57 +68,6 @@
         <div class="inline-flex items-center gap-2 px-3.5 py-2 bg-white border border-slate-200 rounded-full text-xs font-bold text-[#155d50] shadow-xs">
           <i class="bi bi-clock"></i>
           <span id="liveClock">{{ now()->format('H:i') }} WIB</span>
-        </div>
-      </div>
-    </div>
-
-    <!-- Banner Jadwal Piket & Waka Backup Hari Ini -->
-    <div class="mb-6 bg-linear-to-r from-emerald-50 via-teal-50 to-white border border-emerald-200 rounded-2xl p-4 sm:p-5 shadow-xs">
-      <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-        <div class="flex items-start sm:items-center gap-3">
-          <div class="w-10 h-10 rounded-xl bg-[#155d50] text-white flex items-center justify-center shrink-0 shadow-xs">
-            <i class="bi bi-shield-check text-xl"></i>
-          </div>
-          <div>
-            <div class="flex items-center gap-2">
-              <h3 class="text-sm font-bold text-slate-800">Petugas Piket Hari Ini ({{ $namaHari ?? 'Hari Ini' }})</h3>
-              <span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-300">Aktif</span>
-            </div>
-            <p class="text-xs text-slate-500 mt-0.5">Jadwal piket guru & waka yang bertugas mengawasi presensi dan ketertiban sekolah.</p>
-          </div>
-        </div>
-
-        <div class="flex flex-wrap items-center gap-3 text-xs">
-          <!-- Guru Piket -->
-          <div class="bg-white px-3.5 py-2 rounded-xl border border-slate-200 shadow-2xs flex items-center gap-2">
-            <span class="text-slate-400 font-semibold">Guru Piket:</span>
-            <span class="font-bold text-slate-800">{{ optional(optional($piketGuru)->user)->name ?? 'Belum Diatur' }}</span>
-          </div>
-
-          <!-- Waka Piket -->
-          <div class="bg-white px-3.5 py-2 rounded-xl border border-slate-200 shadow-2xs flex items-center gap-2">
-            <span class="text-slate-400 font-semibold">Waka Piket:</span>
-            <span class="font-bold text-emerald-800">{{ optional(optional($piketWaka)->user)->name ?? 'Belum Diatur' }}</span>
-          </div>
-
-          <!-- Waka Backup -->
-          <div class="bg-amber-50 px-3.5 py-2 rounded-xl border border-amber-200 shadow-2xs flex items-center gap-1.5" title="Jika waka utama berhalangan, waka lain otomatis dapat membackup validasi/dispensasi">
-            <i class="bi bi-people-fill text-amber-700"></i>
-            <span class="text-amber-800 font-semibold">Backup Waka:</span>
-            <span class="font-bold text-amber-900">
-              @if(isset($backupWakas) && $backupWakas->count() > 0)
-                {{ $backupWakas->pluck('name')->join(', ') }}
-              @else
-                Siap untuk semua Waka
-              @endif
-            </span>
-          </div>
-
-          <!-- Tombol Atur Penugasan Piket & Waka -->
-          <button type="button" onclick="openModal('modalKelolaPiket')" class="px-3.5 py-2 bg-[#155d50] hover:bg-[#0f463c] text-white rounded-xl shadow-2xs font-bold transition flex items-center gap-1.5 cursor-pointer">
-            <i class="bi bi-calendar2-week"></i>
-            <span>Atur Penugasan Piket</span>
-          </button>
         </div>
       </div>
     </div>
@@ -740,97 +690,6 @@
               Tutup
             </button>
         </div>
-
-    </div>
-</div>
-
-{{-- ================= MODAL KELOLA PENUGASAN PIKET & WAKA ================= --}}
-<div id="modalKelolaPiket" class="fixed inset-0 z-50 hidden items-center justify-center overflow-y-auto bg-gray-900/50 p-4 backdrop-blur-xs">
-    <div role="dialog" aria-modal="true" class="relative w-full max-w-2xl rounded-2xl border border-gray-100 bg-white p-6 shadow-xl my-8">
-
-        <!-- Header Modal -->
-        <div class="mb-5 flex items-center justify-between border-b border-slate-100 pb-4">
-            <div class="flex items-center gap-3">
-              <div class="w-10 h-10 rounded-xl bg-[#155d50]/10 text-[#155d50] flex items-center justify-center text-lg">
-                <i class="bi bi-calendar2-week-fill"></i>
-              </div>
-              <div>
-                <h2 class="text-lg font-bold text-slate-900">Atur Penugasan Guru Piket & Waka</h2>
-                <p class="text-xs text-slate-500 mt-0.5">Tentukan guru pengampu yang bertugas piket dan waka pengawas setiap hari.</p>
-              </div>
-            </div>
-            <button type="button" onclick="closeModal('modalKelolaPiket')" class="text-gray-400 transition hover:text-gray-600 p-1 cursor-pointer">
-                <i class="bi bi-x-lg text-base"></i>
-            </button>
-        </div>
-
-        <!-- Form Penugasan -->
-        <form action="{{ route('dashboard.rekap-jurnal.penugasan-piket') }}" method="POST" class="space-y-4">
-          @csrf
-
-          <div class="overflow-x-auto">
-            <table class="w-full text-left text-xs">
-              <thead>
-                <tr class="bg-slate-50 border-b border-slate-200 text-slate-600 uppercase tracking-wider font-bold">
-                  <th class="py-2.5 px-3 w-28">Hari</th>
-                  <th class="py-2.5 px-3">Guru Piket</th>
-                  <th class="py-2.5 px-3">Waka Pengawas Piket</th>
-                </tr>
-              </thead>
-              <tbody class="divide-y divide-slate-100">
-                @php
-                  $listHari = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
-                @endphp
-                @foreach($listHari as $h)
-                  @php
-                    $jadwalHari = isset($allPiketJadwals[$h]) ? $allPiketJadwals[$h] : collect();
-                    $assignedGuruId = optional($jadwalHari->firstWhere('tipe', 'guru'))->user_id;
-                    $assignedWakaId = optional($jadwalHari->firstWhere('tipe', 'waka'))->user_id;
-                  @endphp
-                  <tr class="hover:bg-slate-50/70 transition">
-                    <td class="py-3 px-3 font-bold text-slate-800 flex items-center gap-1.5">
-                      <span class="w-2 h-2 rounded-full {{ ($namaHari ?? '') === $h ? 'bg-emerald-500' : 'bg-slate-300' }}"></span>
-                      <span>{{ $h }}</span>
-                      @if(($namaHari ?? '') === $h)
-                        <span class="text-[10px] font-extrabold text-emerald-700 bg-emerald-100 px-1.5 py-0.2 rounded">Hari Ini</span>
-                      @endif
-                    </td>
-                    <td class="py-3 px-3">
-                      <select name="piket[{{ $h }}]" class="w-full rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs text-slate-700 outline-none focus:border-[#155d50] focus:ring-1 focus:ring-[#155d50] cursor-pointer">
-                        <option value="">-- Pilih Guru Piket --</option>
-                        @foreach($gurus as $g)
-                          <option value="{{ $g->id }}" {{ $assignedGuruId == $g->id ? 'selected' : '' }}>
-                            {{ $g->name }}
-                          </option>
-                        @endforeach
-                      </select>
-                    </td>
-                    <td class="py-3 px-3">
-                      <select name="waka[{{ $h }}]" class="w-full rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs text-slate-700 outline-none focus:border-[#155d50] focus:ring-1 focus:ring-[#155d50] cursor-pointer">
-                        <option value="">-- Pilih Waka Pengawas --</option>
-                        @foreach($gurus as $g)
-                          <option value="{{ $g->id }}" {{ $assignedWakaId == $g->id ? 'selected' : '' }}>
-                            {{ $g->name }}
-                          </option>
-                        @endforeach
-                      </select>
-                    </td>
-                  </tr>
-                @endforeach
-              </tbody>
-            </table>
-          </div>
-
-          <div class="mt-6 flex items-center justify-end gap-3 border-t border-gray-100 pt-4 text-xs">
-            <button type="button" onclick="closeModal('modalKelolaPiket')" class="rounded-xl border border-gray-300 px-4 py-2 font-semibold text-gray-700 transition hover:bg-gray-50 cursor-pointer">
-              Batal
-            </button>
-            <button type="submit" class="rounded-xl bg-[#155d50] hover:bg-[#0f463c] px-5 py-2 font-bold text-white shadow-xs transition flex items-center gap-1.5 cursor-pointer">
-              <i class="bi bi-check2"></i>
-              <span>Simpan Penugasan</span>
-            </button>
-          </div>
-        </form>
 
     </div>
 </div>

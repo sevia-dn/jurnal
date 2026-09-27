@@ -545,7 +545,6 @@ class PiketController extends Controller
             'tanggal_mulai' => 'required|date',
             'tanggal_selesai' => 'required|date|after_or_equal:tanggal_mulai',
             'alasan' => 'required|string',
-            'bukti' => 'nullable|file|mimes:png,jpg,jpeg,pdf|max:10240',
         ], [
             'jam_ke_mulai.required_if' => 'Jam ke mulai wajib dipilih jika memilih mode Jam Tertentu.',
             'jam_ke_selesai.gte' => 'Jam ke selesai harus sama atau lebih besar dari jam ke mulai.',
@@ -553,11 +552,6 @@ class PiketController extends Controller
         ]);
 
         $siswa = Siswa::with('kelas')->findOrFail($request->siswa_id);
-
-        $buktiPath = null;
-        if ($request->hasFile('bukti')) {
-            $buktiPath = $request->file('bukti')->store('dispensasi', 'public');
-        }
 
         // Tentukan jam dan hitung tipe_dispensasi secara otomatis di server
         $tglMulai = $request->tanggal_mulai;
@@ -591,23 +585,32 @@ class PiketController extends Controller
             'tanggal' => $tglMulai,
             'tanggal_selesai' => $tglSelesai,
             'alasan' => $request->alasan,
-            'bukti' => $buktiPath,
             'status_piket' => 'disetujui',
             'status_waka' => 'menunggu',
             'status_akhir' => 'menunggu',
             'token_approval' => $tokenApproval,
+            'token_verifikasi' => Str::random(40),
             'dibuat_oleh' => auth()->id(),
         ]);
 
         $dispensasi->load(['siswa.kelas', 'pembuat']);
 
-        // Trigger Notifikasi WhatsApp ke Waka
-        $this->whatsAppService->sendDispensasiNotificationToWaka($dispensasi);
+        $this->createPendingDispensasiNotifications($dispensasi);
+        $whatsAppDelivery = $this->whatsAppService->sendDispensasiNotificationToWaka($dispensasi);
 
         $approvalUrl = route('dispensasi.approval', ['token' => $tokenApproval]);
 
+        $message = "Pengajuan dispensasi untuk {$siswa->nama} berhasil dibuat.";
+        if (! $whatsAppDelivery['configured']) {
+            $message .= ' WhatsApp belum dikirim karena gateway belum dikonfigurasi.';
+        } elseif ($whatsAppDelivery['delivered'] === $whatsAppDelivery['recipients']) {
+            $message .= " WhatsApp berhasil dikirim ke {$whatsAppDelivery['delivered']} nomor tujuan.";
+        } else {
+            $message .= " Gateway WhatsApp hanya menerima {$whatsAppDelivery['delivered']} dari {$whatsAppDelivery['recipients']} nomor tujuan. Periksa log gateway.";
+        }
+
         return redirect()->route('piket.dispensasi.form')
-            ->with('success', "Pengajuan dispensasi untuk {$siswa->nama} berhasil dibuat.")
+            ->with('success', $message)
             ->with('approval_url', $approvalUrl)
             ->with('token_approval', $tokenApproval);
     }
@@ -626,15 +629,37 @@ class PiketController extends Controller
         return view('dashboard.piket.not-scheduled', compact('upcomingSchedules'));
     }
 
+    private function createPendingDispensasiNotifications(Dispensasi $dispensasi): void
+    {
+        $dispensasi->loadMissing(['siswa.kelas', 'pembuat']);
+        $namaKelas = $dispensasi->siswa?->kelas?->nama_kelas ?? '-';
+        $message = "Pengajuan dispensasi {$dispensasi->siswa?->nama} kelas {$namaKelas} dari "
+            .($dispensasi->pembuat?->name ?? 'Guru Piket').'. Menunggu validasi Wakasek Kesiswaan.';
+
+        User::wakaKesiswaan()->each(function (User $waka) use ($dispensasi, $message): void {
+            Notifikasi::updateOrCreate(
+                [
+                    'id_user' => $waka->id,
+                    'id_dispensasi' => $dispensasi->id,
+                    'tipe' => 'dispensasi_menunggu',
+                ],
+                [
+                    'id_kelas' => $dispensasi->siswa?->kelas_id,
+                    'judul' => 'Pengajuan dispensasi menunggu validasi',
+                    'pesan' => $message,
+                    'is_read' => false,
+                ],
+            );
+        });
+    }
+
     private function canAccessPiket(): bool
     {
         $user = Auth::user();
 
         return $user !== null && (
             $user->role === 'admin'
-            || $user->role === 'piket'
             || $this->piketScheduleService->isScheduledNow($user)
-            || $user->isPiketActive()
         );
     }
 

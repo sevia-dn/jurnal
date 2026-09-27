@@ -134,6 +134,9 @@
                                         <span class="rounded-full px-2 py-0.5 text-[10px] font-bold {{ $swClass }}">{{ $swLabel }}</span>
                                         @if(in_array($sw, ['disetujui','approved']))
                                             <a href="{{ route('dispensasi.cetak', $dispensasi) }}" target="_blank" class="rounded-md bg-emerald-600 px-2 py-1 text-[10px] font-bold text-white transition hover:bg-emerald-700">Cetak</a>
+                                            @if($dispensasi->token_verifikasi)
+                                                <button type="button" data-qr-url="{{ route('dispensasi.verify', $dispensasi->token_verifikasi) }}" data-qr-name="{{ $dispensasi->siswa?->nama ?? $dispensasi->nama }}" class="rounded-md bg-slate-800 px-2 py-1 text-[10px] font-bold text-white transition hover:bg-slate-700">QR Izin</button>
+                                            @endif
                                         @endif
                                     </div>
                                 </article>
@@ -239,6 +242,21 @@
         </div>
     </div>
 
+    <div id="dispensasi-qr-modal" class="fixed inset-0 z-[80] hidden items-center justify-center bg-slate-950/60 p-4" role="dialog" aria-modal="true" aria-labelledby="dispensasi-qr-title">
+        <div class="w-full max-w-sm rounded-2xl bg-white p-6 text-center shadow-2xl">
+            <div class="flex items-start justify-between gap-4 text-left">
+                <div>
+                    <h2 id="dispensasi-qr-title" class="text-base font-extrabold text-slate-800">QR Izin Dispensasi</h2>
+                    <p id="dispensasi-qr-name" class="mt-1 text-xs text-slate-500"></p>
+                </div>
+                <button type="button" data-close-qr class="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700" aria-label="Tutup"><i class="bi bi-x-lg"></i></button>
+            </div>
+            <img id="dispensasi-qr-image" class="mx-auto mt-5 h-52 w-52 rounded-xl border border-slate-200 p-2" alt="QR verifikasi dispensasi">
+            <p class="mt-4 text-xs leading-relaxed text-slate-500">Siswa dapat memperlihatkan kode ini kepada petugas keamanan. Kode membuka halaman verifikasi dispensasi yang sudah disetujui.</p>
+            <a id="dispensasi-qr-link" target="_blank" class="mt-4 inline-flex items-center gap-2 text-xs font-bold text-emerald-700 hover:text-emerald-800"><i class="bi bi-box-arrow-up-right"></i> Buka halaman verifikasi</a>
+        </div>
+    </div>
+
     <script>
     document.addEventListener('DOMContentLoaded', () => {
         // ── Filter & Search Jurnal ──────────────────────────────────────
@@ -326,6 +344,33 @@
                 chevron.classList.toggle('rotate-180', !open);
             });
         }
+
+        const qrModal = document.getElementById('dispensasi-qr-modal');
+        const qrImage = document.getElementById('dispensasi-qr-image');
+        const qrLink = document.getElementById('dispensasi-qr-link');
+        const qrName = document.getElementById('dispensasi-qr-name');
+
+        document.querySelectorAll('[data-qr-url]').forEach((button) => {
+            button.addEventListener('click', () => {
+                const verificationUrl = button.dataset.qrUrl;
+                qrImage.src = `https://api.qrserver.com/v1/create-qr-code/?size=208x208&data=${encodeURIComponent(verificationUrl)}`;
+                qrLink.href = verificationUrl;
+                qrName.textContent = button.dataset.qrName;
+                qrModal.classList.remove('hidden');
+                qrModal.classList.add('flex');
+            });
+        });
+
+        const closeQrModal = () => {
+            qrModal.classList.add('hidden');
+            qrModal.classList.remove('flex');
+        };
+        document.querySelectorAll('[data-close-qr]').forEach((button) => button.addEventListener('click', closeQrModal));
+        qrModal?.addEventListener('click', (event) => {
+            if (event.target === qrModal) {
+                closeQrModal();
+            }
+        });
     });
     </script>
 @endsection

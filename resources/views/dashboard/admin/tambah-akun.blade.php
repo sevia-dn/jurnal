@@ -11,7 +11,7 @@
 @endsection
 
 @section('content')
-<div class="p-6 sm:p-10 font-sans">
+<div class="p-6 font-sans sm:p-10 lg:p-8 xl:p-10">
 
     <!-- Header Halaman -->
     <div class="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">

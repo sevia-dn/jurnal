@@ -11,13 +11,8 @@
 @endsection
 
 @section('content')
-  <div class="p-6 sm:p-10 font-sans">
+  <div class="p-6 font-sans sm:p-10 lg:p-8 xl:p-10">
 
-    <!-- Header Section -->
-    <div class="mb-8">
-      <h1 class="text-2xl font-bold text-gray-900 mb-1">Overview Dashboard</h1>
-      <p class="text-sm text-gray-500">Ringkasan aktivitas dan operasional sekolah hari ini, {{ now()->translatedFormat('d F Y') }}</p>
-    </div>
 
     <!-- Stat Cards Section -->
     <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">

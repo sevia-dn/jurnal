@@ -132,6 +132,43 @@ class PiketLoginWorkflowTest extends TestCase
         $this->actingAs($guru)->get(route('piket.dispensasi.form'))->assertOk()->assertSee('Form Pengajuan Dispensasi');
     }
 
+    public function test_piket_access_follows_the_morning_and_afternoon_shift_boundaries(): void
+    {
+        $morningTeacher = $this->teacher('piket-pagi');
+        $afternoonTeacher = $this->teacher('piket-siang');
+        $date = '2026-09-22';
+
+        JadwalPiket::create([
+            'user_id' => $morningTeacher->id,
+            'hari' => 'Selasa',
+            'tanggal' => $date,
+            'tipe' => 'guru',
+            'shift' => 1,
+            'jam_mulai' => '07:00:00',
+            'jam_selesai' => '11:00:00',
+        ]);
+        JadwalPiket::create([
+            'user_id' => $afternoonTeacher->id,
+            'hari' => 'Selasa',
+            'tanggal' => $date,
+            'tipe' => 'guru',
+            'shift' => 2,
+            'jam_mulai' => '11:00:00',
+            'jam_selesai' => '15:00:00',
+        ]);
+
+        $this->travelTo(Carbon::parse('2026-09-22 10:59:59', 'Asia/Jakarta'));
+        $this->actingAs($morningTeacher)->get(route('dashboard.piket'))->assertOk();
+        $this->actingAs($afternoonTeacher)->get(route('dashboard.piket'))->assertSee('Anda Tidak Sedang Piket');
+
+        $this->travelTo(Carbon::parse('2026-09-22 11:00:00', 'Asia/Jakarta'));
+        $this->actingAs($morningTeacher)->get(route('dashboard.piket'))->assertSee('Anda Tidak Sedang Piket');
+        $this->actingAs($afternoonTeacher)->get(route('dashboard.piket'))->assertOk();
+
+        $this->travelTo(Carbon::parse('2026-09-22 15:00:00', 'Asia/Jakarta'));
+        $this->actingAs($afternoonTeacher)->get(route('dashboard.piket'))->assertSee('Anda Tidak Sedang Piket');
+    }
+
     public function test_guru_navigation_includes_piket_menu(): void
     {
         $guru = $this->teacher('guru-navigasi');

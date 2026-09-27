@@ -1,8 +1,32 @@
-<header class="sticky top-0 z-40 bg-white h-16 border-b border-gray-100 flex items-center px-6 w-full">
-  <div class="w-full flex justify-between items-center relative">
+@php
+  $adminPage = match (true) {
+    request()->routeIs('dashboard.guru*') => ['Data Master', 'Data Guru', 'Kelola data guru dan penugasannya.'],
+    request()->routeIs('dashboard.kelas*') => ['Data Master', 'Data Kelas', 'Kelola kelas dan wali kelas.'],
+    request()->routeIs('dashboard.siswa*') => ['Data Master', 'Data Siswa', 'Kelola data siswa aktif.'],
+    request()->routeIs('dashboard.mapel*') => ['Data Master', 'Mata Pelajaran', 'Kelola mata pelajaran sekolah.'],
+    request()->routeIs('dashboard.jadwal-penugasan') => ['Jadwal', 'Jadwal Penugasan', 'Kelola penugasan piket KBM dan Waka.'],
+    request()->routeIs('dashboard.jadwal*', 'jadwal.create') => ['Jadwal', 'Jadwal Pelajaran', 'Kelola jadwal dan penugasan mengajar.'],
+    request()->routeIs('dashboard.rekap-jurnal', 'catatan-jurnal') => ['Admin', 'Rekap Jurnal', 'Pantau pengisian jurnal mengajar.'],
+    request()->routeIs('admin.manajemen-user*') => ['Admin', 'Manajemen Akun', 'Kelola akun dan hak akses pengguna.'],
+    request()->routeIs('admin.pengaturan*') => ['Sistem', 'Pengaturan Sistem', 'Atur kebijakan dan waktu operasional.'],
+    default => ['Admin', 'Dashboard', 'Ringkasan operasional sekolah.'],
+  };
+@endphp
 
-    <div class="flex items-center gap-3">
-      <div class="text-xl font-bold text-gray-800">Admin</div>
+<header class="sticky top-0 z-40 flex h-16 w-full items-center border-b border-slate-200 bg-white px-6 md:h-20 lg:px-10">
+  <div class="relative flex w-full items-center justify-between">
+
+    <div class="md:hidden text-xl font-bold text-gray-800">Admin</div>
+    <div class="hidden min-w-0 md:block">
+      <div class="mb-1 flex items-center gap-2 text-[11px] font-semibold text-slate-400">
+        <span>Admin</span>
+        <i class="bi bi-chevron-right text-[9px]"></i>
+        <span>{{ $adminPage[0] }}</span>
+      </div>
+      <div class="flex items-baseline gap-3">
+        <h1 class="text-xl font-bold tracking-tight text-slate-900">{{ $adminPage[1] }}</h1>
+        <p class="hidden text-sm text-slate-500 xl:block">{{ $adminPage[2] }}</p>
+      </div>
     </div>
 
     <div class="flex items-center gap-4 text-gray-500">

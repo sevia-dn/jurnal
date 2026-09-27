@@ -10,6 +10,8 @@ use App\Models\Mapel;
 use App\Models\Siswa;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\Request as ClientRequest;
+use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
 class DispensasiDualRoleTest extends TestCase
@@ -18,6 +20,16 @@ class DispensasiDualRoleTest extends TestCase
 
     public function test_dispensasi_flow_from_piket_to_waka_approval()
     {
+        config([
+            'services.whatsapp.url' => 'https://gateway.test/send',
+            'services.whatsapp.api_key' => 'test-api-key',
+            'services.whatsapp.piket_confirmation_number' => '083838606396',
+            'services.whatsapp.waka_recipients' => [
+                ['username' => 'wakatest', 'name' => 'Waka Test', 'number' => '081233334444'],
+            ],
+        ]);
+        Http::fake();
+
         // 1. Buat User Guru Piket & User Waka
         $guruPiket = User::create([
             'name' => 'Guru Piket Test',
@@ -44,6 +56,15 @@ class DispensasiDualRoleTest extends TestCase
             'hari' => now('Asia/Jakarta')->locale('id')->translatedFormat('l'),
             'tanggal' => now('Asia/Jakarta')->toDateString(),
             'tipe' => 'guru',
+            'shift' => 1,
+            'jam_mulai' => '07:00:00',
+            'jam_selesai' => '15:00:00',
+        ]);
+        JadwalPiket::create([
+            'user_id' => $waka->id,
+            'hari' => now('Asia/Jakarta')->locale('id')->translatedFormat('l'),
+            'tanggal' => now('Asia/Jakarta')->toDateString(),
+            'tipe' => 'waka',
             'shift' => 1,
             'jam_mulai' => '07:00:00',
             'jam_selesai' => '15:00:00',
@@ -95,44 +116,59 @@ class DispensasiDualRoleTest extends TestCase
         $this->assertNotNull($dispensasi);
         $this->assertEquals('menunggu', $dispensasi->status_waka);
         $this->assertNotNull($dispensasi->token_approval);
+        Http::assertSent(function (ClientRequest $request) use ($dispensasi): bool {
+            return $request->url() === 'https://gateway.test/send'
+                && $request['target'] === '081233334444'
+                && str_contains($request['message'], route('guru.utama', ['dispensasi' => $dispensasi->token_approval]))
+                && str_contains($request['message'], 'Guru Piket Test');
+        });
+        Http::assertSentCount(2);
 
         // Logout guru piket untuk menguji kondisi Guest
         auth()->logout();
 
-        // 3. Uji Waka Klik Link WA saat Belum Login (Guest)
-        $approvalUrl = route('dispensasi.approval', ['token' => $dispensasi->token_approval]);
-
-        $guestResponse = $this->get($approvalUrl);
-        // Harus di-redirect ke login
+        // 3. Uji Waka Klik Link WA saat Belum Login (Guest).
+        // Link harus kembali ke dashboard pribadi dengan popup setelah login.
+        $dashboardApprovalUrl = route('guru.utama', ['dispensasi' => $dispensasi->token_approval]);
+        $guestResponse = $this->get($dashboardApprovalUrl);
         $guestResponse->assertRedirect(route('login'));
 
-        // 4. Waka Login -> Harus Otomatis Redirect ke Intended URL (Halaman Approval)
+        // 4. Waka login lalu diarahkan kembali ke popup di dashboard-nya.
         $loginResponse = $this->post(route('login'), [
             'identity' => 'wakatest',
             'password' => 'password',
         ]);
 
-        $loginResponse->assertRedirect($approvalUrl);
+        $loginResponse->assertRedirect($dashboardApprovalUrl);
 
-        // 5. Waka Akses Halaman Approval
+        $dashboardPopupResponse = $this->actingAs($waka)->get($dashboardApprovalUrl);
+        $dashboardPopupResponse->assertOk();
+        $dashboardPopupResponse->assertSee('Detail Pengajuan Dispensasi');
+        $dashboardPopupResponse->assertSee('Guru Piket Test');
+
+        // 5. Halaman approval lama tetap tersedia untuk tautan yang sudah terlanjur beredar.
+        $approvalUrl = route('dispensasi.approval', ['token' => $dispensasi->token_approval]);
         $approvalPageResponse = $this->actingAs($waka)->get($approvalUrl);
         $approvalPageResponse->assertStatus(200);
         $approvalPageResponse->assertSee('Budi Pertiwi');
         $approvalPageResponse->assertSee('Lomba O2SN');
+        $approvalPageResponse->assertSee('Guru Piket Test');
 
-        // 6. Waka Klik "Setujui Dispensasi"
+        // 6. Waka Klik "Setujui Dispensasi" dari popup dashboard pribadi.
         $processResponse = $this->actingAs($waka)->post(route('dispensasi.process', $dispensasi->id), [
             'keputusan' => 'disetujui',
             'catatan_waka' => 'Disetujui. Harap menjaga nama baik sekolah.',
+            'redirect_ke_dashboard' => true,
         ]);
 
-        $processResponse->assertRedirect($approvalUrl);
+        $processResponse->assertRedirect(route('guru.utama'));
 
         // Pastikan DB ter-update
         $dispensasi->refresh();
         $this->assertEquals('disetujui', $dispensasi->status_waka);
         $this->assertEquals('disetujui', $dispensasi->status_akhir);
         $this->assertEquals($waka->id, $dispensasi->diproses_oleh);
+        $this->assertNotNull($dispensasi->token_verifikasi);
         $this->assertDatabaseHas('absensis', [
             'id_jurnal' => $jurnal->id_jurnal,
             'id_siswa' => $siswa->id,
@@ -143,5 +179,10 @@ class DispensasiDualRoleTest extends TestCase
             'id_dispensasi' => $dispensasi->id,
             'tipe' => 'dispensasi',
         ]);
+
+        $verificationResponse = $this->get(route('dispensasi.verify', $dispensasi->token_verifikasi));
+        $verificationResponse->assertOk();
+        $verificationResponse->assertSee('Dispensasi Siswa Valid');
+        $verificationResponse->assertSee('Budi Pertiwi');
     }
 }

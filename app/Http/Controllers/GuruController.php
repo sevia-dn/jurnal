@@ -57,11 +57,20 @@ class GuruController extends Controller
         $sudahAbsen = $kehadiranHariIni !== null;
 
         $pendingDispensasis = collect();
+        $approvalDispensasi = null;
         if ($isWaka) {
             $pendingDispensasis = Dispensasi::with(['siswa', 'pembuat'])
                 ->where('status_waka', 'menunggu')
                 ->latest()
                 ->get();
+
+            if ($request->filled('dispensasi')) {
+                $approvalDispensasi = Dispensasi::with(['siswa.kelas', 'pembuat', 'pemroses'])
+                    ->where('token_approval', $request->string('dispensasi')->toString())
+                    ->firstOrFail();
+            }
+        } elseif ($request->filled('dispensasi')) {
+            abort(403, 'Tautan validasi dispensasi hanya dapat dibuka oleh Wakasek Kesiswaan.');
         }
 
         $allDispensasis = Dispensasi::with(['siswa', 'pembuat', 'pemroses'])
@@ -133,6 +142,7 @@ class GuruController extends Controller
             'isPiketActive',
             'isWaka',
             'pendingDispensasis',
+            'approvalDispensasi',
             'allDispensasis',
             'sudahAbsen',
             'kehadiranHariIni',

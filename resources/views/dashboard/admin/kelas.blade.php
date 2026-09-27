@@ -11,7 +11,7 @@
 @endsection
 
 @section('content')
-<div class="p-6 sm:p-10 font-sans">
+<div class="p-6 font-sans sm:p-10 lg:p-8 xl:p-10">
 
     @php
         $targetKelasId = session('open_kelas_id', request('kelas_id'));
@@ -70,10 +70,8 @@
     @endif
 
     {{-- ================= HEADER UTAMA ================= --}}
-    <div id="viewHeaderKelas" class="{{ $isSiswaViewOpen ? 'hidden' : 'flex' }} flex-col md:flex-row md:items-center justify-between mb-3.5 gap-4">
-        <div>
-            <p class="text-sm text-gray-500">Kelola informasi kelas, nama guru, dan jumlah siswa aktif.</p>
-        </div>
+    <div id="viewHeaderKelas" class="{{ $isSiswaViewOpen ? 'hidden' : 'flex' }} mb-6 flex-col items-start justify-between gap-4 border-b border-slate-200 pb-5 lg:flex-row lg:items-center lg:gap-6">
+
         <div class="flex items-center gap-2.5 flex-wrap">
             {{-- Search Bar Kelas --}}
             <form method="GET" action="{{ route('dashboard.kelas') }}" autocomplete="off" class="flex items-center gap-1">

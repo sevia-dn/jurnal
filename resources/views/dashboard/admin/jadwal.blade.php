@@ -11,7 +11,7 @@
 @endsection
 
 @section('content')
-<div class="p-6 sm:p-10 font-sans">
+<div class="p-6 font-sans sm:p-10 lg:p-8 xl:p-10">
 
     <!-- Notifikasi Flash Message -->
     @if(session('success'))
@@ -41,39 +41,16 @@
 
 
 
-    <div class="mb-3.5 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-            <p class="text-sm text-gray-500">Kelola jadwal pelajaran 48 kelas, alokasi jam KBM, dan penugasan piket guru & waka.</p>
-        </div>
+    <div class="mb-6 flex flex-col items-start justify-between gap-4 border-b border-slate-200 pb-5 lg:flex-row lg:items-center lg:gap-6">
         <div class="flex items-center gap-2.5">
-            <a href="{{ route('dashboard.jadwal.download-template') }}" class="inline-flex items-center gap-1.5 px-3.5 py-2 border border-slate-300 rounded-lg text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 transition shadow-xs">
-                <i class="bi bi-download text-emerald-600"></i>
-                <span>Unduh Format Excel</span>
+            <a href="{{ route('dashboard.jadwal.download-pdf') }}" class="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 shadow-xs transition hover:bg-slate-50">
+                <i class="bi bi-file-earmark-pdf text-rose-600"></i>
+                <span>Unduh PDF</span>
             </a>
-            <button type="button" onclick="openModal('modalImportJadwal')" class="inline-flex items-center gap-1.5 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold shadow-xs transition cursor-pointer">
-                <i class="bi bi-file-earmark-excel-fill"></i>
-                <span>Import Jadwal (Excel)</span>
-            </button>
         </div>
     </div>
 
-    <!-- Sub-Navigasi Pill: [Jadwal Pelajaran] & [Jadwal Piket & Waka] -->
-    <div class="mb-6 flex items-center gap-2 p-1.5 bg-slate-100 rounded-2xl w-fit border border-slate-200 shadow-2xs">
-        <button type="button" onclick="switchMainScheduleTab('pelajaran')" id="mainTabBtnPelajaran"
-                class="px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer bg-white text-emerald-800 shadow-xs">
-            <i class="bi bi-mortarboard-fill text-emerald-600"></i>
-            <span>Jadwal Pelajaran (48 Kelas)</span>
-            <span class="px-2 py-0.5 rounded-full text-[10px] bg-emerald-100 text-emerald-800 font-extrabold">{{ $kelases->count() }}</span>
-        </button>
-        <button type="button" onclick="switchMainScheduleTab('piket')" id="mainTabBtnPiket"
-                class="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:text-slate-900 transition flex items-center gap-2 cursor-pointer">
-            <i class="bi bi-shield-check text-slate-500"></i>
-            <span>Jadwal Piket & Waka</span>
-            <span class="px-2 py-0.5 rounded-full text-[10px] bg-slate-200 text-slate-700 font-extrabold">{{ ($piketGurus->count() ?? 0) + ($piketWakas->count() ?? 0) }}</span>
-        </button>
-    </div>
-
-    <!-- Container 1: Jadwal Pelajaran (48 Kelas) -->
+    <!-- Jadwal Pelajaran -->
     <div id="containerJadwalPelajaran" class="transition-all duration-200">
     <div class="grid gap-6 lg:grid-cols-3">
         <!-- Kolom Kiri: Form Tambah Jadwal -->

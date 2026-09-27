@@ -879,6 +879,43 @@
         </form>
     </section>
 
+    @if($approvalDispensasi)
+        <div x-data="{ open: true }" x-show="open" x-cloak class="fixed inset-0 z-[90] flex items-end bg-slate-950/60 p-0 backdrop-blur-sm sm:items-center sm:justify-center sm:p-5">
+            <div class="max-h-[92dvh] w-full overflow-y-auto rounded-t-2xl bg-white shadow-2xl sm:max-w-2xl sm:rounded-2xl">
+                <div class="sticky top-0 flex items-start justify-between gap-4 border-b border-slate-100 bg-white px-4 py-4 sm:px-5">
+                    <div>
+                        <p class="text-xs font-bold uppercase tracking-wide text-indigo-600">Validasi Wakasek Kesiswaan</p>
+                        <h2 class="mt-1 text-lg font-bold text-slate-900">Detail Pengajuan Dispensasi</h2>
+                    </div>
+                    <a href="{{ route('guru.utama') }}" class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-slate-500 transition hover:bg-slate-100" aria-label="Tutup detail dispensasi"><i class="bi bi-x-lg"></i></a>
+                </div>
+
+                <div class="space-y-4 p-4 sm:p-5">
+                    <div class="rounded-xl border border-indigo-100 bg-indigo-50 p-4">
+                        <p class="text-xs font-semibold uppercase tracking-wide text-indigo-600">Siswa</p>
+                        <p class="mt-1 text-base font-bold text-slate-900">{{ $approvalDispensasi->siswa?->nama }} <span class="text-sm font-semibold text-indigo-700">· {{ $approvalDispensasi->siswa?->kelas?->nama_kelas }}</span></p>
+                    </div>
+                    <div class="grid gap-3 sm:grid-cols-2">
+                        <div class="rounded-xl border border-slate-200 p-3"><p class="text-[11px] font-bold uppercase text-slate-400">Jenis dispensasi</p><p class="mt-1 text-sm font-semibold text-slate-800">{{ $approvalDispensasi->jenis_dispensasi }}</p></div>
+                        <div class="rounded-xl border border-slate-200 p-3"><p class="text-[11px] font-bold uppercase text-slate-400">Waktu</p><p class="mt-1 text-sm font-semibold text-slate-800">{{ $approvalDispensasi->deskripsi_waktu }}</p></div>
+                    </div>
+                    <div class="rounded-xl border border-slate-200 p-3"><p class="text-[11px] font-bold uppercase text-slate-400">Alasan</p><p class="mt-1 text-sm leading-relaxed text-slate-700">{{ $approvalDispensasi->alasan }}</p></div>
+                    <div class="rounded-xl border border-slate-200 p-3"><p class="text-[11px] font-bold uppercase text-slate-400">Dibuat oleh Guru Piket</p><p class="mt-1 text-sm font-semibold text-slate-800">{{ $approvalDispensasi->pembuat?->name ?? 'Guru Piket' }}</p><p class="mt-1 text-xs text-slate-500">{{ $approvalDispensasi->created_at?->translatedFormat('d F Y, H:i') }} WIB</p></div>
+
+                    @if($approvalDispensasi->status_waka === 'menunggu')
+                        <form action="{{ route('dispensasi.process', $approvalDispensasi) }}" method="POST" class="space-y-3 border-t border-slate-100 pt-4">
+                            @csrf
+                            <input type="hidden" name="redirect_ke_dashboard" value="1">
+                            <label class="block"><span class="text-xs font-bold text-slate-700">Catatan Wakasek (opsional)</span><textarea name="catatan_waka" rows="3" class="mt-1.5 w-full rounded-xl border border-slate-200 p-3 text-sm outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100" placeholder="Tambahkan instruksi bila diperlukan."></textarea></label>
+                            <div class="grid grid-cols-2 gap-3"><button type="submit" name="keputusan" value="disetujui" class="rounded-xl bg-emerald-600 px-4 py-3 text-sm font-bold text-white transition hover:bg-emerald-700"><i class="bi bi-check-circle-fill mr-1"></i> Setujui</button><button type="submit" name="keputusan" value="ditolak" class="rounded-xl bg-rose-600 px-4 py-3 text-sm font-bold text-white transition hover:bg-rose-700"><i class="bi bi-x-circle-fill mr-1"></i> Tolak</button></div>
+                        </form>
+                    @else
+                        <div class="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">Pengajuan ini sudah <strong>{{ $approvalDispensasi->status_waka }}</strong> oleh {{ $approvalDispensasi->pemroses?->name ?? 'Wakasek Kesiswaan' }}. Status yang sama berlaku untuk semua Wakasek penerima tautan.</div>
+                    @endif
+                </div>
+            </div>
+        </div>
+    @endif
 </div>
 
 @endsection

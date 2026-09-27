@@ -14,8 +14,10 @@ use App\Models\PasswordResetRequest;
 use App\Models\Pengaturan;
 use App\Models\Siswa;
 use App\Models\User;
+use App\SimplePdfDocument;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -876,6 +878,116 @@ class AdminController extends Controller
         ));
     }
 
+    public function jadwalPenugasan(Request $request)
+    {
+        $bulan = min(12, max(1, $request->integer('bulan', now('Asia/Jakarta')->month)));
+        $tahun = min(2100, max(2026, $request->integer('tahun', now('Asia/Jakarta')->year)));
+
+        $penugasanPiket = JadwalPiket::with('user')
+            ->whereYear('tanggal', $tahun)
+            ->whereMonth('tanggal', $bulan)
+            ->orderBy('tanggal')
+            ->orderBy('shift')
+            ->get()
+            ->groupBy(fn (JadwalPiket $jadwal): string => $jadwal->tanggal->toDateString());
+
+        $periodeTersedia = JadwalPiket::query()
+            ->whereNotNull('tanggal')
+            ->selectRaw('YEAR(tanggal) as tahun, MONTH(tanggal) as bulan')
+            ->distinct()
+            ->orderByDesc('tahun')
+            ->orderByDesc('bulan')
+            ->get();
+
+        $gurus = User::where('role', 'guru')->orderBy('name')->get();
+        $penugasanMingguan = JadwalPiket::with('user')
+            ->whereNull('tanggal')
+            ->get()
+            ->groupBy('hari');
+
+        return view('dashboard.admin.jadwal-penugasan', compact(
+            'bulan',
+            'tahun',
+            'penugasanPiket',
+            'periodeTersedia',
+            'gurus',
+            'penugasanMingguan'
+        ));
+    }
+
+    public function downloadJadwalPdf(Request $request): Response
+    {
+        $lines = JadwalPelajaran::with(['kelas', 'guru', 'mapelItem'])
+            ->orderBy('hari')
+            ->orderBy('jam_mulai')
+            ->get()
+            ->map(function (JadwalPelajaran $jadwal): string {
+                $kelas = $jadwal->kelas?->nama_kelas ?? '-';
+                $mapel = $jadwal->mapelItem?->nama_mapel ?? $jadwal->mapel ?? '-';
+                $guru = $jadwal->guru?->name ?? '-';
+
+                return sprintf(
+                    '%s | %s | %s-%s | %s | %s',
+                    $jadwal->hari,
+                    $kelas,
+                    substr((string) $jadwal->jam_mulai, 0, 5),
+                    substr((string) $jadwal->jam_selesai, 0, 5),
+                    $mapel,
+                    $guru
+                );
+            })
+            ->all();
+
+        return $this->pdfDownload(
+            'Jadwal Pelajaran',
+            array_merge(['Hari | Kelas | Waktu | Mata Pelajaran | Guru', str_repeat('-', 120)], $lines),
+            'jadwal-pelajaran.pdf'
+        );
+    }
+
+    public function downloadRekapJurnalPdf(Request $request): Response
+    {
+        $periode = $request->query('periode', 'harian');
+        $tanggal = $request->query('tanggal', now('Asia/Jakarta')->toDateString());
+        $bulan = min(12, max(1, $request->integer('bulan', now('Asia/Jakarta')->month)));
+        $tahun = min(2100, max(2026, $request->integer('tahun', now('Asia/Jakarta')->year)));
+
+        $query = JurnalMengajar::with(['kelas', 'guru', 'mapel'])->orderByDesc('tanggal')->orderBy('jam_ke');
+        if ($periode === 'bulanan') {
+            $query->whereYear('tanggal', $tahun)->whereMonth('tanggal', $bulan);
+            $periodeLabel = Carbon::create($tahun, $bulan)->translatedFormat('F Y');
+        } else {
+            $query->whereDate('tanggal', $tanggal);
+            $periodeLabel = Carbon::parse($tanggal)->translatedFormat('d F Y');
+        }
+
+        $lines = $query->get()->map(function (JurnalMengajar $jurnal): string {
+            return sprintf(
+                '%s | Kelas %s | Jam %s | %s | %s | Hadir: %s',
+                $jurnal->tanggal,
+                $jurnal->kelas?->nama_kelas ?? '-',
+                $jurnal->jam_ke,
+                $jurnal->guru?->name ?? '-',
+                $jurnal->mapel?->nama_mapel ?? '-',
+                $jurnal->jumlah_hadir
+            );
+        })->all();
+
+        return $this->pdfDownload(
+            'Rekap Jurnal Mengajar - '.$periodeLabel,
+            array_merge(['Tanggal | Kelas | Jam | Guru | Mata Pelajaran | Kehadiran', str_repeat('-', 120)], $lines),
+            'rekap-jurnal-'.str($periodeLabel)->slug().'.pdf'
+        );
+    }
+
+    private function pdfDownload(string $title, array $lines, string $filename): Response
+    {
+        return response(SimplePdfDocument::make($title, $lines), 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'attachment; filename="'.$filename.'"',
+        ]);
+    }
+
     public function storeJadwal(Request $request)
     {
         $userId = $request->input('id_user') ?: $request->input('guru_id');
@@ -1424,18 +1536,6 @@ class AdminController extends Controller
             });
         }
 
-        // Info Piket Hari Ini & Waka Backup
-        $piketGuru = JadwalPiket::with('user')->where('hari', $namaHari)->where('tipe', 'guru')->first();
-        $piketWaka = JadwalPiket::with('user')->where('hari', $namaHari)->where('tipe', 'waka')->first();
-        $allWakaUsers = JadwalPiket::where('tipe', 'waka')->with('user')->get()->pluck('user')->filter()->unique('id');
-        $backupWakas = $allWakaUsers->filter(fn ($u) => ! $piketWaka || $u->id !== $piketWaka->user_id);
-        if ($backupWakas->isEmpty()) {
-            $backupWakas = User::where('role', 'guru')->where('id', '!=', optional($piketWaka)->user_id)->limit(3)->get();
-        }
-
-        // Data Penugasan Piket untuk Modal Pengaturan
-        $allPiketJadwals = JadwalPiket::all()->groupBy('hari');
-
         // Notif Approval Dispensasi Siswa
         $requestDispensasi = Dispensasi::with('siswa.kelas')
             ->whereDate('tanggal', $tanggal)
@@ -1477,10 +1577,6 @@ class AdminController extends Controller
             'countBelumValidasi',
             'countGuruAbsen',
             'namaHari',
-            'piketGuru',
-            'piketWaka',
-            'backupWakas',
-            'allPiketJadwals',
             'requestDispensasi'
         ));
     }
@@ -1488,26 +1584,93 @@ class AdminController extends Controller
     public function updatePenugasanPiket(Request $request)
     {
         $days = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+        $validated = $request->validate([
+            'penugasan' => ['nullable', 'array'],
+            'penugasan.*.pagi.guru' => ['nullable', 'array', 'max:3'],
+            'penugasan.*.pagi.guru.*' => ['nullable', 'integer', 'distinct', 'exists:users,id'],
+            'penugasan.*.pagi.koordinator' => ['nullable', 'integer', 'exists:users,id'],
+            'penugasan.*.siang.guru' => ['nullable', 'array', 'max:3'],
+            'penugasan.*.siang.guru.*' => ['nullable', 'integer', 'distinct', 'exists:users,id'],
+            'penugasan.*.siang.koordinator' => ['nullable', 'integer', 'exists:users,id'],
+            'penugasan.*.waka' => ['nullable', 'integer', 'exists:users,id'],
+        ]);
 
         foreach ($days as $day) {
-            $guruId = $request->input("piket.{$day}");
-            if ($guruId) {
-                JadwalPiket::updateOrCreate(
-                    ['hari' => $day, 'tipe' => 'guru'],
-                    ['user_id' => $guruId, 'keterangan' => "Petugas Piket Guru Hari {$day}"]
-                );
+            $penugasanHari = $validated['penugasan'][$day] ?? [];
+
+            JadwalPiket::query()
+                ->where('hari', $day)
+                ->whereNull('tanggal')
+                ->whereIn('tipe', ['guru', 'koordinator', 'waka'])
+                ->delete();
+
+            $this->simpanPenugasanPiketMingguan(
+                $day,
+                $penugasanHari['pagi']['guru'] ?? [],
+                $penugasanHari['pagi']['koordinator'] ?? null,
+                $penugasanHari['siang']['guru'] ?? [],
+                $penugasanHari['siang']['koordinator'] ?? null,
+                $penugasanHari['waka'] ?? null,
+            );
+        }
+
+        return redirect()->route('dashboard.jadwal-penugasan')->with('success', 'Penugasan sesi pagi, sesi siang, koordinator, dan Waka berhasil diperbarui!');
+    }
+
+    /**
+     * @param  array<int, int|string|null>  $guruPagiIds
+     * @param  array<int, int|string|null>  $guruSiangIds
+     */
+    private function simpanPenugasanPiketMingguan(
+        string $day,
+        array $guruPagiIds,
+        int|string|null $koordinatorPagiId,
+        array $guruSiangIds,
+        int|string|null $koordinatorSiangId,
+        int|string|null $wakaId,
+    ): void {
+        $sesi = [
+            ['guru' => $guruPagiIds, 'koordinator' => $koordinatorPagiId, 'shift' => 1, 'mulai' => '07:00:00', 'selesai' => '11:00:00'],
+            ['guru' => $guruSiangIds, 'koordinator' => $koordinatorSiangId, 'shift' => 2, 'mulai' => '11:00:00', 'selesai' => '15:00:00'],
+        ];
+
+        foreach ($sesi as $pengaturanSesi) {
+            foreach (array_unique(array_filter($pengaturanSesi['guru'])) as $guruId) {
+                JadwalPiket::create([
+                    'user_id' => $guruId,
+                    'hari' => $day,
+                    'tipe' => 'guru',
+                    'shift' => $pengaturanSesi['shift'],
+                    'jam_mulai' => $pengaturanSesi['mulai'],
+                    'jam_selesai' => $pengaturanSesi['selesai'],
+                    'keterangan' => "Petugas Piket {$day}",
+                ]);
             }
 
-            $wakaId = $request->input("waka.{$day}");
-            if ($wakaId) {
-                JadwalPiket::updateOrCreate(
-                    ['hari' => $day, 'tipe' => 'waka'],
-                    ['user_id' => $wakaId, 'keterangan' => "Petugas Piket Waka Hari {$day}"]
-                );
+            if ($pengaturanSesi['koordinator']) {
+                JadwalPiket::create([
+                    'user_id' => $pengaturanSesi['koordinator'],
+                    'hari' => $day,
+                    'tipe' => 'koordinator',
+                    'shift' => $pengaturanSesi['shift'],
+                    'jam_mulai' => $pengaturanSesi['mulai'],
+                    'jam_selesai' => $pengaturanSesi['selesai'],
+                    'keterangan' => "Koordinator Piket {$day}",
+                ]);
             }
         }
 
-        return redirect()->route('dashboard.rekap-jurnal')->with('success', 'Penugasan Guru Piket dan Waka berhasil diperbarui!');
+        if ($wakaId) {
+            JadwalPiket::create([
+                'user_id' => $wakaId,
+                'hari' => $day,
+                'tipe' => 'waka',
+                'shift' => 1,
+                'jam_mulai' => '07:00:00',
+                'jam_selesai' => '15:00:00',
+                'keterangan' => "Piket Waka {$day}",
+            ]);
+        }
     }
 
     public function catatanJurnal(Request $request)

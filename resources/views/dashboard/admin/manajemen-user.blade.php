@@ -12,7 +12,7 @@
 
 @section('content')
 <style>[x-cloak] { display: none !important; }</style>
-<div x-data="userManagement()" class="p-6 sm:p-10 font-sans">
+<div x-data="userManagement()" class="p-6 font-sans sm:p-10 lg:p-8 xl:p-10">
 
     @if(isset($errors) && $errors->any())
         <div class="mb-6 rounded-xl bg-red-50 border border-red-200 p-4 text-sm text-red-800 shadow-2xs">
@@ -41,7 +41,7 @@
     @endif
 
     <!-- Header & Action -->
-    <div class="mb-3.5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div class="mb-6 flex flex-col items-start justify-between gap-4 border-b border-slate-200 pb-5 lg:flex-row lg:items-center lg:gap-6">
         <div>
             <p class="text-sm text-gray-500">Kelola seluruh akun pengguna: Admin, Guru Pengajar, dan Sekretaris Kelas.</p>
         </div>

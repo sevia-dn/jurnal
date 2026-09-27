@@ -16,6 +16,7 @@ class UserSeeder extends Seeder
             [
                 'name' => 'Admin Sekolah',
                 'nip' => null,
+                'no_hp' => '083838606396',
                 'email' => null,
                 'password' => Hash::make('admin123'),
                 'role' => 'admin',
@@ -312,6 +313,17 @@ class UserSeeder extends Seeder
                     'role' => 'guru',
                 ]);
             }
+        }
+
+        foreach ([
+            'hardiniindahingbudisempd' => '081515694249',
+            'fajarluthfiantospd' => '082332283967',
+            'nikenharipratiwispsimpd' => '085784053853',
+            'hendrosuwignyost' => '085706101917',
+        ] as $username => $phoneNumber) {
+            User::query()
+                ->where('username', $username)
+                ->update(['no_hp' => $phoneNumber]);
         }
     }
 }

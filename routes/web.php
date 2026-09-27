@@ -19,6 +19,9 @@ Route::get('/', [AuthController::class, 'showLoginForm']);
 Route::get('/login', [AuthController::class, 'showLoginForm'])->name('login');
 Route::post('/login', [AuthController::class, 'login']);
 
+Route::get('/verifikasi-dispensasi/{token}', [DispensasiApprovalController::class, 'verify'])
+    ->name('dispensasi.verify');
+
 // Retain any guest‑only routes in a separate group (currently none).
 Route::middleware('guest')->group(function () {
     // Add guest‑only routes here if needed.
@@ -124,6 +127,8 @@ Route::middleware('auth')->group(function () {
         // ==========================================
 
         Route::get('/jadwal', [AdminController::class, 'jadwal'])->name('dashboard.jadwal');
+        Route::get('/jadwal/unduh-pdf', [AdminController::class, 'downloadJadwalPdf'])->name('dashboard.jadwal.download-pdf');
+        Route::get('/jadwal-penugasan', [AdminController::class, 'jadwalPenugasan'])->name('dashboard.jadwal-penugasan');
 
         // FORM TAMBAH JADWAL
 
@@ -162,6 +167,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/siswa/batch-delete', [AdminController::class, 'batchDeleteSiswa'])->name('dashboard.siswa.batch-delete');
         Route::post('/siswa/batch-edit', [AdminController::class, 'batchEditSiswa'])->name('dashboard.siswa.batch-edit');
         Route::get('/rekap-jurnal', [AdminController::class, 'rekapJurnal'])->name('dashboard.rekap-jurnal');
+        Route::get('/rekap-jurnal/unduh-pdf', [AdminController::class, 'downloadRekapJurnalPdf'])->name('dashboard.rekap-jurnal.download-pdf');
         Route::post('/rekap-jurnal/penugasan-piket', [AdminController::class, 'updatePenugasanPiket'])->name('dashboard.rekap-jurnal.penugasan-piket');
         Route::get('/pengaturan', [AdminController::class, 'pengaturan'])->name('admin.pengaturan');
         Route::post('/pengaturan', [AdminController::class, 'updatePengaturan'])->name('admin.pengaturan.update');

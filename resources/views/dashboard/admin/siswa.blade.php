@@ -11,7 +11,7 @@
 @endsection
 
 @section('content')
-<div class="p-6 sm:p-10 font-sans">
+<div class="p-6 font-sans sm:p-10 lg:p-8 xl:p-10">
 
     {{-- Alerts --}}
     @if(session('success'))
@@ -79,10 +79,7 @@
     @endif
 
     <!-- Header Halaman -->
-    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-3.5">
-        <div>
-            <p class="text-sm text-gray-500">Kelola data siswa, filter per kelas, dan lakukan aksi masal (batch action).</p>
-        </div>
+    <div class="mb-6 flex flex-col items-start justify-between gap-4 border-b border-slate-200 pb-5 lg:flex-row lg:items-center lg:gap-6">
         <form method="GET" action="{{ route('dashboard.siswa') }}" class="flex items-center gap-2 flex-wrap">
             <select name="kelas_id" onchange="this.form.submit()" class="border border-gray-300 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-400 bg-white">
                 <option value="">-- Semua Kelas --</option>

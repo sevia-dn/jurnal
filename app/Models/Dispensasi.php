@@ -20,6 +20,7 @@ class Dispensasi extends Model
         'status_waka',
         'status_akhir',
         'token_approval',
+        'token_verifikasi',
         'dibuat_oleh',
         'diproses_oleh',
         'diproses_at',

@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\JadwalPiket;
 use App\Models\User;
+use Carbon\Carbon;
 use Carbon\CarbonInterface;
 
 class PiketScheduleService
@@ -18,6 +19,19 @@ class PiketScheduleService
 
     public function isScheduledNow(User $user): bool
     {
-        return $this->isScheduled($user, now('Asia/Jakarta'));
+        return $this->hasActiveShiftAt($user, now('Asia/Jakarta'));
+    }
+
+    public function hasActiveShiftAt(User $user, CarbonInterface $dateTime): bool
+    {
+        $now = Carbon::instance($dateTime)->setTimezone('Asia/Jakarta');
+        $time = $now->format('H:i:s');
+
+        return JadwalPiket::query()
+            ->where('user_id', $user->id)
+            ->whereDate('tanggal', $now->toDateString())
+            ->where('jam_mulai', '<=', $time)
+            ->where('jam_selesai', '>', $time)
+            ->exists();
     }
 }

@@ -10,12 +10,17 @@ use App\Models\Notifikasi;
 use App\Models\PiketKehadiranSiswa;
 use App\Models\User;
 use Carbon\Carbon;
+use Illuminate\Support\Str;
 
 class DispensasiWorkflowService
 {
     public function approve(Dispensasi $dispensasi): void
     {
         $dispensasi->loadMissing('siswa.kelas');
+
+        if (blank($dispensasi->token_verifikasi)) {
+            $dispensasi->update(['token_verifikasi' => Str::random(40)]);
+        }
 
         $this->markExistingAttendanceAsDispensasi($dispensasi);
         $this->markPiketKehadiranAsDispensasi($dispensasi);

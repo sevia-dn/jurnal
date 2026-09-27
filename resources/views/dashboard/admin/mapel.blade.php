@@ -12,7 +12,7 @@
 
 @section('content')
 
-<div class="p-6 sm:p-10 font-sans">
+<div class="p-6 font-sans sm:p-10 lg:p-8 xl:p-10">
 
     @if(session('success'))
         <div class="mb-6 flex items-center justify-between rounded-lg bg-emerald-50 border border-emerald-200 p-4 text-sm text-emerald-800">
@@ -48,10 +48,7 @@
     </style>
 
     {{-- Header Halaman --}}
-    <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-3.5 gap-4">
-        <div>
-            <p class="text-sm text-gray-500">Kelola seluruh mata pelajaran jurusan dan mapel biasa di sekolah.</p>
-        </div>
+    <div class="mb-6 flex flex-col items-start justify-between gap-4 border-b border-slate-200 pb-5 lg:flex-row lg:items-center lg:gap-6">
         <form method="GET" action="{{ route('dashboard.mapel') }}" autocomplete="off" class="flex items-center gap-2">
             @if(request('kategori'))
                 <input type="hidden" name="kategori" value="{{ request('kategori') }}">

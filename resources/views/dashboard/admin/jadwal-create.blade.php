@@ -11,7 +11,7 @@
 @endsection
 
 @section('content')
-<div class="p-6 sm:p-10 font-sans">
+<div class="p-6 font-sans sm:p-10 lg:p-8 xl:p-10">
 
     <div class="mb-6">
         <h1 class="text-2xl font-bold text-gray-900">Tambah Jadwal Mengajar</h1>
