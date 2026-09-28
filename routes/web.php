@@ -8,6 +8,7 @@ use App\Http\Controllers\JadwalMengajarController;
 use App\Http\Controllers\LogbookController;
 use App\Http\Controllers\PengurusKelasController;
 use App\Http\Controllers\PiketController;
+use App\Http\Controllers\PublicJournalController;
 use Illuminate\Support\Facades\Route;
 
 // ==========================================
@@ -15,7 +16,8 @@ use Illuminate\Support\Facades\Route;
 // ==========================================
 
 // Public routes – always show the login form regardless of authentication state.
-Route::get('/', [AuthController::class, 'showLoginForm']);
+Route::get('/', [PublicJournalController::class, 'index'])->name('public.jurnal');
+Route::get('/riwayat-jurnal', [PublicJournalController::class, 'history'])->name('public.jurnal.riwayat');
 Route::get('/login', [AuthController::class, 'showLoginForm'])->name('login');
 Route::post('/login', [AuthController::class, 'login']);
 
@@ -90,6 +92,13 @@ Route::middleware('auth')->group(function () {
 
         Route::get('/piket/jurnal/{jurnal}', [PiketController::class, 'jurnalDetail'])
             ->name('piket.jurnal.show');
+
+        Route::get('/piket/jurnal-publik', [PiketController::class, 'managePublicJournals'])
+            ->name('piket.jurnal-publik.index');
+        Route::put('/piket/jurnal-publik/{jurnal}', [PiketController::class, 'updatePublicJournal'])
+            ->name('piket.jurnal-publik.update');
+        Route::delete('/piket/jurnal-publik/{jurnal}', [PiketController::class, 'destroyPublicJournal'])
+            ->name('piket.jurnal-publik.destroy');
 
         Route::post('/piket/kehadiran', [PiketController::class, 'storeKehadiranGuru'])
             ->name('piket.kehadiran.store');

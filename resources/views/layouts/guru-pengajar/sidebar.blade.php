@@ -2,14 +2,13 @@
     $activePage = $activePage ?? 'utama';
     $homeUrl = route('guru.utama');
     $historyUrl = route('guru.riwayat');
+    $hasWaliKelas = ($waliKelases ?? collect())->isNotEmpty();
 @endphp
 
 <!-- PERUBAHAN: Menambahkan z-50 di sini agar sidebar selalu di atas efek blur -->
 <aside class="sticky top-0 z-50 flex h-screen w-64 flex-col border-r border-[#17826E] bg-[#0D6B5A] font-sans">
     <div class="flex items-center gap-3 px-6 pb-8 pt-10">
-        <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-[#1BA886]/30 text-xl text-[#B9F1E1]">
-            <i class="bi bi-mortarboard-fill" aria-hidden="true"></i>
-        </div>
+        <img src="{{ asset('img/logo-rounded.png') }}" alt="Logo JurnalKita" class="h-11 w-11 rounded-xl shadow-sm border border-[#1BA886]/40 object-cover">
         <div>
             <div class="text-[22px] font-bold leading-none text-white">JurnalKita</div>
             <div class="mt-1 text-[11px] font-medium tracking-wide text-[#AEE5D4]">Guru Pengajar</div>
@@ -29,11 +28,27 @@
             <span>Riwayat &amp; Rekap</span>
         </a>
 
+        @if($hasWaliKelas)
+            <a href="{{ route('guru.wali-kelas') }}"
+               class="flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors !no-underline {{ request()->routeIs('guru.wali-kelas') || $activePage === 'wali-kelas' ? 'bg-[#1BA886] !text-white shadow-sm' : '!text-[#D9F7EE] hover:bg-[#1BA886]/10 hover:!text-white' }}">
+                <i class="bi bi-people text-lg" aria-hidden="true"></i>
+                <span>Wali Kelas</span>
+            </a>
+        @endif
+
+        @if(auth()->user()?->role !== 'admin' && auth()->user()?->isPiketActive())
+            <a href="{{ route('piket.jurnal-publik.index') }}"
+               class="flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors !no-underline {{ request()->routeIs('piket.jurnal-publik.*') ? 'bg-[#1BA886] !text-white shadow-sm' : '!text-[#D9F7EE] hover:bg-[#1BA886]/10 hover:!text-white' }}">
+                <i class="bi bi-journal-check text-lg" aria-hidden="true"></i>
+                <span>Kelola Jurnal Publik</span>
+            </a>
+        @endif
+
         <a href="{{ route('dashboard.piket') }}"
            class="flex items-center justify-between gap-3 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors !no-underline {{ request()->is('dashboard/piket*') || request()->is('piket*') || $activePage === 'piket' ? 'bg-[#1BA886] !text-white shadow-sm' : '!text-[#D9F7EE] hover:bg-[#1BA886]/10 hover:!text-white' }}">
             <div class="flex items-center gap-3">
                 <i class="bi bi-shield-check text-lg" aria-hidden="true"></i>
-                <span>{{ ($isPiketActive ?? auth()->user()?->isPiketActive()) ? 'Tugas Piket' : 'Anda sedang tidak piket' }}</span>
+                <span>{{ ($isPiketActive ?? auth()->user()?->isPiketActive()) ? 'Tugas Piket' : 'Piket' }}</span>
             </div>
             @if($isPiketActive ?? auth()->user()?->isPiketActive())
                 <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-300 text-emerald-950 shadow-xs">
@@ -69,16 +84,14 @@
                     <p class="truncate text-[11px] text-[#AEE5D4]">{{ $roleLabel }}</p>
                 </div>
             </div>
-        </div>
+        
 
-<form action="{{ route('logout') }}" method="POST" class="m-0 p-0">
-    @csrf
-    <button type="submit"
-            title="Keluar"
-            class="inline-flex items-center justify-center p-1 text-white transition hover:text-slate-300 focus:outline-none focus:ring-2 focus:ring-white/50 rounded">
-        <i class="bi bi-box-arrow-right text-xl" aria-hidden="true"></i>
-    </button>
-</form>
+      <form action="{{ route('logout') }}" method="POST" class="m-0 shrink-0">
+        @csrf
+        <button type="submit" class="flex h-9 w-9 items-center justify-center rounded-lg border-0 bg-transparent text-rose-200 transition-colors hover:bg-rose-500/20 hover:text-white" title="Keluar">
+          <i class="bi bi-box-arrow-right text-lg"></i>
+        </button>
+      </form>
         </div>
     </div>
 </aside>

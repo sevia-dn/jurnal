@@ -65,6 +65,15 @@ class LogbookController extends Controller
         $slotSelesai = $scheduleTimeService->slot($hariJurnal, $jamSelesai);
         $startSlot = $slotMulai['start'];
         $endSlot = $slotSelesai['end'];
+        $dismissalTime = $scheduleTimeService->dismissalTimeForDate($journalDateString);
+
+        if (! $scheduleTimeService->isLessonRangeApplicableOnDate($journalDateString, $hariJurnal, $jamMulai, $jamSelesai)
+            || ($dismissalTime !== null && $journalDateString === $todayDate && $now->format('H:i') >= $dismissalTime)) {
+            return redirect()
+                ->back()
+                ->withInput()
+                ->with('error', 'Jadwal sesi ini sudah tidak berlaku karena ada kegiatan atau pulang cepat pada tanggal tersebut.');
+        }
 
         $violation = $deadlinePolicy->violation($now, $journalDate, $startSlot, $endSlot);
         if ($violation) {

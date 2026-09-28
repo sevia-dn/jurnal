@@ -19,6 +19,11 @@ class Pengaturan
             'jumat_is_maju' => 0,
             'jumat_shifted_minutes' => 0,
             'tenggat_opsi' => 'terbatas_jam', // 'terbatas_jam' | 'hari_ini' | 'los'
+            'publik_jurnal_aktif' => 1,
+            'publik_riwayat_aktif' => 1,
+            'event_sekolah' => '',
+            'event_sekolah_tanggal' => '',
+            'event_sekolah_jam_pulang' => '',
         ];
     }
 

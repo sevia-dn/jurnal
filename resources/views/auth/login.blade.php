@@ -150,6 +150,19 @@
 
             </div>
 
+            <div class="mt-5 flex flex-wrap justify-center gap-x-4 gap-y-2 text-xs">
+                @if (\App\Models\Pengaturan::getValue('publik_jurnal_aktif', 1))
+                    <a href="{{ route('public.jurnal') }}" class="font-semibold text-jk-green hover:underline"><i class="bi bi-journal-text mr-1"></i>Jurnal terbaru</a>
+                @else
+                    <span class="text-slate-400"><i class="bi bi-lock-fill mr-1"></i>Jurnal publik dikunci</span>
+                @endif
+                @if (\App\Models\Pengaturan::getValue('publik_riwayat_aktif', 1))
+                    <a href="{{ route('public.jurnal.riwayat') }}" class="font-semibold text-jk-green hover:underline"><i class="bi bi-clock-history mr-1"></i>Riwayat jurnal</a>
+                @else
+                    <span class="text-slate-400"><i class="bi bi-lock-fill mr-1"></i>Riwayat dikunci</span>
+                @endif
+            </div>
+
             <!-- Copyright Text (Absolute di Desktop & Mobile) -->
         <div class="absolute bottom-6 left-0 w-full text-center text-xs text-slate-400">
             © 2026 JurnalKita Management System. All rights reserved.

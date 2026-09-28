@@ -33,39 +33,86 @@ class PiketController extends Controller
         $this->piketScheduleService = $piketScheduleService;
     }
 
-    public function utama()
+    public function utama(Request $request)
     {
         if (! $this->canAccessPiket()) {
             return $this->notScheduledResponse();
         }
 
         $today = now('Asia/Jakarta')->toDateString();
-        $journals = JurnalMengajar::with(['guru', 'kelas', 'mapel'])
-            ->whereDate('tanggal', $today)
+
+        // Parameter filter logbook
+        $filterDate = $request->query('tanggal');
+        $filterStart = $request->query('tanggal_mulai');
+        $filterEnd = $request->query('tanggal_selesai');
+        $filterPreset = $request->query('preset', 'semua');
+        $search = trim((string) $request->query('search', ''));
+        $statusValidasi = $request->query('status_validasi');
+
+        $query = JurnalMengajar::with(['guru', 'kelas', 'mapel']);
+
+        if ($filterDate) {
+            $query->whereDate('tanggal', $filterDate);
+        } elseif ($filterStart || $filterEnd) {
+            if ($filterStart) {
+                $query->whereDate('tanggal', '>=', $filterStart);
+            }
+            if ($filterEnd) {
+                $query->whereDate('tanggal', '<=', $filterEnd);
+            }
+        } elseif ($filterPreset === 'hari_ini') {
+            $query->whereDate('tanggal', $today);
+        } elseif ($filterPreset === '7_hari') {
+            $startDate = now('Asia/Jakarta')->subDays(6)->toDateString();
+            $query->whereBetween('tanggal', [$startDate, $today]);
+        } elseif ($filterPreset === '30_hari') {
+            $startDate = now('Asia/Jakarta')->subDays(29)->toDateString();
+            $query->whereBetween('tanggal', [$startDate, $today]);
+        }
+
+        if ($statusValidasi && in_array($statusValidasi, ['disetujui', 'belum_divalidasi', 'ditolak'], true)) {
+            $query->where('status_validasi', $statusValidasi);
+        }
+
+        if ($search !== '') {
+            $query->where(function ($q) use ($search) {
+                $q->where('materi', 'like', "%{$search}%")
+                    ->orWhere('keterangan', 'like', "%{$search}%")
+                    ->orWhere('catatan', 'like', "%{$search}%")
+                    ->orWhereHas('guru', fn ($g) => $g->where('name', 'like', "%{$search}%"))
+                    ->orWhereHas('kelas', fn ($k) => $k->where('nama_kelas', 'like', "%{$search}%"))
+                    ->orWhereHas('mapel', fn ($m) => $m->where('nama_mapel', 'like', "%{$search}%"));
+            });
+        }
+
+        $journals = $query->orderBy('tanggal', 'desc')
+            ->orderBy('jam_ke', 'desc')
             ->latest('id_jurnal')
             ->get();
 
-        // Guru hadir = yang sudah isi jurnal hari ini (unik per guru)
-        $submittedTeacherIds = $journals->pluck('id_user')->unique();
+        // Kehadiran Guru: dihitung berdasarkan target tanggal (default hari ini)
+        $targetDate = $filterDate ?: $today;
+        $journalsOnTarget = JurnalMengajar::whereDate('tanggal', $targetDate)->get();
+        $submittedTeacherIds = $journalsOnTarget->pluck('id_user')->unique();
 
-        // Daftar guru hadir (unik per guru, ambil jurnal pertama mereka)
-        $guruHadir = $journals->unique('id_user')->map(fn ($j) => [
-            'nama' => $j->guru?->name ?? 'Guru',
-            'status' => 'Hadir',
-            'keterangan' => 'Jurnal terisi',
-            'kelas' => $j->kelas?->nama_kelas ?? '-',
-        ])->values();
+        $guruHadir = JurnalMengajar::with(['guru', 'kelas'])
+            ->whereDate('tanggal', $targetDate)
+            ->get()
+            ->unique('id_user')
+            ->map(fn ($j) => [
+                'nama' => $j->guru?->name ?? 'Guru',
+                'status' => 'Hadir',
+                'keterangan' => 'Jurnal terisi',
+                'kelas' => $j->kelas?->nama_kelas ?? '-',
+            ])->values();
 
-        // Guru tidak hadir = yang dilaporkan piket (Sakit/Izin)
         $teacherAbsenceReports = KehadiranGuru::with('user')
-            ->whereDate('tanggal', $today)
+            ->whereDate('tanggal', $targetDate)
             ->whereIn('status', ['Sakit', 'Izin'])
             ->get();
 
-        $dispensasiHistory = Dispensasi::with(['siswa.kelas', 'pembuat'])
-            ->latest()
-            ->take(10)
-            ->get();
+        $dispensasiCount = Dispensasi::count();
+        $dispensasiPendingCount = Dispensasi::where(fn ($q) => $q->whereNull('status_waka')->orWhereIn('status_waka', ['menunggu', 'pending']))->count();
 
         return view('dashboard.piket.utama', [
             'journals' => $journals,
@@ -77,8 +124,16 @@ class PiketController extends Controller
             'permissionTeacherCount' => $teacherAbsenceReports->where('status', 'Izin')->count(),
             'guruHadir' => $guruHadir,
             'teacherAbsenceReports' => $teacherAbsenceReports,
-            'dispensasiHistory' => $dispensasiHistory,
+            'dispensasiCount' => $dispensasiCount,
+            'dispensasiPendingCount' => $dispensasiPendingCount,
             'today' => $today,
+            'targetDate' => $targetDate,
+            'filterDate' => $filterDate,
+            'filterStart' => $filterStart,
+            'filterEnd' => $filterEnd,
+            'filterPreset' => $filterPreset,
+            'search' => $search,
+            'statusValidasi' => $statusValidasi,
         ]);
     }
 
@@ -152,6 +207,63 @@ class PiketController extends Controller
         $gurus = User::where('role', 'guru')->orderBy('name')->get();
 
         return view('dashboard.piket.lapor-kehadiran', compact('gurus'));
+    }
+
+    public function managePublicJournals(Request $request)
+    {
+        $this->ensurePiketJournalManagementAccess();
+
+        $query = JurnalMengajar::query()
+            ->with(['guru', 'kelas', 'mapel'])
+            ->where('status_validasi', 'disetujui');
+
+        if ($request->filled('tanggal')) {
+            $query->whereDate('tanggal', $request->query('tanggal'));
+        }
+
+        if ($request->filled('search')) {
+            $search = trim((string) $request->query('search'));
+            $query->where(function ($builder) use ($search): void {
+                $builder->where('materi', 'like', "%{$search}%")
+                    ->orWhereHas('guru', fn ($guru) => $guru->where('name', 'like', "%{$search}%"))
+                    ->orWhereHas('kelas', fn ($kelas) => $kelas->where('nama_kelas', 'like', "%{$search}%"))
+                    ->orWhereHas('mapel', fn ($mapel) => $mapel->where('nama_mapel', 'like', "%{$search}%"));
+            });
+        }
+
+        $journals = $query->orderByDesc('tanggal')->orderByDesc('jam_ke')->paginate(15)->withQueryString();
+
+        return view('dashboard.piket.public-jurnals', compact('journals'));
+    }
+
+    public function updatePublicJournal(Request $request, JurnalMengajar $jurnal)
+    {
+        $this->ensurePiketJournalManagementAccess();
+        abort_unless($jurnal->status_validasi === 'disetujui', 404);
+
+        $validated = $request->validate([
+            'materi' => 'required|string|max:200',
+            'keterangan' => 'nullable|string|max:200',
+            'catatan' => 'nullable|string|max:200',
+        ]);
+
+        $jurnal->update($validated);
+
+        return redirect()->route('piket.jurnal-publik.index')->with('success', 'Jurnal publik berhasil diperbarui.');
+    }
+
+    public function destroyPublicJournal(JurnalMengajar $jurnal)
+    {
+        $this->ensurePiketJournalManagementAccess();
+        abort_unless($jurnal->status_validasi === 'disetujui', 404);
+
+        if ($jurnal->lampiran) {
+            Storage::disk('public')->delete($jurnal->lampiran);
+        }
+
+        $jurnal->delete();
+
+        return redirect()->route('piket.jurnal-publik.index')->with('success', 'Jurnal publik dan riwayatnya berhasil dihapus.');
     }
 
     public function jurnalDetail(JurnalMengajar $jurnal)
@@ -286,23 +398,45 @@ class PiketController extends Controller
             ->get()
             ->keyBy('siswa_id');
 
-        // Absensi jurnal tetap menjadi data per sesi pembelajaran.
+        // Absensi jurnal tetap menjadi data per sesi pembelajaran (ambil status non-hadir prioritas tertinggi).
+        $priorityMap = [
+            'D' => 5,
+            'DISPENSASI' => 5,
+            'SAKIT' => 4,
+            'S' => 4,
+            'IZIN' => 3,
+            'I' => 3,
+            'ALPA' => 2,
+            'ALFA' => 2,
+            'A' => 2,
+            'HADIR' => 1,
+            'H' => 1,
+        ];
         $absensiRecords = Absensi::whereIn('id_siswa', $siswas->pluck('id'))
             ->whereHas('jurnal', function ($q) use ($tanggal) {
                 $q->whereDate('tanggal', $tanggal);
             })
-            ->orderBy('id', 'asc')
             ->get()
-            ->keyBy('id_siswa');
+            ->groupBy('id_siswa')
+            ->map(fn ($records) => $records->sortByDesc(fn ($r) => $priorityMap[strtoupper(trim((string) $r->status))] ?? 0)->first());
 
         $studentsData = $siswas->map(function ($s) use ($dispensasis, $kehadiranPiket, $absensiRecords, $selectedKelas) {
             $dispen = $dispensasis->get($s->id);
             $piketRecord = $kehadiranPiket->get($s->id);
             $absen = $absensiRecords->get($s->id);
 
+            $isPiketNonHadir = $piketRecord && in_array(strtoupper(trim((string) $piketRecord->status)), ['S', 'SAKIT', 'I', 'IZIN', 'A', 'ALPA', 'ALFA', 'D', 'DISPENSASI'], true);
+            $isAbsenNonHadir = $absen && in_array(strtoupper(trim((string) $absen->status)), ['S', 'SAKIT', 'I', 'IZIN', 'A', 'ALPA', 'ALFA', 'D', 'DISPENSASI'], true);
+
             if ($dispen) {
                 $status = 'D';
                 $catatan = 'Dispensasi: '.$dispen->deskripsi_waktu.' ('.$dispen->alasan.')';
+            } elseif ($isPiketNonHadir) {
+                $status = $piketRecord->status;
+                $catatan = $piketRecord->catatan ?? '-';
+            } elseif ($isAbsenNonHadir) {
+                $status = $absen->status;
+                $catatan = $absen->catatan ?? '-';
             } elseif ($piketRecord) {
                 $status = $piketRecord->status;
                 $catatan = $piketRecord->catatan ?? '-';
@@ -616,6 +750,62 @@ class PiketController extends Controller
             ->with('token_approval', $tokenApproval);
     }
 
+    public function dispensasiHistory(Request $request)
+    {
+        if (! $this->canAccessDispensasiHistory()) {
+            return $this->notScheduledResponse();
+        }
+
+        $search = trim((string) $request->query('search', ''));
+        $status = (string) $request->query('status', 'all');
+        $startDate = $request->query('tanggal_mulai');
+        $endDate = $request->query('tanggal_selesai');
+
+        $query = Dispensasi::with(['siswa.kelas', 'pembuat']);
+
+        if ($search !== '') {
+            $query->where(function ($q) use ($search) {
+                $q->where('alasan', 'like', "%{$search}%")
+                    ->orWhere('jenis_dispensasi', 'like', "%{$search}%")
+                    ->orWhereHas('siswa', function ($sq) use ($search) {
+                        $sq->where('nama', 'like', "%{$search}%")
+                            ->orWhere('nis', 'like', "%{$search}%");
+                    })
+                    ->orWhereHas('pembuat', fn ($sq) => $sq->where('name', 'like', "%{$search}%"));
+            });
+        }
+
+        if ($status && $status !== 'all') {
+            if ($status === 'disetujui') {
+                $query->whereIn('status_waka', ['disetujui', 'approved']);
+            } elseif ($status === 'menunggu') {
+                $query->where(function ($sq) {
+                    $sq->whereNull('status_waka')
+                        ->orWhereIn('status_waka', ['menunggu', 'pending']);
+                });
+            } elseif ($status === 'ditolak') {
+                $query->whereIn('status_waka', ['ditolak', 'rejected']);
+            }
+        }
+
+        if ($startDate) {
+            $query->whereDate('tanggal', '>=', $startDate);
+        }
+        if ($endDate) {
+            $query->whereDate('tanggal', '<=', $endDate);
+        }
+
+        $dispensasis = $query->latest('id')->paginate(15)->withQueryString();
+
+        return view('dashboard.piket.dispensasi-history', compact(
+            'dispensasis',
+            'search',
+            'status',
+            'startDate',
+            'endDate'
+        ));
+    }
+
     private function notScheduledResponse()
     {
         $user = Auth::user();
@@ -662,6 +852,27 @@ class PiketController extends Controller
             $user->role === 'admin'
             || $this->piketScheduleService->isScheduledNow($user)
         );
+    }
+
+    private function ensurePiketJournalManagementAccess(): void
+    {
+        $user = Auth::user();
+        abort_unless(
+            $user !== null
+                && $user->role !== 'admin'
+                && $this->piketScheduleService->isScheduledNow($user),
+            403,
+            'Pengelolaan jurnal publik hanya tersedia bagi petugas piket yang sedang bertugas.'
+        );
+    }
+
+    private function canAccessDispensasiHistory(): bool
+    {
+        $user = Auth::user();
+
+        return $this->canAccessPiket()
+            || $user?->isWaka()
+            || ($user !== null && Notifikasi::where('id_user', $user->id)->whereNotNull('id_dispensasi')->exists());
     }
 
     private function ensurePiketAccess(): void

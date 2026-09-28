@@ -208,6 +208,13 @@
             <span class="px-1.5 py-0.2 rounded-full text-[10px] {{ in_array($tab ?? 'jurnal', ['jurnal', 'all']) ? 'bg-[#0D6B5A]/15 text-[#0D6B5A]' : 'bg-slate-200 text-slate-600' }}">{{ count($jurnals) }}</span>
           </a>
 
+          <a href="{{ route('dashboard.rekap-jurnal', array_merge(request()->query(), ['tab' => 'rekap_kelas'])) }}"
+             class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition whitespace-nowrap {{ ($tab ?? '') === 'rekap_kelas' ? 'bg-[#E3F2ED] !text-[#0D6B5A]' : 'text-slate-500 hover:text-[#0D6B5A] hover:bg-slate-50' }} !no-underline flex items-center gap-1.5">
+            <i class="bi bi-people-fill"></i>
+            <span>Rekapitulasi Per Kelas</span>
+            <span class="px-1.5 py-0.2 rounded-full text-[10px] {{ ($tab ?? '') === 'rekap_kelas' ? 'bg-[#0D6B5A]/15 text-[#0D6B5A]' : 'bg-slate-200 text-slate-600' }}">{{ $rekapKelas->count() }}</span>
+          </a>
+
           <a href="{{ route('dashboard.rekap-jurnal', array_merge(request()->query(), ['tab' => 'rekap_guru'])) }}"
              class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition whitespace-nowrap {{ ($tab ?? '') === 'rekap_guru' ? 'bg-[#E3F2ED] !text-[#0D6B5A]' : 'text-slate-500 hover:text-[#0D6B5A] hover:bg-slate-50' }} !no-underline flex items-center gap-1.5">
             <i class="bi bi-person-lines-fill"></i>
@@ -335,7 +342,7 @@
       </div>
 
       {{-- ================= TAB 1: DAFTAR RIWAYAT JURNAL MENGAJAR ================= --}}
-      @if(($tab ?? 'jurnal') !== 'rekap_guru')
+      @if(in_array(($tab ?? 'jurnal'), ['jurnal', 'all'], true))
         <div class="overflow-x-auto">
           <table class="w-full text-left border-collapse">
             <thead>
@@ -456,7 +463,7 @@
         </div>
 
       {{-- ================= TAB 2: REKAPITULASI PER GURU ================= --}}
-      @else
+      @elseif(($tab ?? '') === 'rekap_guru')
         <div class="overflow-x-auto">
           <table class="w-full text-left border-collapse">
             <thead>
@@ -567,6 +574,39 @@
           <div class="flex items-center gap-2">
             <span class="text-[11px] text-slate-400">Terakhir diperbarui: {{ now()->format('H:i') }} WIB</span>
           </div>
+        </div>
+      @else
+        <div class="space-y-4 p-4 sm:p-6">
+          <div class="rounded-xl border border-amber-200 bg-amber-50 p-4 text-xs leading-relaxed text-amber-900">
+            Rekap ini menampilkan siswa yang tidak hadir pada jurnal guru atau laporan kehadiran piket. Catatan piket dipakai sebagai keterangan utama jika tersedia.
+          </div>
+          @forelse($rekapKelas as $rekap)
+            <details class="overflow-hidden rounded-2xl border border-slate-200 bg-white" open>
+              <summary class="flex cursor-pointer flex-wrap items-center justify-between gap-3 bg-slate-50 px-4 py-4 sm:px-5">
+                <span class="font-extrabold text-slate-800">Kelas {{ $rekap->nama }}</span>
+                <span class="flex flex-wrap gap-2 text-[11px] font-bold">
+                  <span class="rounded-full bg-amber-100 px-2.5 py-1 text-amber-800">Sakit {{ $rekap->sakit }}</span>
+                  <span class="rounded-full bg-blue-100 px-2.5 py-1 text-blue-800">Izin {{ $rekap->izin }}</span>
+                  <span class="rounded-full bg-rose-100 px-2.5 py-1 text-rose-800">Alpa {{ $rekap->alpa }}</span>
+                  <span class="rounded-full bg-indigo-100 px-2.5 py-1 text-indigo-800">Dispensasi {{ $rekap->dispensasi }}</span>
+                </span>
+              </summary>
+              <div class="overflow-x-auto">
+                <table class="w-full text-left text-xs">
+                  <thead class="border-y border-slate-100 bg-white text-slate-500"><tr><th class="px-4 py-3">Tanggal</th><th class="px-4 py-3">Nama Siswa</th><th class="px-4 py-3">Status</th><th class="px-4 py-3">Keterangan</th></tr></thead>
+                  <tbody class="divide-y divide-slate-100">
+                    @forelse($rekap->records as $record)
+                      <tr><td class="whitespace-nowrap px-4 py-3 text-slate-600">{{ \Carbon\Carbon::parse($record['tanggal'])->translatedFormat('d M Y') }}</td><td class="px-4 py-3 font-bold text-slate-800">{{ $record['siswa'] }} <span class="font-normal text-slate-400">({{ $record['nis'] }})</span></td><td class="px-4 py-3 font-bold text-slate-700">{{ $record['status'] }}</td><td class="px-4 py-3 text-slate-600">{{ $record['catatan'] }}</td></tr>
+                    @empty
+                      <tr><td colspan="4" class="px-4 py-8 text-center text-slate-400">Tidak ada siswa tercatat tidak hadir pada periode ini.</td></tr>
+                    @endforelse
+                  </tbody>
+                </table>
+              </div>
+            </details>
+          @empty
+            <div class="rounded-xl border border-slate-200 p-8 text-center text-sm text-slate-500">Belum ada data kelas.</div>
+          @endforelse
         </div>
       @endif
 

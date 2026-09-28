@@ -203,6 +203,15 @@
         </div>
     @endif
 
+    @if($eventDismissalTime)
+        <div class="mb-5 rounded-xl border border-amber-200 bg-amber-50 p-4 text-amber-950" role="status">
+            <div class="flex items-start gap-3">
+                <i class="bi bi-megaphone-fill mt-0.5 text-lg text-amber-700"></i>
+                <p class="text-sm font-semibold">{{ $eventSchoolName ?: 'Kegiatan sekolah' }} hari ini. Jadwal mengajar yang selesai setelah pukul {{ str_replace(':', '.', $eventDismissalTime) }} tidak berlaku; pengisian jurnal untuk sesi tersebut ditutup.</p>
+            </div>
+        </div>
+    @endif
+
     {{-- NOTIFIKASI ERROR --}}
     @if(session('error'))
         <div class="mb-5 rounded-xl border border-rose-200 bg-rose-50 p-4 text-rose-900 shadow-sm" role="alert">
