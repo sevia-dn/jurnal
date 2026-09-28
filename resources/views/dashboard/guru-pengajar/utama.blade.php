@@ -62,6 +62,18 @@ function guruLogbookState(config) {
 
         mapelMap: config.mapelMap || {},
         kelasMap: config.kelasMap || {},
+        modePilihJurnal: false,
+        selectedJadwalKey: '',
+
+        aktifkanIsiJurnal() {
+            this.modePilihJurnal = true;
+            this.$nextTick(() => {
+                const el = document.getElementById('section-jadwal-mengajar');
+                if (el) {
+                    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            });
+        },
 
         getMapelName(id) {
             return this.mapelMap[id] || '';
@@ -81,7 +93,9 @@ function guruLogbookState(config) {
             }, 1000);
         },
 
-        pilihJadwal(idKelas, idMapel, jamMulai, jamSelesai) {
+        pilihJadwal(idKelas, idMapel, jamMulai, jamSelesai, key = '') {
+            this.modePilihJurnal = true;
+            this.selectedJadwalKey = key || `${idKelas}-${idMapel}-${jamMulai}`;
             this.selectedKelas = String(idKelas);
             this.selectedMapel = String(idMapel);
             this.selectedJamKe = String(jamMulai);
@@ -315,9 +329,64 @@ function guruLogbookState(config) {
     @endif
 
     {{-- ========================================================= --}}
-    {{-- SECTION : JADWAL MENGAJAR GURU HARI INI (MOBILE FRIENDLY) --}}
+    {{-- SECTION 1 : PILIHAN UTAMA GURU (PALING ATAS) --}}
     {{-- ========================================================= --}}
-    <section class="mt-5 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:p-5">
+    <section class="mt-4 flex flex-col sm:flex-row gap-3">
+        {{-- Opsi A: Isi Jurnal Mengajar --}}
+        <button
+            type="button"
+            @click="aktifkanIsiJurnal()"
+            class="flex-1 rounded-2xl border p-4 sm:p-5 flex items-center gap-4 text-left transition-all duration-200 cursor-pointer shadow-sm group"
+            :class="modePilihJurnal 
+                ? 'border-emerald-500 bg-emerald-50 ring-2 ring-emerald-500/20' 
+                : 'border-slate-200 bg-white hover:border-emerald-300 hover:bg-emerald-50/50'"
+        >
+            <span 
+                class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-xl text-white transition group-hover:scale-105"
+                :class="modePilihJurnal ? 'bg-emerald-600 shadow-md shadow-emerald-600/30' : 'bg-emerald-500'"
+            >
+                <i class="bi bi-pencil-square"></i>
+            </span>
+            <div class="min-w-0 flex-1">
+                <div class="flex items-center gap-2">
+                    <p class="text-sm sm:text-base font-bold text-slate-900 group-hover:text-emerald-800 transition">
+                        Isi Jurnal Mengajar
+                    </p>
+                    <span 
+                        x-show="modePilihJurnal" 
+                        x-cloak 
+                        class="inline-flex items-center gap-1 rounded-full bg-emerald-600 px-2 py-0.5 text-[10px] font-bold text-white"
+                    >
+                        <i class="bi bi-check-circle-fill"></i> Aktif
+                    </span>
+                </div>
+                <p class="mt-0.5 text-xs text-slate-500" x-text="modePilihJurnal ? 'Silakan pilih sesi jadwal mengajar di bawah ini' : 'Klik untuk memilih jadwal dan mengisi jurnal mengajar'"></p>
+            </div>
+            <i class="bi bi-chevron-down text-sm text-slate-400 group-hover:text-emerald-600 transition-transform duration-200" :class="{ 'rotate-180 text-emerald-600': modePilihJurnal }"></i>
+        </button>
+
+        {{-- Opsi B: Guru Tidak Hadir (Izin / Sakit) --}}
+        <a
+            href="{{ route('guru.ketidakhadiran.form', ['tanggal' => now('Asia/Jakarta')->toDateString()]) }}"
+            class="flex-1 rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 flex items-center gap-4 text-left transition-all duration-200 hover:border-amber-300 hover:bg-amber-50/50 shadow-sm group !no-underline"
+        >
+            <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-amber-500 text-white text-xl transition group-hover:scale-105">
+                <i class="bi bi-calendar-x-fill"></i>
+            </span>
+            <div class="min-w-0 flex-1">
+                <p class="text-sm sm:text-base font-bold text-slate-900 group-hover:text-amber-800 transition">
+                    Guru Tidak Hadir (Izin / Sakit)
+                </p>
+                <p class="mt-0.5 text-xs text-slate-500">Ajukan surat izin atau sakit langsung ke Guru Piket</p>
+            </div>
+            <i class="bi bi-arrow-right text-sm text-slate-400 group-hover:text-amber-600 transition"></i>
+        </a>
+    </section>
+
+    {{-- ========================================================= --}}
+    {{-- SECTION 2 : JADWAL MENGAJAR GURU HARI INI (MOBILE FRIENDLY) --}}
+    {{-- ========================================================= --}}
+    <section id="section-jadwal-mengajar" class="mt-5 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:p-5">
         <div class="mb-3 flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div class="flex min-w-0 items-center gap-2">
                 <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100 text-base text-emerald-700">
@@ -332,6 +401,14 @@ function guruLogbookState(config) {
             </span>
         </div>
 
+        {{-- Petunjuk Pemilihan Jadwal Saat Mode Isi Jurnal Aktif --}}
+        <div x-show="modePilihJurnal" x-cloak class="mb-3 rounded-xl border border-emerald-200 bg-emerald-50/90 p-3 text-xs text-emerald-900 flex items-center justify-between gap-2 shadow-2xs">
+            <div class="flex items-center gap-2">
+                <i class="bi bi-hand-index-thumb-fill text-emerald-600 text-base shrink-0 animate-bounce"></i>
+                <span class="font-semibold">Silakan klik atau pilih sesi jadwal di bawah ini yang ingin Anda isi jurnal pembelajarannya:</span>
+            </div>
+        </div>
+
         <div class="space-y-2">
             @forelse($jadwals ?? [] as $jadwal)
                 @php
@@ -339,9 +416,21 @@ function guruLogbookState(config) {
                     $statusWaktu = $jadwal->status_waktu;
                     $isOngoing = ($statusWaktu === 'berlangsung' && !$isFilled);
                     $canFillSchedule = $logbookPolicy['mode'] !== 'terbatas_jam' || $statusWaktu === 'berlangsung';
+                    $jadwalKey = $jadwal->id_kelas . '-' . $jadwal->id_mapel . '-' . $jadwal->jam_mulai;
                 @endphp
 
-                <div class="rounded-xl border p-3 transition sm:p-3.5 {{ $isOngoing ? 'border-emerald-400 bg-white' : 'border-slate-200 bg-white hover:border-slate-300' }}">
+                <div 
+                    class="rounded-xl border p-3 transition-all duration-150 sm:p-3.5"
+                    :class="{
+                        'border-emerald-500 ring-2 ring-emerald-500 bg-emerald-50/40': selectedJadwalKey === '{{ $jadwalKey }}',
+                        'border-emerald-400 bg-white shadow-2xs': selectedJadwalKey !== '{{ $jadwalKey }}' && {{ $isOngoing ? 'true' : 'false' }},
+                        'border-slate-200 bg-white hover:border-slate-300': selectedJadwalKey !== '{{ $jadwalKey }}' && !{{ $isOngoing ? 'true' : 'false' }},
+                        'hover:border-emerald-400 hover:shadow-xs cursor-pointer': modePilihJurnal && !{{ $isFilled ? 'true' : 'false' }} && {{ $canFillSchedule ? 'true' : 'false' }}
+                    }"
+                    @if(! $isFilled && $canFillSchedule)
+                        @click="if (modePilihJurnal) { pilihJadwal('{{ $jadwal->id_kelas }}', '{{ $jadwal->id_mapel }}', '{{ $jadwal->jam_mulai }}', '{{ $jadwal->jam_selesai }}', '{{ $jadwalKey }}') }"
+                    @endif
+                >
                     
                     {{-- Baris 1: Jam Pelajaran & Waktu (Kiri) vs Status Sesi (Kanan) --}}
                     <div class="mb-2 flex flex-wrap items-center gap-1.5 border-b border-slate-100 pb-2 sm:gap-2">
@@ -376,7 +465,7 @@ function guruLogbookState(config) {
                         </div>
                     </div>
 
-                    {{-- Informasi kelas dan aksi selalu tampil utuh di semua ukuran layar. --}}
+                    {{-- Informasi kelas dan mata pelajaran --}}
                     <div class="space-y-2">
                         <div class="flex items-start gap-2">
                             <div class="flex min-w-0 flex-wrap items-center gap-2">
@@ -389,27 +478,38 @@ function guruLogbookState(config) {
                             </div>
                         </div>
 
-                        {{-- Tombol Aksi --}}
-                        <div class="flex w-full items-center">
+                        {{-- Aksi Sesi --}}
+                        <div>
                             @if($isFilled)
                                 <a href="{{ route('guru.riwayat') }}"
                                    class="inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50">
                                     <i class="bi bi-eye"></i>
-                                    <span>Lihat Jurnal</span>
+                                    <span>Lihat di Riwayat Jurnal</span>
                                 </a>
                             @elseif(! $canFillSchedule)
-                                <span class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-center text-xs font-medium text-slate-400 cursor-not-allowed">
-                                    <i class="bi bi-lock-fill mr-1"></i>Tenggat Lewat
+                                <span class="inline-flex w-full items-center justify-center rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-400 cursor-not-allowed">
+                                    <i class="bi bi-lock-fill mr-1"></i>Tenggat Waktu Lewat
                                 </span>
                             @else
-                                <button
-                                    type="button"
-                                    @click="pilihJadwal('{{ $jadwal->id_kelas }}', '{{ $jadwal->id_mapel }}', '{{ $jadwal->jam_mulai }}', '{{ $jadwal->jam_selesai }}')"
-                                    class="inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-emerald-700"
-                                >
-                                    <i class="bi bi-pencil-square"></i>
-                                    <span>Isi Logbook</span>
-                                </button>
+                                {{-- Tombol Pemilihan Jadwal (Hanya tampil setelah user klik Isi Jurnal Mengajar di atas) --}}
+                                <div x-show="modePilihJurnal" x-cloak>
+                                    <template x-if="selectedJadwalKey === '{{ $jadwalKey }}'">
+                                        <div class="inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-2 text-xs font-bold text-white shadow-xs">
+                                            <i class="bi bi-check-circle-fill"></i>
+                                            <span>Jadwal Dipilih (Lanjutkan Mengisi di Bawah)</span>
+                                        </div>
+                                    </template>
+                                    <template x-if="selectedJadwalKey !== '{{ $jadwalKey }}'">
+                                        <button
+                                            type="button"
+                                            @click.stop="pilihJadwal('{{ $jadwal->id_kelas }}', '{{ $jadwal->id_mapel }}', '{{ $jadwal->jam_mulai }}', '{{ $jadwal->jam_selesai }}', '{{ $jadwalKey }}')"
+                                            class="inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 px-3 py-2 text-xs font-bold text-white transition shadow-xs"
+                                        >
+                                            <i class="bi bi-check2-circle text-sm"></i>
+                                            <span>Pilih Jadwal Ini</span>
+                                        </button>
+                                    </template>
+                                </div>
                             @endif
                         </div>
                     </div>
@@ -425,34 +525,7 @@ function guruLogbookState(config) {
     </section>
 
     {{-- ========================================================= --}}
-    {{-- SECTION : PILIHAN GURU (ISI JURNAL / TIDAK HADIR) --}}
-    {{-- ========================================================= --}}
-    <section class="mt-4 flex flex-col sm:flex-row gap-3">
-        <div class="flex-1 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 flex items-center gap-3">
-            <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-white text-lg">
-                <i class="bi bi-pencil-square"></i>
-            </span>
-            <div>
-                <p class="text-sm font-bold text-emerald-900">Isi Jurnal Mengajar</p>
-                <p class="text-[11px] text-emerald-700">Isi form pengisian jurnal di bawah ini.</p>
-            </div>
-        </div>
-        <a
-            href="{{ route('guru.ketidakhadiran.form', ['tanggal' => now('Asia/Jakarta')->toDateString()]) }}"
-            class="flex-1 rounded-2xl border border-amber-200 bg-amber-50 p-4 flex items-center gap-3 hover:bg-amber-100 transition"
-        >
-            <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-500 text-white text-lg">
-                <i class="bi bi-calendar-x-fill"></i>
-            </span>
-            <div>
-                <p class="text-sm font-bold text-amber-900">Tidak Hadir (Izin / Sakit)</p>
-                <p class="text-[11px] text-amber-700">Ajukan izin atau sakit ke Guru Piket.</p>
-            </div>
-        </a>
-    </section>
-
-    {{-- ========================================================= --}}
-    {{-- SECTION : FORM PENGISIAN JURNAL / LOGBOOK --}}
+    {{-- SECTION 3 : FORM PENGISIAN JURNAL / LOGBOOK --}}
     {{-- ========================================================= --}}
     <section id="form-logbook-section" class="mt-6">
         <form
