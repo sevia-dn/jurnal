@@ -8,6 +8,7 @@ use App\Models\JadwalMengajar;
 use App\Models\JurnalMengajar;
 use App\Models\Kelas;
 use App\Models\Notifikasi;
+use App\Models\PiketKehadiranSiswa;
 use App\Models\Siswa;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -85,22 +86,33 @@ class PengurusKelasController extends Controller
 
         if ($kelasId && $totalSiswa > 0) {
             $siswas = Siswa::where('kelas_id', $kelasId)->pluck('id');
-
-            // 1. Jurnal pertama hari ini untuk kelas ini (guru pertama yang mengisi jurnal)
-            $jurnalPertama = JurnalMengajar::where('id_kelas', $kelasId)
+            $jurnalHariIniIds = JurnalMengajar::where('id_kelas', $kelasId)
                 ->whereDate('tanggal', $now->toDateString())
-                ->orderBy('jam_ke')
-                ->first();
+                ->pluck('id_jurnal');
 
-            // Absensi siswa dari jurnal guru pertama hari ini
+            // Absensi siswa dari jurnal guru hari ini
             $absensiJurnal = collect();
-            if ($jurnalPertama) {
-                $absensiJurnal = Absensi::where('id_jurnal', $jurnalPertama->id_jurnal)
+            if ($jurnalHariIniIds->isNotEmpty()) {
+                $priority = [
+                    'D' => 5, 'DISPENSASI' => 5,
+                    'SAKIT' => 4, 'S' => 4,
+                    'IZIN' => 3, 'I' => 3,
+                    'ALPA' => 2, 'ALFA' => 2, 'A' => 2,
+                    'HADIR' => 1, 'H' => 1,
+                ];
+                $absensiJurnal = Absensi::whereIn('id_jurnal', $jurnalHariIniIds)
                     ->get()
-                    ->keyBy('id_siswa');
+                    ->groupBy('id_siswa')
+                    ->map(fn ($records) => $records->sortByDesc(fn ($r) => $priority[strtoupper(trim((string) $r->status))] ?? 0)->first());
             }
 
-            // 2. Dispensasi aktif & disetujui hari ini (menimpa status kehadiran jika disetujui)
+            // Kehadiran siswa yang dicatat piket hari ini
+            $piketKehadiranToday = PiketKehadiranSiswa::where('kelas_id', $kelasId)
+                ->whereDate('tanggal', $now->toDateString())
+                ->get()
+                ->keyBy('siswa_id');
+
+            // Dispensasi aktif dan disetujui selalu menjadi status akhir siswa.
             $dispensasiAktifHariIni = Dispensasi::whereHas('siswa', fn ($q) => $q->where('kelas_id', $kelasId))
                 ->whereDate('tanggal', '<=', $now->toDateString())
                 ->whereDate('tanggal_selesai', '>=', $now->toDateString())
@@ -109,19 +121,27 @@ class PengurusKelasController extends Controller
                 ->flip();
 
             foreach ($siswas as $sid) {
-                // Jika ada dispensasi yang disetujui, status berganti jadi dispensasi
                 if ($dispensasiAktifHariIni->has($sid)) {
                     $jmlDispensasi++;
 
                     continue;
                 }
 
+                $piketRec = $piketKehadiranToday->get($sid);
                 $jurnalRec = $absensiJurnal->get($sid);
-                $status = null;
 
-                if ($jurnalRec) {
+                // Catatan piket diprioritaskan dibanding catatan jurnal guru.
+                $status = null;
+                if ($piketRec) {
+                    $ps = strtoupper(trim((string) $piketRec->status));
+                    if (in_array($ps, ['S', 'SAKIT', 'I', 'IZIN', 'A', 'ALPA', 'ALFA'], true)) {
+                        $status = $ps;
+                    }
+                }
+
+                if (! $status && $jurnalRec) {
                     $js = strtoupper(trim((string) $jurnalRec->status));
-                    if (in_array($js, ['S', 'SAKIT', 'I', 'IZIN', 'A', 'ALPA', 'ALFA', 'D', 'DISPENSASI'], true)) {
+                    if (in_array($js, ['S', 'SAKIT', 'I', 'IZIN', 'A', 'ALPA', 'ALFA'], true)) {
                         $status = $js;
                     }
                 }
@@ -133,8 +153,6 @@ class PengurusKelasController extends Controller
                         $jmlIzin++;
                     } elseif (in_array($status, ['A', 'ALPA', 'ALFA'], true)) {
                         $jmlAlpa++;
-                    } elseif (in_array($status, ['D', 'DISPENSASI'], true)) {
-                        $jmlDispensasi++;
                     }
                 }
             }

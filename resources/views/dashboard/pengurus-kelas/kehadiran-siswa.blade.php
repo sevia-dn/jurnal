@@ -94,10 +94,12 @@
                     };
                     $catatanAbsen = is_object($rawRecord) ? $rawRecord->catatan : null;
 
+                    // Override: jika ada dispensasi aktif & disetujui hari ini → paksa status Dispensasi
                     // Override: jika ada dispensasi aktif & disetujui hari ini → otomatis berganti status Dispensasi
                     $dispensasiSiswa = $dispensasiAktifHariIni->get($siswa->id);
                     if ($dispensasiSiswa) {
                         $status = 'Dispensasi';
+                        $catatanAbsen = 'Dispensasi disetujui: ' . $dispensasiSiswa->alasan;
                         $jamKet = '';
                         if ($dispensasiSiswa->jam_ke_mulai) {
                             $jamKet = $dispensasiSiswa->jam_ke_selesai && $dispensasiSiswa->jam_ke_selesai > $dispensasiSiswa->jam_ke_mulai
@@ -119,6 +121,7 @@
                             <p class="truncate text-xs sm:text-sm font-bold text-slate-800">{{ $siswa->nama }}</p>
                             <p class="text-[11px] text-slate-400">NISN: {{ $siswa->nis }} · L/P: {{ $siswa->jenis_kelamin }}</p>
                             @if($catatanAbsen)
+                                <p class="text-[11px] text-slate-500 italic mt-0.5">Ket: {{ $catatanAbsen }}</p>
                                 <p class="text-[11px] {{ $status === 'Dispensasi' ? 'text-indigo-600 font-medium' : 'text-slate-500 italic' }} mt-0.5">
                                     @if($status === 'Dispensasi')
                                         <i class="bi bi-file-earmark-check mr-0.5"></i>

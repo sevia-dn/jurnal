@@ -116,6 +116,7 @@ class PiketLoginWorkflowTest extends TestCase
         $response->assertOk();
         $response->assertSee('Anda Tidak Sedang Piket');
         $response->assertSee('Halaman Utama Guru');
+        $response->assertDontSee('Anda sedang tidak piket');
         $response->assertSee('Piket');
         $response->assertDontSee('Detail Logbook Mengajar');
     }
@@ -180,6 +181,7 @@ class PiketLoginWorkflowTest extends TestCase
         $response = $this->actingAs($guru)->get(route('guru.utama'));
 
         $response->assertOk();
+        $response->assertDontSee('Anda sedang tidak piket');
         $response->assertSee('Piket');
     }
 
