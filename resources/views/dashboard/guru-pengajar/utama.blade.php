@@ -64,6 +64,7 @@ function guruLogbookState(config) {
         kelasMap: config.kelasMap || {},
         modePilihJurnal: false,
         selectedJadwalKey: '',
+        openModalKetidakhadiran: false,
 
         aktifkanIsiJurnal() {
             this.modePilihJurnal = true;
@@ -366,9 +367,10 @@ function guruLogbookState(config) {
         </button>
 
         {{-- Opsi B: Guru Tidak Hadir (Izin / Sakit) --}}
-        <a
-            href="{{ route('guru.ketidakhadiran.form', ['tanggal' => now('Asia/Jakarta')->toDateString()]) }}"
-            class="flex-1 rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 flex items-center gap-4 text-left transition-all duration-200 hover:border-amber-300 hover:bg-amber-50/50 shadow-sm group !no-underline"
+        <button
+            type="button"
+            @click="openModalKetidakhadiran = true"
+            class="flex-1 rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 flex items-center gap-4 text-left transition-all duration-200 hover:border-amber-300 hover:bg-amber-50/50 shadow-sm group cursor-pointer"
         >
             <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-amber-500 text-white text-xl transition group-hover:scale-105">
                 <i class="bi bi-calendar-x-fill"></i>
@@ -380,8 +382,157 @@ function guruLogbookState(config) {
                 <p class="mt-0.5 text-xs text-slate-500">Ajukan surat izin atau sakit langsung ke Guru Piket</p>
             </div>
             <i class="bi bi-arrow-right text-sm text-slate-400 group-hover:text-amber-600 transition"></i>
-        </a>
+        </button>
     </section>
+
+    {{-- MODAL FORM KETIDAKHADIRAN GURU (HANYA IZIN DAN SAKIT) --}}
+    <div
+        x-show="openModalKetidakhadiran"
+        x-cloak
+        class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-slate-900/60 p-4 backdrop-blur-xs"
+        @keydown.escape.window="openModalKetidakhadiran = false"
+    >
+        <div
+            @click.outside="openModalKetidakhadiran = false"
+            x-show="openModalKetidakhadiran"
+            x-transition:enter="transition ease-out duration-200"
+            x-transition:enter-start="opacity-0 scale-95 translate-y-2"
+            x-transition:enter-end="opacity-100 scale-100 translate-y-0"
+            x-transition:leave="transition ease-in duration-150"
+            x-transition:leave-start="opacity-100 scale-100 translate-y-0"
+            x-transition:leave-end="opacity-0 scale-95 translate-y-2"
+            class="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 shadow-2xl"
+            x-data="{ alasanModal: 'izin' }"
+        >
+            <div class="flex items-start justify-between border-b border-slate-100 pb-3">
+                <div class="flex items-center gap-3">
+                    <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-lg text-amber-600">
+                        <i class="bi bi-calendar-x-fill"></i>
+                    </span>
+                    <div>
+                        <h3 class="text-base font-bold text-slate-900">Form Ketidakhadiran Guru</h3>
+                        <p class="text-[11px] text-slate-500">Pilih kehadiran hanya Izin atau Sakit untuk dikirim ke Guru Piket</p>
+                    </div>
+                </div>
+                <button
+                    type="button"
+                    @click="openModalKetidakhadiran = false"
+                    class="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition cursor-pointer"
+                >
+                    <i class="bi bi-x-lg text-sm"></i>
+                </button>
+            </div>
+
+            <form method="POST" action="{{ route('guru.ketidakhadiran.store') }}" enctype="multipart/form-data" class="mt-4 space-y-4">
+                @csrf
+
+                {{-- TANGGAL --}}
+                <label class="block">
+                    <span class="text-xs font-bold text-slate-700">Tanggal Ketidakhadiran <span class="text-rose-500">*</span></span>
+                    <input
+                        type="date"
+                        name="tanggal"
+                        required
+                        value="{{ $todayDate }}"
+                        max="{{ $todayDate }}"
+                        class="mt-1.5 w-full rounded-xl border border-slate-300 px-3.5 py-2 text-sm text-slate-700 outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
+                    >
+                </label>
+
+                {{-- PILIHAN KEHADIRAN: HANYA IZIN DAN SAKIT --}}
+                <div>
+                    <span class="text-xs font-bold text-slate-700">Pilihan Kehadiran <span class="text-rose-500">*</span></span>
+                    <p class="text-[11px] text-slate-500 mt-0.5">Pilih salah satu status ketidakhadiran Anda:</p>
+                    <div class="mt-2 grid grid-cols-2 gap-3">
+                        {{-- OPSI 1: IZIN --}}
+                        <label
+                            class="flex cursor-pointer flex-col rounded-xl border-2 p-3.5 transition-all select-none"
+                            :class="alasanModal === 'izin' 
+                                ? 'border-amber-500 bg-amber-50/80 shadow-xs ring-2 ring-amber-400/30' 
+                                : 'border-slate-200 bg-white hover:border-amber-300 hover:bg-slate-50'"
+                        >
+                            <input type="radio" name="alasan" value="izin" x-model="alasanModal" class="sr-only" required>
+                            <div class="flex items-center justify-between">
+                                <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-amber-500 text-white text-base shadow-xs">
+                                    <i class="bi bi-calendar2-event-fill"></i>
+                                </span>
+                                <i class="bi bi-check-circle-fill text-lg text-amber-600 transition-opacity" :class="alasanModal === 'izin' ? 'opacity-100' : 'opacity-0'"></i>
+                            </div>
+                            <div class="mt-2.5">
+                                <p class="text-sm font-bold text-slate-900">Izin</p>
+                                <p class="text-[11px] text-slate-500 mt-0.5">Keperluan dinas / mendesak</p>
+                            </div>
+                        </label>
+
+                        {{-- OPSI 2: SAKIT --}}
+                        <label
+                            class="flex cursor-pointer flex-col rounded-xl border-2 p-3.5 transition-all select-none"
+                            :class="alasanModal === 'sakit' 
+                                ? 'border-rose-500 bg-rose-50/80 shadow-xs ring-2 ring-rose-400/30' 
+                                : 'border-slate-200 bg-white hover:border-rose-300 hover:bg-slate-50'"
+                        >
+                            <input type="radio" name="alasan" value="sakit" x-model="alasanModal" class="sr-only" required>
+                            <div class="flex items-center justify-between">
+                                <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-rose-500 text-white text-base shadow-xs">
+                                    <i class="bi bi-heart-pulse-fill"></i>
+                                </span>
+                                <i class="bi bi-check-circle-fill text-lg text-rose-600 transition-opacity" :class="alasanModal === 'sakit' ? 'opacity-100' : 'opacity-0'"></i>
+                            </div>
+                            <div class="mt-2.5">
+                                <p class="text-sm font-bold text-slate-900">Sakit</p>
+                                <p class="text-[11px] text-slate-500 mt-0.5">Kondisi kesehatan kurang baik</p>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                {{-- KETERANGAN --}}
+                <label class="block">
+                    <span class="text-xs font-bold text-slate-700">Keterangan Tambahan</span>
+                    <textarea
+                        name="keterangan"
+                        rows="2"
+                        placeholder="Tuliskan keterangan izin / sakit Anda..."
+                        class="mt-1.5 w-full resize-y rounded-xl border border-slate-300 px-3.5 py-2 text-sm text-slate-700 outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
+                    ></textarea>
+                </label>
+
+                {{-- LAMPIRAN --}}
+                <label class="block">
+                    <span class="text-xs font-bold text-slate-700">Lampiran Bukti <span class="text-slate-400 font-normal">(opsional, maks 4 MB)</span></span>
+                    <input
+                        type="file"
+                        name="lampiran"
+                        accept=".jpg,.jpeg,.png,.pdf"
+                        class="mt-1.5 block w-full text-xs text-slate-700 file:mr-3 file:rounded-lg file:border-0 file:bg-emerald-50 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-emerald-700 hover:file:bg-emerald-100"
+                    >
+                </label>
+
+                {{-- INFO PENERIMA --}}
+                <div class="rounded-xl border border-blue-200 bg-blue-50/80 p-2.5 text-xs text-blue-900 flex items-start gap-2">
+                    <i class="bi bi-shield-check text-blue-600 text-sm shrink-0 mt-0.5"></i>
+                    <p class="text-[11px] text-blue-700">Laporan ini akan langsung masuk ke Guru Piket bertugas untuk diverifikasi dan disetujui.</p>
+                </div>
+
+                {{-- AKSI --}}
+                <div class="flex items-center gap-2 pt-2">
+                    <button
+                        type="button"
+                        @click="openModalKetidakhadiran = false"
+                        class="flex-1 rounded-xl border border-slate-300 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 transition cursor-pointer"
+                    >
+                        Batal
+                    </button>
+                    <button
+                        type="submit"
+                        class="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 py-2.5 text-xs font-bold text-white transition shadow-sm cursor-pointer"
+                    >
+                        <i class="bi bi-send-fill"></i> Kirim ke Guru Piket
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
 
     {{-- ========================================================= --}}
     {{-- SECTION 2 : JADWAL MENGAJAR GURU HARI INI (MOBILE FRIENDLY) --}}

@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Ajukan Ketidakhadiran - JurnalKita')
+@section('title', 'Pengajuan Ketidakhadiran Guru - JurnalKita')
 
 @section('sidebar')
     @include('layouts.guru-pengajar.sidebar', ['activePage' => 'beranda'])
@@ -25,8 +25,8 @@
                         <i class="bi bi-calendar-x-fill"></i>
                     </span>
                     <div>
-                        <h1 class="text-lg font-bold text-slate-900">Ajukan Ketidakhadiran</h1>
-                        <p class="mt-1 text-xs text-slate-500">Isi form berikut untuk mengajukan izin atau sakit. Pengajuan akan diproses oleh Guru Piket.</p>
+                        <h1 class="text-lg font-bold text-slate-900">Form Ketidakhadiran Guru</h1>
+                        <p class="mt-1 text-xs text-slate-500">Pilih status ketidakhadiran (Izin atau Sakit) untuk dikirim dan diverifikasi oleh Guru Piket.</p>
                     </div>
                 </div>
 
@@ -39,7 +39,7 @@
                 @if($errors->any())
                     <div class="mt-5 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800">
                         <p class="font-bold">Pengajuan belum dapat disimpan.</p>
-                        <ul class="mt-1 list-inside list-disc">
+                        <ul class="mt-1 list-inside list-disc text-xs">
                             @foreach($errors->all() as $error)
                                 <li>{{ $error }}</li>
                             @endforeach
@@ -49,22 +49,40 @@
 
                 @if($existing)
                     <div class="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-                        <p class="font-bold">Pengajuan Aktif Ditemukan</p>
-                        <p class="mt-1">Anda sudah memiliki pengajuan untuk tanggal ini dengan status:
-                            <span class="font-semibold @if($existing->status === 'disetujui') text-emerald-700 @elseif($existing->status === 'ditolak') text-red-600 @else text-amber-700 @endif">
-                                {{ ucfirst($existing->status) }}
-                            </span>
-                            ({{ $existing->label_alasan }}).
-                        </p>
-                        <p class="mt-1 text-xs text-amber-700">Anda bisa mengubah pengajuan ini dengan mengirim ulang form di bawah.</p>
+                        <div class="flex items-start gap-2">
+                            <i class="bi bi-info-circle-fill text-amber-600 text-base shrink-0 mt-0.5"></i>
+                            <div>
+                                <p class="font-bold">Pengajuan Aktif Ditemukan</p>
+                                <p class="mt-1 text-xs">Anda sudah memiliki pengajuan untuk tanggal ini dengan status:
+                                    <span class="font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full text-[10px] @if($existing->status === 'disetujui') bg-emerald-100 text-emerald-800 @elseif($existing->status === 'ditolak') bg-red-100 text-red-800 @else bg-amber-200 text-amber-900 @endif">
+                                        {{ $existing->status }}
+                                    </span>
+                                    ({{ $existing->label_alasan }}).
+                                </p>
+                                <p class="mt-1 text-[11px] text-amber-700">Anda dapat memperbarui data dengan mengirim ulang form di bawah.</p>
+                            </div>
+                        </div>
                     </div>
                 @endif
 
-                <form method="POST" action="{{ route('guru.ketidakhadiran.store') }}" enctype="multipart/form-data" class="mt-5 space-y-4">
+                <form method="POST" action="{{ route('guru.ketidakhadiran.store') }}" enctype="multipart/form-data" class="mt-5 space-y-4" x-data="{ alasan: '{{ old('alasan', $existing?->alasan ?? 'izin') }}' }">
                     @csrf
 
+                    {{-- INFORMASI GURU (READ ONLY) --}}
+                    <div class="rounded-xl bg-slate-50 border border-slate-200/80 p-3.5 flex items-center justify-between gap-3">
+                        <div class="min-w-0">
+                            <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Nama Guru</p>
+                            <p class="text-sm font-bold text-slate-800 truncate">{{ auth()->user()->name }}</p>
+                        </div>
+                        <div class="text-right shrink-0">
+                            <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">NIP / Username</p>
+                            <p class="text-xs font-mono font-medium text-slate-600">{{ auth()->user()->nip ?? auth()->user()->username ?? '-' }}</p>
+                        </div>
+                    </div>
+
+                    {{-- TANGGAL --}}
                     <label class="block">
-                        <span class="text-xs font-bold text-slate-700">Tanggal <span class="text-rose-500">*</span></span>
+                        <span class="text-xs font-bold text-slate-700">Tanggal Ketidakhadiran <span class="text-rose-500">*</span></span>
                         <input
                             type="date"
                             name="tanggal"
@@ -75,63 +93,93 @@
                         >
                     </label>
 
+                    {{-- PILIHAN KEHADIRAN (HANYA IZIN DAN SAKIT) --}}
                     <div>
-                        <p class="text-xs font-bold text-slate-700">Alasan <span class="text-rose-500">*</span></p>
-                        <div class="mt-2 grid grid-cols-2 gap-3">
+                        <span class="text-xs font-bold text-slate-700">Pilihan Kehadiran <span class="text-rose-500">*</span></span>
+                        <p class="text-[11px] text-slate-500 mt-0.5">Pilih status kehadiran Anda (hanya Izin atau Sakit):</p>
+                        
+                        <div class="mt-2.5 grid grid-cols-2 gap-3.5">
+                            {{-- OPSI 1: IZIN --}}
                             <label
-                                x-data
-                                class="flex cursor-pointer items-center gap-3 rounded-xl border p-3.5 transition"
-                                :class="$refs.izin.checked ? 'border-amber-500 bg-amber-50' : 'border-slate-200'"
+                                class="flex cursor-pointer flex-col rounded-2xl border-2 p-4 transition-all duration-150 select-none"
+                                :class="alasan === 'izin' 
+                                    ? 'border-amber-500 bg-amber-50/80 shadow-xs ring-2 ring-amber-400/30' 
+                                    : 'border-slate-200 bg-white hover:border-amber-300 hover:bg-slate-50'"
                             >
-                                <input type="radio" name="alasan" value="izin" x-ref="izin" @change="$el.parentElement.classList.toggle('border-amber-500'); $el.parentElement.classList.toggle('bg-amber-50')" {{ old('alasan', $existing?->alasan) === 'izin' ? 'checked' : '' }} required class="sr-only">
-                                <i class="bi bi-calendar2-x text-2xl text-amber-500"></i>
-                                <div>
-                                    <p class="text-sm font-bold text-slate-800">Izin</p>
-                                    <p class="text-[11px] text-slate-500">Keperluan mendesak</p>
+                                <input type="radio" name="alasan" value="izin" x-model="alasan" class="sr-only" required>
+                                <div class="flex items-center justify-between">
+                                    <span class="flex h-11 w-11 items-center justify-center rounded-xl bg-amber-500 text-white text-xl shadow-xs">
+                                        <i class="bi bi-calendar2-event-fill"></i>
+                                    </span>
+                                    <i class="bi bi-check-circle-fill text-xl text-amber-600 transition-opacity" :class="alasan === 'izin' ? 'opacity-100' : 'opacity-0'"></i>
+                                </div>
+                                <div class="mt-3">
+                                    <p class="text-base font-bold text-slate-900">Izin</p>
+                                    <p class="text-[11px] text-slate-500 mt-0.5 leading-relaxed">Keperluan dinas, urusan keluarga, atau acara mendesak</p>
                                 </div>
                             </label>
+
+                            {{-- OPSI 2: SAKIT --}}
                             <label
-                                x-data
-                                class="flex cursor-pointer items-center gap-3 rounded-xl border p-3.5 transition"
-                                :class="$refs.sakit.checked ? 'border-rose-400 bg-rose-50' : 'border-slate-200'"
+                                class="flex cursor-pointer flex-col rounded-2xl border-2 p-4 transition-all duration-150 select-none"
+                                :class="alasan === 'sakit' 
+                                    ? 'border-rose-500 bg-rose-50/80 shadow-xs ring-2 ring-rose-400/30' 
+                                    : 'border-slate-200 bg-white hover:border-rose-300 hover:bg-slate-50'"
                             >
-                                <input type="radio" name="alasan" value="sakit" x-ref="sakit" @change="$el.parentElement.classList.toggle('border-rose-400'); $el.parentElement.classList.toggle('bg-rose-50')" {{ old('alasan', $existing?->alasan) === 'sakit' ? 'checked' : '' }} class="sr-only">
-                                <i class="bi bi-thermometer-half text-2xl text-rose-500"></i>
-                                <div>
-                                    <p class="text-sm font-bold text-slate-800">Sakit</p>
-                                    <p class="text-[11px] text-slate-500">Kondisi kesehatan</p>
+                                <input type="radio" name="alasan" value="sakit" x-model="alasan" class="sr-only" required>
+                                <div class="flex items-center justify-between">
+                                    <span class="flex h-11 w-11 items-center justify-center rounded-xl bg-rose-500 text-white text-xl shadow-xs">
+                                        <i class="bi bi-heart-pulse-fill"></i>
+                                    </span>
+                                    <i class="bi bi-check-circle-fill text-xl text-rose-600 transition-opacity" :class="alasan === 'sakit' ? 'opacity-100' : 'opacity-0'"></i>
+                                </div>
+                                <div class="mt-3">
+                                    <p class="text-base font-bold text-slate-900">Sakit</p>
+                                    <p class="text-[11px] text-slate-500 mt-0.5 leading-relaxed">Kondisi kesehatan kurang baik / istirahat medis</p>
                                 </div>
                             </label>
                         </div>
                     </div>
 
+                    {{-- KETERANGAN --}}
                     <label class="block">
-                        <span class="text-xs font-bold text-slate-700">Keterangan</span>
+                        <span class="text-xs font-bold text-slate-700">Keterangan / Alasan Lengkap</span>
                         <textarea
                             name="keterangan"
                             rows="3"
-                            placeholder="Tambahkan keterangan tambahan jika diperlukan..."
+                            placeholder="Tuliskan keterangan detail mengenai izin / sakit Anda..."
                             class="mt-1.5 w-full resize-y rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm text-slate-700 outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
                         >{{ old('keterangan', $existing?->keterangan) }}</textarea>
                     </label>
 
+                    {{-- LAMPIRAN BUKTI --}}
                     <label class="block">
-                        <span class="text-xs font-bold text-slate-700">Lampiran <span class="text-slate-400 font-normal">(opsional, maks 4 MB)</span></span>
+                        <span class="text-xs font-bold text-slate-700">Lampiran Bukti <span class="text-slate-400 font-normal">(opsional: surat dokter / surat izin, maks 4 MB)</span></span>
                         <div class="mt-1.5">
                             <input
                                 type="file"
                                 name="lampiran"
                                 accept=".jpg,.jpeg,.png,.pdf"
-                                class="block w-full text-sm text-slate-700 file:mr-3 file:rounded-lg file:border-0 file:bg-emerald-50 file:px-3 file:py-2 file:text-xs file:font-semibold file:text-emerald-700 hover:file:bg-emerald-100"
+                                class="block w-full text-sm text-slate-700 file:mr-3 file:rounded-xl file:border-0 file:bg-emerald-50 file:px-3.5 file:py-2 file:text-xs file:font-bold file:text-emerald-700 hover:file:bg-emerald-100"
                             >
                             @if($existing?->lampiran)
-                                <p class="mt-1 text-xs text-slate-500">Lampiran sebelumnya: <a href="{{ asset('storage/'.$existing->lampiran) }}" target="_blank" class="text-emerald-600 hover:underline">Lihat file</a></p>
+                                <p class="mt-1 text-xs text-slate-500">Lampiran sebelumnya: <a href="{{ asset('storage/'.$existing->lampiran) }}" target="_blank" class="text-emerald-600 font-semibold hover:underline">Lihat Berkas <i class="bi bi-box-arrow-up-right text-[10px]"></i></a></p>
                             @endif
                         </div>
                     </label>
 
-                    <button type="submit" class="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-amber-500 px-4 py-3 text-sm font-bold text-white transition hover:bg-amber-600 focus:outline-none focus:ring-4 focus:ring-amber-100">
-                        <i class="bi bi-send-fill"></i> Kirim Pengajuan ke Guru Piket
+                    {{-- INFO PENERIMA --}}
+                    <div class="rounded-xl border border-blue-200 bg-blue-50/80 p-3 text-xs text-blue-900 flex items-start gap-2.5">
+                        <i class="bi bi-shield-check text-blue-600 text-base shrink-0 mt-0.5"></i>
+                        <div>
+                            <p class="font-semibold">Terkirim Langsung ke Guru Piket</p>
+                            <p class="text-[11px] text-blue-700 mt-0.5">Laporan ini akan langsung masuk ke dashboard Guru Piket bertugas untuk diverifikasi dan disetujui.</p>
+                        </div>
+                    </div>
+
+                    {{-- TOMBOL KIRIM --}}
+                    <button type="submit" class="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-3 text-sm font-bold text-white transition hover:bg-emerald-700 shadow-sm focus:outline-none focus:ring-4 focus:ring-emerald-200 cursor-pointer">
+                        <i class="bi bi-send-fill"></i> Kirim ke Guru Piket
                     </button>
                 </form>
             </section>

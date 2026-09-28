@@ -374,6 +374,23 @@ class GuruController extends Controller
             ]
         );
 
+        // Kirim notifikasi ke Guru Piket bertugas
+        $piketUsers = User::query()
+            ->whereHas('jadwalPikets', fn ($query) => $query->whereDate('tanggal', $request->tanggal))
+            ->get();
+
+        foreach ($piketUsers as $piketUser) {
+            Notifikasi::create([
+                'id_user' => $piketUser->id,
+                'id_kelas' => null,
+                'id_dispensasi' => null,
+                'judul' => 'Pengajuan Ketidakhadiran Guru',
+                'pesan' => "Guru {$guru->name} mengajukan ketidakhadiran (".ucfirst($request->alasan).') untuk tanggal '.Carbon::parse($request->tanggal)->translatedFormat('d F Y').'. Silakan diverifikasi.',
+                'tipe' => 'guru_tidak_hadir',
+                'is_read' => false,
+            ]);
+        }
+
         return redirect()->route('guru.utama')
             ->with('success', 'Pengajuan ketidakhadiran ('.ucfirst($request->alasan).') untuk '.Carbon::parse($request->tanggal)->translatedFormat('l, d F Y').' telah dikirim ke Guru Piket untuk diproses.');
     }
