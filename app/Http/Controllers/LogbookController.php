@@ -257,6 +257,7 @@ class LogbookController extends Controller
         $keyword = trim((string) $request->query('keyword', $request->query('search', '')));
         $filterStart = $request->query('start_date');
         $filterEnd = $request->query('end_date');
+        $filterStatus = $request->query('status_validasi', '');
 
         $query = JurnalMengajar::with(['kelas', 'mapel', 'absensis.siswa'])
             ->where('id_user', $user->id);
@@ -282,6 +283,18 @@ class LogbookController extends Controller
             $query->whereDate('tanggal', '<=', $filterEnd);
         }
 
+        if ($filterStatus === 'disetujui') {
+            $query->where('status_validasi', 'disetujui');
+        } elseif ($filterStatus === 'ditolak') {
+            $query->where('status_validasi', 'ditolak');
+        } elseif ($filterStatus === 'menunggu') {
+            $query->where(function ($q) {
+                $q->whereNull('status_validasi')
+                    ->orWhere('status_validasi', 'belum_divalidasi')
+                    ->orWhere('status_validasi', '');
+            });
+        }
+
         $riwayatJurnals = $query->orderBy('tanggal', 'desc')
             ->orderBy('jam_ke', 'desc')
             ->get();
@@ -299,6 +312,7 @@ class LogbookController extends Controller
             'keyword',
             'filterStart',
             'filterEnd',
+            'filterStatus',
             'notifikasiDisetujui'
         ));
     }

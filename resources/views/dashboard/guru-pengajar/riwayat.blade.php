@@ -39,12 +39,7 @@
         class="mx-auto w-full max-w-7xl px-4 py-3 sm:px-6 lg:px-8"
     >
 
-        {{-- HEADER RINGKAS --}}
-        <section class="flex items-center justify-end mb-2">
-            <span class="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 border border-emerald-200">
-                Total {{ $riwayatJurnals->count() }} Data
-            </span>
-        </section>
+
 
         {{-- NOTIFIKASI SUCCESS --}}
         @if(session('success'))
@@ -80,33 +75,49 @@
                         placeholder="Cari mapel, kelas, atau materi..."
                         @input="if ($event.target.value.trim() === '' && '{{ $keyword ?? '' }}' !== '') { $el.form.submit(); }"
                         @search="if ($event.target.value.trim() === '') { $el.form.submit(); }"
-                        class="w-full rounded-lg border border-slate-200 bg-slate-50/60 py-2 pl-9 pr-3 text-xs text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-emerald-600 focus:bg-white focus:ring-2 focus:ring-emerald-100 sm:text-sm"
+                        class="w-full rounded-lg border border-slate-200 bg-slate-50/60 py-2 pl-9 pr-3 text-xs text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-[#0D6B5A] focus:bg-white focus:ring-2 focus:ring-[#0D6B5A]/10 sm:text-sm"
                     >
+                </div>
+
+                {{-- Filter Status Validasi --}}
+                <div class="relative">
+                    <i class="bi bi-funnel pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#0D6B5A] text-xs" aria-hidden="true"></i>
+                    <select
+                        name="status_validasi"
+                        onchange="this.form.submit()"
+                        class="w-full cursor-pointer appearance-none rounded-lg border border-slate-200 bg-slate-50/60 py-2 pl-8 pr-7 text-xs text-slate-700 outline-none transition focus:border-[#0D6B5A] focus:bg-white focus:ring-2 focus:ring-[#0D6B5A]/10 sm:text-sm sm:w-44"
+                    >
+                        <option value="" {{ ($filterStatus ?? '') === '' ? 'selected' : '' }}>Semua Status</option>
+                        <option value="disetujui" {{ ($filterStatus ?? '') === 'disetujui' ? 'selected' : '' }}>✓ Divalidasi</option>
+                        <option value="menunggu" {{ ($filterStatus ?? '') === 'menunggu' ? 'selected' : '' }}>⏳ Menunggu Validasi</option>
+                        <option value="ditolak" {{ ($filterStatus ?? '') === 'ditolak' ? 'selected' : '' }}>✗ Ditolak</option>
+                    </select>
+                    <i class="bi bi-chevron-down pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-[10px]"></i>
                 </div>
 
                 {{-- Filter Tanggal (Menyamping di Mobile) --}}
                 <div class="grid grid-cols-2 gap-2 lg:flex lg:items-center">
                     <div class="relative flex items-center">
-                        <i class="bi bi-calendar3 pointer-events-none absolute left-3 text-emerald-700 text-xs" aria-hidden="true"></i>
+                        <i class="bi bi-calendar3 pointer-events-none absolute left-3 text-[#0D6B5A] text-xs" aria-hidden="true"></i>
                         <input
                             type="date"
                             name="start_date"
                             x-model="startDate"
                             @change="onStartDateChange()"
                             onclick="this.showPicker()"
-                            class="w-full cursor-pointer rounded-lg border border-slate-200 bg-slate-50/60 py-2 pl-8 pr-2 text-xs text-slate-700 outline-none transition focus:border-emerald-600 focus:bg-white focus:ring-2 focus:ring-emerald-100 [&::-webkit-calendar-picker-indicator]:hidden sm:text-sm sm:w-36"
+                            class="w-full cursor-pointer rounded-lg border border-slate-200 bg-slate-50/60 py-2 pl-8 pr-2 text-xs text-slate-700 outline-none transition focus:border-[#0D6B5A] focus:bg-white focus:ring-2 focus:ring-[#0D6B5A]/10 [&::-webkit-calendar-picker-indicator]:hidden sm:text-sm sm:w-36"
                             placeholder="Mulai"
                         >
                     </div>
 
                     <div class="relative flex items-center">
-                        <i class="bi bi-calendar3 pointer-events-none absolute left-3 text-emerald-700 text-xs" aria-hidden="true"></i>
+                        <i class="bi bi-calendar3 pointer-events-none absolute left-3 text-[#0D6B5A] text-xs" aria-hidden="true"></i>
                         <input
                             type="date"
                             name="end_date"
                             x-model="endDate"
                             onclick="this.showPicker()"
-                            class="w-full cursor-pointer rounded-lg border border-slate-200 bg-slate-50/60 py-2 pl-8 pr-2 text-xs text-slate-700 outline-none transition focus:border-emerald-600 focus:bg-white focus:ring-2 focus:ring-emerald-100 [&::-webkit-calendar-picker-indicator]:hidden sm:text-sm sm:w-36"
+                            class="w-full cursor-pointer rounded-lg border border-slate-200 bg-slate-50/60 py-2 pl-8 pr-2 text-xs text-slate-700 outline-none transition focus:border-[#0D6B5A] focus:bg-white focus:ring-2 focus:ring-[#0D6B5A]/10 [&::-webkit-calendar-picker-indicator]:hidden sm:text-sm sm:w-36"
                             placeholder="Sampai"
                         >
                     </div>
@@ -114,23 +125,49 @@
 
                 {{-- Tombol Cari --}}
                 <button type="submit"
-                        class="inline-flex items-center justify-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-2 text-xs font-bold text-white shadow-xs transition hover:bg-emerald-700 sm:text-sm">
+                        class="inline-flex items-center justify-center gap-1.5 rounded-lg bg-[#0D6B5A] px-4 py-2 text-xs font-bold text-white shadow-xs transition hover:bg-[#0a5547] sm:text-sm">
                     <i class="bi bi-search"></i>
                     <span>Cari</span>
                 </button>
             </form>
 
-            @if($keyword || $filterStart || $filterEnd)
-                <div class="mt-2.5 flex items-center gap-2">
-                    <a href="{{ route('guru.riwayat') }}" class="text-xs font-medium text-slate-500 hover:text-rose-600">
-                        <i class="bi bi-x-circle mr-1"></i>Reset filter
-                    </a>
-                    @if($keyword)
-                        <span class="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] text-slate-600">"{{ $keyword }}"</span>
+            {{-- Total Data + Active Filter Tags --}}
+            <div class="mt-2.5 flex flex-wrap items-center justify-between gap-2">
+                <div class="flex flex-wrap items-center gap-2">
+                    @if($keyword || $filterStart || $filterEnd || ($filterStatus ?? ''))
+                        <a href="{{ route('guru.riwayat') }}" class="text-xs font-medium text-slate-500 hover:text-rose-600">
+                            <i class="bi bi-x-circle mr-1"></i>Reset filter
+                        </a>
+                        @if($keyword)
+                            <span class="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] text-slate-600">"{{ $keyword }}"</span>
+                        @endif
+                        @if($filterStatus ?? '')
+                            @php
+                                $statusLabel = match($filterStatus) {
+                                    'disetujui' => 'Divalidasi',
+                                    'menunggu' => 'Menunggu Validasi',
+                                    'ditolak' => 'Ditolak',
+                                    default => ''
+                                };
+                                $statusClass = match($filterStatus) {
+                                    'disetujui' => 'bg-emerald-100 text-emerald-700',
+                                    'menunggu' => 'bg-amber-100 text-amber-700',
+                                    'ditolak' => 'bg-rose-100 text-rose-700',
+                                    default => ''
+                                };
+                            @endphp
+                            @if($statusLabel)
+                                <span class="rounded-full px-2 py-0.5 text-[11px] font-semibold {{ $statusClass }}">{{ $statusLabel }}</span>
+                            @endif
+                        @endif
                     @endif
                 </div>
-            @endif
+                <span class="rounded-full bg-slate-50 border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-600">
+                    {{ $riwayatJurnals->count() }} data ditemukan
+                </span>
+            </div>
         </section>
+
 
 
         {{-- DAFTAR RIWAYAT LOGBOOK --}}
