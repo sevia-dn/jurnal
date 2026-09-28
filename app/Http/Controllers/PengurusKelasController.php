@@ -8,7 +8,6 @@ use App\Models\JadwalMengajar;
 use App\Models\JurnalMengajar;
 use App\Models\Kelas;
 use App\Models\Notifikasi;
-use App\Models\PiketKehadiranSiswa;
 use App\Models\Siswa;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -86,33 +85,22 @@ class PengurusKelasController extends Controller
 
         if ($kelasId && $totalSiswa > 0) {
             $siswas = Siswa::where('kelas_id', $kelasId)->pluck('id');
-            $jurnalHariIniIds = JurnalMengajar::where('id_kelas', $kelasId)
-                ->whereDate('tanggal', $now->toDateString())
-                ->pluck('id_jurnal');
 
-            // Absensi siswa dari jurnal guru hari ini
+            // 1. Jurnal pertama hari ini untuk kelas ini (guru pertama yang mengisi jurnal)
+            $jurnalPertama = JurnalMengajar::where('id_kelas', $kelasId)
+                ->whereDate('tanggal', $now->toDateString())
+                ->orderBy('jam_ke')
+                ->first();
+
+            // Absensi siswa dari jurnal guru pertama hari ini
             $absensiJurnal = collect();
-            if ($jurnalHariIniIds->isNotEmpty()) {
-                $priority = [
-                    'D' => 5, 'DISPENSASI' => 5,
-                    'SAKIT' => 4, 'S' => 4,
-                    'IZIN' => 3, 'I' => 3,
-                    'ALPA' => 2, 'ALFA' => 2, 'A' => 2,
-                    'HADIR' => 1, 'H' => 1,
-                ];
-                $absensiJurnal = Absensi::whereIn('id_jurnal', $jurnalHariIniIds)
+            if ($jurnalPertama) {
+                $absensiJurnal = Absensi::where('id_jurnal', $jurnalPertama->id_jurnal)
                     ->get()
-                    ->groupBy('id_siswa')
-                    ->map(fn ($records) => $records->sortByDesc(fn ($r) => $priority[strtoupper(trim((string) $r->status))] ?? 0)->first());
+                    ->keyBy('id_siswa');
             }
 
-            // Kehadiran siswa yang dicatat piket hari ini
-            $piketKehadiranToday = PiketKehadiranSiswa::where('kelas_id', $kelasId)
-                ->whereDate('tanggal', $now->toDateString())
-                ->get()
-                ->keyBy('siswa_id');
-
-            // Dispensasi aktif & disetujui hari ini
+            // 2. Dispensasi aktif & disetujui hari ini (menimpa status kehadiran jika disetujui)
             $dispensasiAktifHariIni = Dispensasi::whereHas('siswa', fn ($q) => $q->where('kelas_id', $kelasId))
                 ->whereDate('tanggal', '<=', $now->toDateString())
                 ->whereDate('tanggal_selesai', '>=', $now->toDateString())
@@ -121,27 +109,19 @@ class PengurusKelasController extends Controller
                 ->flip();
 
             foreach ($siswas as $sid) {
+                // Jika ada dispensasi yang disetujui, status berganti jadi dispensasi
                 if ($dispensasiAktifHariIni->has($sid)) {
                     $jmlDispensasi++;
 
                     continue;
                 }
 
-                $piketRec = $piketKehadiranToday->get($sid);
                 $jurnalRec = $absensiJurnal->get($sid);
-
-                // Ambil status terbaik (piket lebih prioritas)
                 $status = null;
-                if ($piketRec) {
-                    $ps = strtoupper(trim((string) $piketRec->status));
-                    if (in_array($ps, ['S', 'SAKIT', 'I', 'IZIN', 'A', 'ALPA', 'ALFA'], true)) {
-                        $status = $ps;
-                    }
-                }
 
-                if (! $status && $jurnalRec) {
+                if ($jurnalRec) {
                     $js = strtoupper(trim((string) $jurnalRec->status));
-                    if (in_array($js, ['S', 'SAKIT', 'I', 'IZIN', 'A', 'ALPA', 'ALFA'], true)) {
+                    if (in_array($js, ['S', 'SAKIT', 'I', 'IZIN', 'A', 'ALPA', 'ALFA', 'D', 'DISPENSASI'], true)) {
                         $status = $js;
                     }
                 }
@@ -153,6 +133,8 @@ class PengurusKelasController extends Controller
                         $jmlIzin++;
                     } elseif (in_array($status, ['A', 'ALPA', 'ALFA'], true)) {
                         $jmlAlpa++;
+                    } elseif (in_array($status, ['D', 'DISPENSASI'], true)) {
+                        $jmlDispensasi++;
                     }
                 }
             }
@@ -355,61 +337,29 @@ class PengurusKelasController extends Controller
                 ->get();
         }
 
-        // Ambil absensi dari SEMUA jurnal hari ini (bukan hanya terakhir)
-        // dengan prioritas: D > S > I > A > Hadir, agar status non-hadir tidak tertimpa
+        // 1. Ambil absensi dari JURNAL PERTAMA hari ini (jam_ke terkecil)
+        //    sebagai status dasar siswa untuk hari ini.
         $absensiTerakhir = collect();
-        if ($kelasId) {
-            $jurnalHariIni = JurnalMengajar::where('id_kelas', $kelasId)
-                ->whereDate('tanggal', $now->toDateString())
-                ->pluck('id_jurnal');
+        $jurnalPertama = null;
 
-            if ($jurnalHariIni->isNotEmpty()) {
-                $priority = [
-                    'D' => 5,
-                    'DISPENSASI' => 5,
-                    'SAKIT' => 4,
-                    'S' => 4,
-                    'IZIN' => 3,
-                    'I' => 3,
-                    'ALPA' => 2,
-                    'ALFA' => 2,
-                    'A' => 2,
-                    'HADIR' => 1,
-                    'H' => 1,
-                ];
-                $absensiTerakhir = Absensi::whereIn('id_jurnal', $jurnalHariIni)
+        if ($kelasId) {
+            // Ambil semua jurnal hari ini urut jam_ke ASC, ambil yang pertama
+            $jurnalPertama = JurnalMengajar::with(['mapel', 'user'])
+                ->where('id_kelas', $kelasId)
+                ->whereDate('tanggal', $now->toDateString())
+                ->orderBy('jam_ke')
+                ->first();
+
+            if ($jurnalPertama) {
+                // Absensi dari jurnal pertama = status dasar
+                $absensiTerakhir = Absensi::where('id_jurnal', $jurnalPertama->id_jurnal)
                     ->get()
-                    ->groupBy('id_siswa')
-                    ->map(function ($records) use ($priority) {
-                        // Ambil record dengan status prioritas tertinggi
-                        return $records->sortByDesc(fn ($r) => $priority[strtoupper(trim((string) $r->status))] ?? 0)->first();
-                    });
+                    ->keyBy('id_siswa');
             }
         }
 
-        // Overlay dengan data input kehadiran dari Guru Piket hari ini
-        if ($kelasId) {
-            $piketKehadiranToday = PiketKehadiranSiswa::where('kelas_id', $kelasId)
-                ->whereDate('tanggal', $now->toDateString())
-                ->get()
-                ->keyBy('siswa_id');
-
-            foreach ($piketKehadiranToday as $siswaId => $piketRec) {
-                $existing = $absensiTerakhir->get($siswaId);
-                $existingStatus = strtoupper(trim((string) ($existing?->status ?? '')));
-                $isExistingNonHadir = in_array($existingStatus, ['S', 'SAKIT', 'I', 'IZIN', 'A', 'ALPA', 'ALFA', 'D', 'DISPENSASI'], true);
-                $isPiketNonHadir = in_array(strtoupper(trim((string) $piketRec->status)), ['S', 'SAKIT', 'I', 'IZIN', 'A', 'ALPA', 'ALFA', 'D', 'DISPENSASI'], true);
-
-                if ($isPiketNonHadir || ! $isExistingNonHadir) {
-                    $absensiTerakhir->put($siswaId, (object) [
-                        'status' => $piketRec->status,
-                        'catatan' => $piketRec->catatan ? 'Dicatat Piket: '.$piketRec->catatan : 'Dicatat oleh Guru Piket',
-                    ]);
-                }
-            }
-        }
-
-        // Overlay dengan dispensasi yang aktif & disetujui hari ini untuk kelas ini
+        // 2. Overlay dispensasi yang sudah disetujui hari ini
+        //    Dispensasi yang disetujui menimpa status apapun dari jurnal pertama.
         $dispensasiAktifHariIni = collect();
         if ($kelasId) {
             $dispensasiAktifHariIni = Dispensasi::with('siswa')
@@ -426,7 +376,8 @@ class PengurusKelasController extends Controller
             'tanggalFormatted',
             'siswas',
             'absensiTerakhir',
-            'dispensasiAktifHariIni'
+            'dispensasiAktifHariIni',
+            'jurnalPertama'
         ));
     }
 

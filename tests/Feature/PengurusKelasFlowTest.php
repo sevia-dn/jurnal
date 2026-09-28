@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Absensi;
 use App\Models\Dispensasi;
 use App\Models\JadwalMengajar;
 use App\Models\JadwalPiket;
@@ -329,5 +330,125 @@ class PengurusKelasFlowTest extends TestCase
             'tipe' => 'guru_tidak_hadir',
             'is_read' => false,
         ]);
+    }
+
+    public function test_kehadiran_siswa_mengikuti_guru_pertama_dan_berganti_ke_dispensasi_saat_disetujui(): void
+    {
+        Carbon::setLocale('id');
+        $now = Carbon::parse('2026-09-24 08:00:00', 'Asia/Jakarta');
+        $this->travelTo($now);
+        $hariIni = $now->translatedFormat('l');
+
+        $kelas = Kelas::create(['nama_kelas' => 'XI RPL 5', 'jumlah_siswa' => 3]);
+        $pengurus = User::create([
+            'name' => 'Pengurus Kelas XI RPL 5',
+            'username' => 'xirpl5',
+            'password' => Hash::make('password'),
+            'role' => 'pengurus_kelas',
+        ]);
+
+        $guru1 = User::create([
+            'name' => 'Guru Jam Pertama',
+            'username' => 'gurupertama',
+            'password' => Hash::make('password'),
+            'role' => 'guru',
+        ]);
+
+        $guru2 = User::create([
+            'name' => 'Guru Jam Lanjutan',
+            'username' => 'gurulanjutan',
+            'password' => Hash::make('password'),
+            'role' => 'guru',
+        ]);
+
+        $mapel1 = Mapel::create(['nama_mapel' => 'Bahasa Indonesia', 'kode_mapel' => 'BIND']);
+        $mapel2 = Mapel::create(['nama_mapel' => 'Fisika', 'kode_mapel' => 'FIS']);
+
+        $siswa1 = Siswa::create(['kelas_id' => $kelas->id_kelas, 'nis' => '5001', 'nama' => 'Siswa Hadir', 'jenis_kelamin' => 'L']);
+        $siswa2 = Siswa::create(['kelas_id' => $kelas->id_kelas, 'nis' => '5002', 'nama' => 'Siswa Sakit Pagi', 'jenis_kelamin' => 'P']);
+        $siswa3 = Siswa::create(['kelas_id' => $kelas->id_kelas, 'nis' => '5003', 'nama' => 'Siswa Dispen Nanti', 'jenis_kelamin' => 'L']);
+
+        // 1. Guru pertama mengisi jurnal di jam ke-1 (Siswa 1 Hadir, Siswa 2 Sakit, Siswa 3 Hadir)
+        $jurnal1 = JurnalMengajar::create([
+            'id_user' => $guru1->id,
+            'id_kelas' => $kelas->id_kelas,
+            'id_mapel' => $mapel1->id,
+            'tanggal' => $now->toDateString(),
+            'jam_ke' => 1,
+            'jam_selesai' => 2,
+            'materi' => 'Teks Eksplanasi',
+            'status_validasi' => 'belum_divalidasi',
+            'jumlah_hadir' => 2,
+            'jumlah_sakit' => 1,
+            'jumlah_izin' => 0,
+            'jumlah_alpa' => 0,
+            'jumlah_dispensasi' => 0,
+            'jumlah_tidak_hadir' => 1,
+        ]);
+        Absensi::create(['id_jurnal' => $jurnal1->id_jurnal, 'id_siswa' => $siswa1->id, 'status' => 'Hadir']);
+        Absensi::create(['id_jurnal' => $jurnal1->id_jurnal, 'id_siswa' => $siswa2->id, 'status' => 'Sakit', 'catatan' => 'Flu berat']);
+        Absensi::create(['id_jurnal' => $jurnal1->id_jurnal, 'id_siswa' => $siswa3->id, 'status' => 'Hadir']);
+
+        // 2. Guru kedua mengisi jurnal di jam ke-4 (semua ditandai hadir)
+        $jurnal2 = JurnalMengajar::create([
+            'id_user' => $guru2->id,
+            'id_kelas' => $kelas->id_kelas,
+            'id_mapel' => $mapel2->id,
+            'tanggal' => $now->toDateString(),
+            'jam_ke' => 4,
+            'jam_selesai' => 5,
+            'materi' => 'Hukum Newton',
+            'status_validasi' => 'belum_divalidasi',
+            'jumlah_hadir' => 3,
+            'jumlah_sakit' => 0,
+            'jumlah_izin' => 0,
+            'jumlah_alpa' => 0,
+            'jumlah_dispensasi' => 0,
+            'jumlah_tidak_hadir' => 0,
+        ]);
+        Absensi::create(['id_jurnal' => $jurnal2->id_jurnal, 'id_siswa' => $siswa1->id, 'status' => 'Hadir']);
+        Absensi::create(['id_jurnal' => $jurnal2->id_jurnal, 'id_siswa' => $siswa2->id, 'status' => 'Hadir']);
+        Absensi::create(['id_jurnal' => $jurnal2->id_jurnal, 'id_siswa' => $siswa3->id, 'status' => 'Hadir']);
+
+        // Saat ini, halaman kehadiran siswa harus tetap mengacu pada jurnal pertama (Siswa 2 = Sakit)
+        $res = $this->actingAs($pengurus)->get(route('pengurus-kelas.kehadiran-siswa'));
+        $res->assertOk();
+        $res->assertSee('Siswa Sakit Pagi');
+        $res->assertSee('Flu berat');
+        $res->assertSee('Guru Pertama');
+
+        // Dan card kehadiran siswa di dashboard juga menghitung 2 hadir, 1 sakit
+        $dashRes = $this->actingAs($pengurus)->get(route('pengurus-kelas.dashboard'));
+        $dashRes->assertOk();
+        $dashRes->assertSee('2/3');
+        $dashRes->assertSee('S: 1');
+
+        // 3. Pada jam berikutnya, Siswa 3 mengajukan dispensasi dan DISETUJUI
+        Dispensasi::create([
+            'siswa_id' => $siswa3->id,
+            'jenis_dispensasi' => 'Lomba Olahraga',
+            'tipe_dispensasi' => 'per_jam',
+            'jam_ke_mulai' => 3,
+            'jam_ke_selesai' => 6,
+            'tanggal' => $now->toDateString(),
+            'tanggal_selesai' => $now->toDateString(),
+            'alasan' => 'Mewakili sekolah Futsal',
+            'status_akhir' => 'disetujui',
+            'status_piket' => 'disetujui',
+            'status_waka' => 'disetujui',
+            'token_approval' => 'tok-test-'.uniqid(),
+        ]);
+
+        // Sekarang status Siswa 3 berganti jadi Dispensasi (D), Siswa 2 tetap Sakit, Siswa 1 Hadir (1/3 hadir)
+        $resDispen = $this->actingAs($pengurus)->get(route('pengurus-kelas.kehadiran-siswa'));
+        $resDispen->assertOk();
+        $resDispen->assertSee('Mewakili sekolah Futsal');
+        $resDispen->assertSee('Dispensasi disetujui');
+
+        $dashResDispen = $this->actingAs($pengurus)->get(route('pengurus-kelas.dashboard'));
+        $dashResDispen->assertOk();
+        $dashResDispen->assertSee('1/3');
+        $dashResDispen->assertSee('S: 1');
+        $dashResDispen->assertSee('D: 1');
     }
 }

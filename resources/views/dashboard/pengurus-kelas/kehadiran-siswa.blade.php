@@ -38,6 +38,28 @@
         </div>
     </header>
 
+    @if(isset($jurnalPertama) && $jurnalPertama)
+        <div class="mb-4 flex items-center justify-between flex-wrap gap-2 rounded-xl border border-emerald-200 bg-emerald-50/70 px-4 py-2.5 text-xs">
+            <div class="flex items-center gap-2 text-emerald-900">
+                <i class="bi bi-info-circle-fill text-emerald-600 text-sm"></i>
+                <span>
+                    Absensi mengacu pada <strong>Guru Pertama</strong>:
+                    <span class="font-bold text-emerald-800">{{ $jurnalPertama->user->name ?? 'Guru' }}</span>
+                    &bull; {{ $jurnalPertama->mapel->nama_mapel ?? 'Mapel' }}
+                    (Jam ke-{{ $jurnalPertama->jam_ke }}{{ $jurnalPertama->jam_selesai && $jurnalPertama->jam_selesai > $jurnalPertama->jam_ke ? " s/d {$jurnalPertama->jam_selesai}" : '' }})
+                </span>
+            </div>
+            <span class="inline-flex items-center gap-1 rounded-md bg-white border border-emerald-200 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
+                <i class="bi bi-check2-circle"></i> Basis Absensi Kelas
+            </span>
+        </div>
+    @else
+        <div class="mb-4 flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-xs text-slate-600">
+            <i class="bi bi-clock-history text-slate-400 text-sm"></i>
+            <span>Belum ada guru yang mengisi jurnal mengajar hari ini. Status siswa saat ini default hadir (kecuali yang memiliki dispensasi disetujui).</span>
+        </div>
+    @endif
+
     <div class="mb-4 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-xl border border-emerald-100 bg-emerald-50/60 px-4 py-2.5 text-xs text-slate-700">
         <span class="font-bold text-emerald-800">Status Kehadiran:</span>
         <span class="inline-flex items-center gap-1 font-semibold text-emerald-700"><span class="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-100 text-[10px] font-bold">H</span> Hadir</span>
@@ -72,11 +94,17 @@
                     };
                     $catatanAbsen = is_object($rawRecord) ? $rawRecord->catatan : null;
 
-                    // Override: jika ada dispensasi aktif & disetujui hari ini → paksa status Dispensasi
+                    // Override: jika ada dispensasi aktif & disetujui hari ini → otomatis berganti status Dispensasi
                     $dispensasiSiswa = $dispensasiAktifHariIni->get($siswa->id);
                     if ($dispensasiSiswa) {
                         $status = 'Dispensasi';
-                        $catatanAbsen = 'Dispensasi disetujui: ' . $dispensasiSiswa->alasan;
+                        $jamKet = '';
+                        if ($dispensasiSiswa->jam_ke_mulai) {
+                            $jamKet = $dispensasiSiswa->jam_ke_selesai && $dispensasiSiswa->jam_ke_selesai > $dispensasiSiswa->jam_ke_mulai
+                                ? " (Jam ke-{$dispensasiSiswa->jam_ke_mulai} s/d {$dispensasiSiswa->jam_ke_selesai})"
+                                : " (Mulai Jam ke-{$dispensasiSiswa->jam_ke_mulai})";
+                        }
+                        $catatanAbsen = 'Dispensasi disetujui: ' . $dispensasiSiswa->alasan . $jamKet;
                     }
                 @endphp
                 <li
@@ -91,7 +119,12 @@
                             <p class="truncate text-xs sm:text-sm font-bold text-slate-800">{{ $siswa->nama }}</p>
                             <p class="text-[11px] text-slate-400">NISN: {{ $siswa->nis }} · L/P: {{ $siswa->jenis_kelamin }}</p>
                             @if($catatanAbsen)
-                                <p class="text-[11px] text-slate-500 italic mt-0.5">Ket: {{ $catatanAbsen }}</p>
+                                <p class="text-[11px] {{ $status === 'Dispensasi' ? 'text-indigo-600 font-medium' : 'text-slate-500 italic' }} mt-0.5">
+                                    @if($status === 'Dispensasi')
+                                        <i class="bi bi-file-earmark-check mr-0.5"></i>
+                                    @endif
+                                    Ket: {{ $catatanAbsen }}
+                                </p>
                             @endif
                         </div>
                     </div>
