@@ -60,11 +60,11 @@
         </div>
     </div>
 
-    <!-- Bagian Tengah/Bawah: Ilustrasi / Logo Showcase -->
+    <!-- Bagian Tengah/Bawah: Ilustrasi -->
     <!-- flex-1 akan mengambil seluruh sisa ruang ke bawah, lalu justify-center & items-center menaruh gambar persis di tengah ruang tersebut -->
     <div class="flex-1 flex justify-center items-center z-10 w-full mt-4">
-        <!-- Logo JurnalKita dengan drop shadow -->
-        <img src="{{ asset('img/logo-transparent.png') }}" alt="Logo JurnalKita" class="max-w-[260px] lg:max-w-[300px] xl:max-w-[340px] w-full object-contain drop-shadow-2xl">
+        <!-- Ukuran gambar dibesarkan menggunakan max-w-md atau lg:max-w-[80%] -->
+        <img src="{{ asset('img/hero-illustration.png') }}" alt="Ilustrasi JurnalKita" class="max-w-sm lg:max-w-md xl:max-w-[80%] w-full object-contain">
     </div>
 
 </div>
