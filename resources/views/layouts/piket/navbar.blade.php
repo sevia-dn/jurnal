@@ -4,7 +4,7 @@
     <!-- Title Section -->
     <div class="flex items-center gap-3">
         <!-- Logo Kecil Khusus Mobile -->
-        <img src="{{ asset('img/logo-rounded.png') }}" alt="Logo JurnalKita" class="md:hidden w-9 h-9 rounded-lg shadow-sm border border-emerald-100 object-cover">
+        <img src="{{ asset('img/logo-rounded.png') }}" alt="Logo JurnalKita" class="md:hidden w-9 h-9 rounded-lg shadow-sm border border-[#1BA886]/30 object-cover">
         <div>
             <h1 class="font-bold text-slate-800 text-base md:text-lg">Guru Piket</h1>
             <p class="text-xs text-slate-400 hidden md:block">Kelola jurnal harian dan presensi presisi real-time</p>

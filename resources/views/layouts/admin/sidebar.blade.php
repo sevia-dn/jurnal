@@ -18,7 +18,7 @@
 
 <aside class="sticky top-0 flex h-screen w-64 flex-col border-r border-[#17826E] bg-[#0D6B5A] font-sans">
   <div class="flex items-center gap-3 px-6 pb-8 pt-10">
-    <img src="{{ asset('img/logo-rounded.png') }}" alt="Logo JurnalKita" class="h-11 w-11 rounded-xl shadow-sm border border-emerald-400/20 object-cover">
+    <img src="{{ asset('img/logo-rounded.png') }}" alt="Logo JurnalKita" class="h-11 w-11 rounded-xl shadow-sm border border-[#1BA886]/40 object-cover">
     <div>
       <div class="mb-1 text-[22px] font-bold leading-none text-white">JurnalKita</div>
       <div class="text-[11px] font-medium tracking-wide text-[#8EBEB2]">Management System</div>
