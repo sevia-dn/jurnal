@@ -38,6 +38,7 @@ return [
     'whatsapp' => [
         'url' => env('WHATSAPP_URL'),
         'api_key' => env('WHATSAPP_API_KEY'),
+        'approval_base_url' => env('WHATSAPP_APPROVAL_BASE_URL', 'https://properly-embark-lyrically.ngrok-free.dev'),
         'piket_confirmation_number' => env('WHATSAPP_PIKET_CONFIRMATION_NUMBER', '083838606396'),
         'waka_recipients' => [
             ['username' => 'hardiniindahingbudisempd', 'name' => 'Hardini Indahing Budi', 'number' => env('WHATSAPP_WAKA_HARDINI_NUMBER', '081515694249')],

@@ -96,7 +96,7 @@
                 </h2>
             </div>
             <a href="{{ route('pengurus-kelas.jurnal-detail') }}" class="text-xs font-semibold text-emerald-600 hover:underline">
-                Lihat Riwayat Logbook &rarr;
+                Lihat Riwayat Jurnal &rarr;
             </a>
         </div>
 

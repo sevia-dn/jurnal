@@ -4,6 +4,8 @@
     $historyUrl = route('guru.riwayat');
     $isHomeActive = request()->routeIs('guru.utama');
     $isHistoryActive = request()->routeIs('guru.riwayat');
+    $hasWaliKelas = ($waliKelases ?? collect())->isNotEmpty();
+    $isWaliKelasActive = request()->routeIs('guru.wali-kelas');
 @endphp
 
 <div class="hidden items-center justify-between border-b border-slate-200 bg-white px-6 py-3 md:flex">
@@ -203,11 +205,20 @@
         <span>Riwayat</span>
     </a>
 
+    @if($hasWaliKelas)
+        <a href="{{ route('guru.wali-kelas') }}"
+           class="flex min-w-14 flex-col items-center gap-1 rounded-lg px-1.5 py-1.5 font-medium {{ $isWaliKelasActive ? 'text-emerald-700 font-bold' : 'text-slate-400' }}"
+           @if($isWaliKelasActive) aria-current="page" @endif>
+            <i class="bi bi-people-fill text-lg" aria-hidden="true"></i>
+            <span>Wali</span>
+        </a>
+    @endif
+
     <a href="{{ route('dashboard.piket') }}"
        class="relative flex min-w-16 flex-col items-center gap-1 rounded-lg px-2 py-1.5 font-medium {{ request()->is('dashboard/piket*') || request()->is('piket*') || $activePage === 'piket' ? 'text-emerald-700 font-bold' : 'text-slate-400' }}"
        @if (request()->is('dashboard/piket*') || request()->is('piket*') || $activePage === 'piket') aria-current="page" @endif>
         <i class="bi bi-shield-check text-lg" aria-hidden="true"></i>
-        <span>{{ ($isPiketActive ?? auth()->user()?->isPiketActive()) ? 'Piket' : 'Anda sedang tidak piket' }}</span>
+        <span>Piket</span>
         @if($isPiketActive ?? auth()->user()?->isPiketActive())
             <span class="absolute top-1 right-2.5 h-2 w-2 rounded-full bg-amber-500 ring-2 ring-white"></span>
         @endif

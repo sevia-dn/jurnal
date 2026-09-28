@@ -139,6 +139,17 @@ class PengurusKelasFlowTest extends TestCase
         $resDetail = $this->actingAs($pengurus)->get(route('pengurus-kelas.jurnal-detail', ['id' => $jurnal->id_jurnal]));
         $resDetail->assertOk();
         $resDetail->assertSee('Basis Data');
+        $resDetail->assertSee('Validasi Logbook');
+        $resDetail->assertDontSee('Minta Revisi / Tolak');
+
+        $this->actingAs($pengurus)
+            ->post(route('pengurus-kelas.jurnal-validasi', ['id' => $jurnal->id_jurnal]), ['action' => 'tolak'])
+            ->assertSessionHasErrors('action');
+
+        $this->assertDatabaseHas('jurnal_mengajars', [
+            'id_jurnal' => $jurnal->id_jurnal,
+            'status_validasi' => 'belum_divalidasi',
+        ]);
     }
 
     public function test_pengurus_can_search_and_filter_all_logbook_history_by_date(): void

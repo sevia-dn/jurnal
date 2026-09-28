@@ -695,14 +695,12 @@ class PiketController extends Controller
 
     public function dispensasiHistory(Request $request)
     {
-        if (! $this->canAccessPiket()) {
+        if (! $this->canAccessDispensasiHistory()) {
             return $this->notScheduledResponse();
         }
 
         $search = trim((string) $request->query('search', ''));
         $status = (string) $request->query('status', 'all');
-        $kelasId = $request->query('kelas_id');
-        $jenis = $request->query('jenis');
         $startDate = $request->query('tanggal_mulai');
         $endDate = $request->query('tanggal_selesai');
 
@@ -712,11 +710,11 @@ class PiketController extends Controller
             $query->where(function ($q) use ($search) {
                 $q->where('alasan', 'like', "%{$search}%")
                     ->orWhere('jenis_dispensasi', 'like', "%{$search}%")
-                    ->orWhere('deskripsi_waktu', 'like', "%{$search}%")
                     ->orWhereHas('siswa', function ($sq) use ($search) {
                         $sq->where('nama', 'like', "%{$search}%")
                             ->orWhere('nis', 'like', "%{$search}%");
-                    });
+                    })
+                    ->orWhereHas('pembuat', fn ($sq) => $sq->where('name', 'like', "%{$search}%"));
             });
         }
 
@@ -733,14 +731,6 @@ class PiketController extends Controller
             }
         }
 
-        if ($kelasId) {
-            $query->whereHas('siswa', fn ($sq) => $sq->where('kelas_id', $kelasId));
-        }
-
-        if ($jenis) {
-            $query->where('jenis_dispensasi', $jenis);
-        }
-
         if ($startDate) {
             $query->whereDate('tanggal', '>=', $startDate);
         }
@@ -748,32 +738,12 @@ class PiketController extends Controller
             $query->whereDate('tanggal', '<=', $endDate);
         }
 
-        $totalCount = Dispensasi::count();
-        $approvedCount = Dispensasi::whereIn('status_waka', ['disetujui', 'approved'])->count();
-        $pendingCount = Dispensasi::where(fn ($q) => $q->whereNull('status_waka')->orWhereIn('status_waka', ['menunggu', 'pending']))->count();
-        $rejectedCount = Dispensasi::whereIn('status_waka', ['ditolak', 'rejected'])->count();
-
         $dispensasis = $query->latest('id')->paginate(15)->withQueryString();
-        $kelasList = Kelas::orderBy('nama_kelas')->get();
-        $jenisList = Dispensasi::query()
-            ->select('jenis_dispensasi')
-            ->distinct()
-            ->pluck('jenis_dispensasi')
-            ->filter()
-            ->values();
 
         return view('dashboard.piket.dispensasi-history', compact(
             'dispensasis',
-            'totalCount',
-            'approvedCount',
-            'pendingCount',
-            'rejectedCount',
-            'kelasList',
-            'jenisList',
             'search',
             'status',
-            'kelasId',
-            'jenis',
             'startDate',
             'endDate'
         ));
@@ -825,6 +795,15 @@ class PiketController extends Controller
             $user->role === 'admin'
             || $this->piketScheduleService->isScheduledNow($user)
         );
+    }
+
+    private function canAccessDispensasiHistory(): bool
+    {
+        $user = Auth::user();
+
+        return $this->canAccessPiket()
+            || $user?->isWaka()
+            || ($user !== null && Notifikasi::where('id_user', $user->id)->whereNotNull('id_dispensasi')->exists());
     }
 
     private function ensurePiketAccess(): void

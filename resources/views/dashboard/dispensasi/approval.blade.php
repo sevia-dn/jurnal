@@ -1,14 +1,16 @@
-@extends('layouts.app')
+@extends(($isPublicApproval ?? false) ? 'layouts.dispensasi-approval' : 'layouts.app')
 
-@section('title', 'Persetujuan Dispensasi Siswa - Waka Kesiswaan')
+@section('title', 'Detail Pengajuan Dispensasi - Waka Kesiswaan')
 
-@section('sidebar')
-    @include('layouts.guru-pengajar.sidebar', ['activePage' => 'utama'])
-@endsection
+@if (! ($isPublicApproval ?? false))
+    @section('sidebar')
+        @include('layouts.guru-pengajar.sidebar', ['activePage' => 'utama'])
+    @endsection
 
-@section('navbar')
-    @include('layouts.guru-pengajar.navbar', ['activePage' => 'utama'])
-@endsection
+    @section('navbar')
+        @include('layouts.guru-pengajar.navbar', ['activePage' => 'utama'])
+    @endsection
+@endif
 
 @section('content')
 <div class="mx-auto w-full max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
@@ -16,11 +18,12 @@
     <div class="rounded-2xl bg-gradient-to-r from-purple-900 to-indigo-900 p-6 text-white shadow-xl">
         <div class="flex items-center justify-between">
             <span class="rounded-full bg-purple-700/60 px-3 py-1 text-xs font-semibold text-purple-200 border border-purple-500/30">
-                <i class="bi bi-shield-check me-1"></i> Hak Persetujuan Waka
+                <i class="bi bi-shield-check me-1"></i> Ruang Persetujuan Waka
             </span>
             <span class="text-xs text-purple-300 font-mono">ID: #DISP-{{ $dispensasi->id }}</span>
         </div>
-        <p class="mt-2 text-sm text-purple-200">Silakan tinjau alasan dan dokumen pengajuan dispensasi dari Guru Piket.</p>
+        <h1 class="mt-3 text-xl font-bold">Detail Pengajuan Dispensasi</h1>
+        <p class="mt-1 text-sm text-purple-200">Tinjau pengajuan dari Guru Piket, lampiran pendukung, dan berikan keputusan.</p>
     </div>
 
     @if(session('success'))
@@ -101,8 +104,28 @@
 
         {{-- Form Aksi Persetujuan Waka --}}
         @if($dispensasi->status_waka === 'menunggu')
-            <form action="{{ route('dispensasi.process', $dispensasi->id) }}" method="POST" class="pt-4 border-t border-slate-100">
+            <form action="{{ ($isPublicApproval ?? false) ? route('waka.dispensasi.process', ['token' => $dispensasi->token_approval]) : route('dispensasi.process', $dispensasi->id) }}" method="POST" class="pt-4 border-t border-slate-100">
                 @csrf
+                @if ($isPublicApproval ?? false)
+                    <label class="mb-4 block">
+                        <span class="text-sm font-semibold text-slate-700">Waka Kesiswaan yang Memberikan Keputusan <span class="text-rose-600">*</span></span>
+                        @if ($selectedWaka ?? false)
+                            <input type="hidden" name="waka_id" value="{{ $selectedWaka->id }}">
+                            <div class="mt-2 flex items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm font-bold text-emerald-900">
+                                <i class="bi bi-person-check-fill text-lg text-emerald-700"></i>
+                                {{ $selectedWaka->name }}
+                            </div>
+                        @else
+                            <select name="waka_id" required class="mt-2 w-full rounded-xl border border-slate-200 bg-white p-3 text-sm font-medium text-slate-800 outline-none transition focus:border-purple-600 focus:ring-4 focus:ring-purple-100">
+                                <option value="">Pilih nama Waka Kesiswaan</option>
+                                @foreach ($wakaKesiswaans as $waka)
+                                    <option value="{{ $waka->id }}" @selected(old('waka_id') == $waka->id)>{{ $waka->name }}</option>
+                                @endforeach
+                            </select>
+                        @endif
+                        <span class="mt-1 block text-xs text-slate-500">Identitas ini akan dicantumkan pada bukti dispensasi dan QR siswa.</span>
+                    </label>
+                @endif
                 <label class="block mb-4">
                     <span class="text-sm font-semibold text-slate-700">Catatan Waka (Opsional)</span>
                     <textarea name="catatan_waka" rows="3" placeholder="Tuliskan catatan atau instruksi tambahan jika ada..." class="mt-2 w-full rounded-xl border border-slate-200 p-3 text-sm focus:border-purple-600 focus:ring-4 focus:ring-purple-100 outline-none transition"></textarea>
@@ -124,7 +147,7 @@
                 @if($dispensasi->catatan_waka)
                     <p class="text-xs text-slate-600 mt-1 italic">"{{ $dispensasi->catatan_waka }}"</p>
                 @endif
-                @if($dispensasi->status_waka === 'disetujui')
+                @if($dispensasi->status_waka === 'disetujui' && ! ($isPublicApproval ?? false))
                     <div class="mt-4">
                         <a href="{{ route('dispensasi.cetak', $dispensasi->id) }}" target="_blank" class="inline-flex items-center gap-2 rounded-xl bg-emerald-700 px-5 py-2.5 text-sm font-bold text-white shadow hover:bg-emerald-800 transition">
                             <i class="bi bi-printer-fill"></i> Cetak Surat Dispensasi
@@ -135,10 +158,12 @@
         @endif
     </div>
 
+    @if (! ($isPublicApproval ?? false))
     <div class="mt-6 text-center">
         <a href="{{ route('guru') }}" class="inline-flex items-center gap-2 text-sm font-semibold text-slate-600 hover:text-slate-900 transition">
             <i class="bi bi-arrow-left"></i> Kembali ke Dashboard Utama
         </a>
     </div>
+    @endif
 </div>
 @endsection

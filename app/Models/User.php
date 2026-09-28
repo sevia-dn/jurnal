@@ -73,28 +73,22 @@ class User extends Authenticatable
         return $this->jadwalPikets()
             ->whereDate('tanggal', $todayDate)
             ->where('jam_mulai', '<=', $nowTime)
-            ->where('jam_selesai', '>=', $nowTime)
+            ->where('jam_selesai', '>', $nowTime)
             ->first();
     }
 
     /**
-     * Mengecek apakah guru sedang aktif bertugas piket (sudah absen piket hari ini & dalam jam shift piket)
+     * Mengecek status piket berdasarkan tanggal dan rentang shift yang sedang berjalan.
      */
     public function isPiketActive(): bool
     {
         $todayDate = Carbon::now('Asia/Jakarta')->toDateString();
+        $nowTime = Carbon::now('Asia/Jakarta')->format('H:i:s');
 
-        // Tugas piket bersumber dari tanggal penugasan, bukan role statis atau hari mingguan.
-        $hasScheduleToday = $this->jadwalPikets()->whereDate('tanggal', $todayDate)->exists();
-
-        if (! $hasScheduleToday) {
-            return false;
-        }
-
-        // Cek apakah sudah absen hari ini di KehadiranGuru
-        $absenToday = $this->kehadiranGurus()->where('tanggal', $todayDate)->exists();
-
-        // Jika ada jadwal piket hari ini & sudah absen -> Mode piket aktif
-        return $absenToday || $hasScheduleToday;
+        return $this->jadwalPikets()
+            ->whereDate('tanggal', $todayDate)
+            ->where('jam_mulai', '<=', $nowTime)
+            ->where('jam_selesai', '>', $nowTime)
+            ->exists();
     }
 }

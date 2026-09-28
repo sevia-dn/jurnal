@@ -16,22 +16,12 @@ class WhatsAppService
      */
     public function sendDispensasiNotificationToWaka(Dispensasi $dispensasi): array
     {
-        $approvalUrl = route('dispensasi.approval', ['token' => $dispensasi->token_approval]);
+        $approvalPath = route('waka.dispensasi.show', ['token' => $dispensasi->token_approval], false);
+        $approvalBaseUrl = rtrim((string) config('services.whatsapp.approval_base_url'), '/');
         $namaSiswa = $dispensasi->siswa?->nama ?? $dispensasi->nama;
         $kelasSiswa = $dispensasi->siswa?->kelas?->nama_kelas ?? '-';
         $pembuat = $dispensasi->pembuat?->name ?? 'Guru Piket';
         $waktuStr = $dispensasi->deskripsi_waktu;
-
-        $message = "🔔 *PERMINTAAN PERSETUJUAN DISPENSASI SISWA*\n\n"
-            ."Nama Siswa: *{$namaSiswa}*\n"
-            ."Kelas: *{$kelasSiswa}*\n"
-            ."Jenis Dispensasi: {$dispensasi->jenis_dispensasi}\n"
-            ."Waktu: {$waktuStr}\n"
-            ."Alasan: {$dispensasi->alasan}\n"
-            ."Diajukan Oleh: {$pembuat}\n\n"
-            ."Mohon Waka dapat memberikan persetujuan melalui tautan berikut:\n"
-            ."👉 {$approvalUrl}\n\n"
-            .'_Pesan otomatis dari Sistem Jurnal Sekolah_';
 
         $gatewayUrl = config('services.whatsapp.url');
         $gatewayApiKey = config('services.whatsapp.api_key');
@@ -40,9 +30,24 @@ class WhatsAppService
             ->values();
         $piketConfirmationNumber = config('services.whatsapp.piket_confirmation_number');
 
-        $recipients = $wakaRecipients->map(function (array $recipient) use ($message): array {
+        $recipients = $wakaRecipients->map(function (array $recipient) use ($approvalBaseUrl, $approvalPath, $namaSiswa, $kelasSiswa, $waktuStr, $pembuat, $dispensasi): array {
+            $approvalUrl = $approvalBaseUrl.$approvalPath.'?'.http_build_query([
+                'waka' => $recipient['username'] ?? '',
+            ]);
+            $message = "🔔 *PERMINTAAN PERSETUJUAN DISPENSASI SISWA*\n\n"
+                ."Nama Siswa: *{$namaSiswa}*\n"
+                ."Kelas: *{$kelasSiswa}*\n"
+                ."Jenis Dispensasi: {$dispensasi->jenis_dispensasi}\n"
+                ."Waktu: {$waktuStr}\n"
+                ."Alasan: {$dispensasi->alasan}\n"
+                ."Diajukan Oleh: {$pembuat}\n\n"
+                ."Mohon Waka dapat memberikan persetujuan melalui tautan berikut:\n"
+                ."👉 {$approvalUrl}\n\n"
+                .'_Pesan otomatis dari Sistem Jurnal Sekolah_';
+
             return [
                 ...$recipient,
+                'approval_url' => $approvalUrl,
                 'message' => $message,
             ];
         });
@@ -58,7 +63,7 @@ class WhatsAppService
         if (blank($gatewayUrl) || blank($gatewayApiKey)) {
             Log::warning('WhatsAppService: Pengajuan dispensasi tersimpan, tetapi gateway WhatsApp belum dikonfigurasi.', [
                 'dispensasi_id' => $dispensasi->id,
-                'approval_url' => $approvalUrl,
+                'approval_urls' => $recipients->pluck('approval_url')->filter()->all(),
                 'recipients' => $recipients->pluck('number')->all(),
             ]);
 
@@ -74,7 +79,7 @@ class WhatsAppService
             Log::info('=== NOTIFIKASI WHATSAPP DISPENSASI ===', [
                 'to_user' => $recipient['name'],
                 'no_hp' => $recipient['number'],
-                'approval_url' => $approvalUrl,
+                'approval_url' => $recipient['approval_url'] ?? null,
                 'message' => $recipient['message'],
             ]);
 

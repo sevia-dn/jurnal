@@ -22,6 +22,11 @@ Route::post('/login', [AuthController::class, 'login']);
 Route::get('/verifikasi-dispensasi/{token}', [DispensasiApprovalController::class, 'verify'])
     ->name('dispensasi.verify');
 
+Route::get('/waka/dispensasi/{token}', [DispensasiApprovalController::class, 'showFromWhatsApp'])
+    ->name('waka.dispensasi.show');
+Route::post('/waka/dispensasi/{token}', [DispensasiApprovalController::class, 'processFromWhatsApp'])
+    ->name('waka.dispensasi.process');
+
 // Retain any guest‑only routes in a separate group (currently none).
 Route::middleware('guest')->group(function () {
     // Add guest‑only routes here if needed.
@@ -239,6 +244,9 @@ Route::middleware('auth')->group(function () {
         '/guru-pengajar/beranda',
         [GuruController::class, 'beranda']
     )->name('guru.utama');
+
+    Route::get('/guru-pengajar/wali-kelas', [GuruController::class, 'waliKelas'])
+        ->name('guru.wali-kelas');
 
     Route::post(
         '/guru-pengajar/absen',

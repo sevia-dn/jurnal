@@ -293,42 +293,19 @@
         <section class="mt-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
             <form action="{{ route('pengurus-kelas.jurnal-validasi', ['id' => $jurnal->id_jurnal]) }}" method="POST">
                 @csrf
-                <div class="p-5">
-                    <label for="catatan_validasi" class="block text-sm font-extrabold text-slate-900">
-                        Catatan Pengurus Kelas <span class="text-xs font-normal text-slate-500">(wajib jika meminta revisi/menolak)</span>
-                    </label>
-                    <textarea
-                        id="catatan_validasi"
-                        name="catatan_validasi"
-                        rows="3"
-                        placeholder="Tuliskan catatan atau masukan untuk guru pengajar..."
-                        class="mt-2.5 w-full resize-none rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-700 placeholder:text-slate-400 focus:border-emerald-600 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-100 sm:text-sm"
-                    >{{ old('catatan_validasi', $jurnal->catatan_validasi) }}</textarea>
-                </div>
-
-                <div class="flex flex-col-reverse gap-3 border-t border-slate-100 bg-slate-50 px-5 py-4 sm:flex-row sm:justify-between sm:items-center">
+                <div class="flex flex-col-reverse gap-3 bg-slate-50 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
                     <a href="{{ route('pengurus-kelas.jurnal-detail') }}" class="inline-flex items-center justify-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900">
                         <i class="bi bi-arrow-left"></i> Kembali ke Riwayat
                     </a>
 
-                    <div class="flex flex-col-reverse gap-2 sm:flex-row sm:items-center">
-                        <button
-                            type="submit"
-                            name="action"
-                            value="tolak"
-                            class="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-rose-300 bg-white px-4 py-2 text-xs font-bold text-rose-700 transition hover:bg-rose-50 focus:outline-none focus:ring-2 focus:ring-rose-500"
-                        >
-                            <i class="bi bi-arrow-counterclockwise"></i> Minta Revisi / Tolak
-                        </button>
-                        <button
-                            type="submit"
-                            name="action"
-                            value="setujui"
-                            class="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-5 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-600"
-                        >
-                            <i class="bi bi-check-lg text-base"></i> Setujui Logbook
-                        </button>
-                    </div>
+                    <button
+                        type="submit"
+                        name="action"
+                        value="setujui"
+                        class="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-5 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-600"
+                    >
+                        <i class="bi bi-check-lg text-base"></i> Validasi Logbook
+                    </button>
                 </div>
             </form>
         </section>

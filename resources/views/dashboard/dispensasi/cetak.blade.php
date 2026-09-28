@@ -34,7 +34,7 @@
     <!-- Action Bar (Hidden on Print) -->
     <div class="no-print max-w-3xl mx-auto mb-6 flex items-center justify-between bg-white p-4 rounded-xl shadow-sm border border-slate-200">
         <div class="flex items-center gap-3">
-            <a href="javascript:history.back()" class="inline-flex items-center gap-2 text-sm font-sans font-semibold text-slate-600 hover:text-slate-900">
+            <a href="{{ route('piket.dispensasi.history') }}" class="inline-flex items-center gap-2 text-sm font-sans font-semibold text-slate-600 hover:text-slate-900">
                 <i class="bi bi-arrow-left"></i> Kembali
             </a>
             <span class="h-4 w-px bg-slate-200"></span>

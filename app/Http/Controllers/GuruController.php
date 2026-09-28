@@ -16,9 +16,11 @@ use App\Models\User;
 use App\Services\LogbookDeadlinePolicy;
 use App\Services\PiketScheduleService;
 use App\Services\ScheduleTimeService;
+use App\Services\WaliKelasService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\View\View;
 
 class GuruController extends Controller
 {
@@ -202,7 +204,57 @@ class GuruController extends Controller
 
         $notifikasi->update(['is_read' => true]);
 
+        if ($notifikasi->id_dispensasi !== null || str_starts_with((string) $notifikasi->tipe, 'dispensasi')) {
+            return redirect()->route('piket.dispensasi.history');
+        }
+
         return redirect()->route('guru.riwayat');
+    }
+
+    /**
+     * Show validated journal reports for classes assigned to the logged-in homeroom teacher.
+     */
+    public function waliKelas(Request $request, WaliKelasService $waliKelasService): View
+    {
+        Carbon::setLocale('id');
+
+        $waliKelases = $waliKelasService->classesFor(Auth::user());
+        abort_unless($waliKelases->isNotEmpty(), 404);
+
+        $filters = $request->validate([
+            'kelas_id' => ['nullable', 'integer'],
+            'tanggal' => ['nullable', 'date_format:Y-m-d'],
+        ]);
+
+        $kelasId = (int) ($filters['kelas_id'] ?? $waliKelases->first()->id_kelas);
+        abort_unless($waliKelases->contains('id_kelas', $kelasId), 404);
+
+        $kelas = $waliKelases->firstWhere('id_kelas', $kelasId);
+        $tanggal = $filters['tanggal'] ?? Carbon::now('Asia/Jakarta')->toDateString();
+        $hari = Carbon::parse($tanggal, 'Asia/Jakarta')->translatedFormat('l');
+
+        $jadwals = JadwalMengajar::with(['user', 'mapel'])
+            ->where('id_kelas', $kelas->id_kelas)
+            ->where('hari', $hari)
+            ->orderBy('jam_mulai')
+            ->get();
+
+        $jurnalsTervalidasi = JurnalMengajar::with(['user', 'mapel'])
+            ->where('id_kelas', $kelas->id_kelas)
+            ->whereDate('tanggal', $tanggal)
+            ->where('status_validasi', 'disetujui')
+            ->orderBy('jam_ke')
+            ->get()
+            ->keyBy('jam_ke');
+
+        return view('dashboard.guru-pengajar.wali-kelas', compact(
+            'waliKelases',
+            'kelas',
+            'tanggal',
+            'hari',
+            'jadwals',
+            'jurnalsTervalidasi',
+        ));
     }
 
     public function markAllNotificationsRead()

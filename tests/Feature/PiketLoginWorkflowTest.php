@@ -158,10 +158,14 @@ class PiketLoginWorkflowTest extends TestCase
         ]);
 
         $this->travelTo(Carbon::parse('2026-09-22 10:59:59', 'Asia/Jakarta'));
+        $this->assertTrue($morningTeacher->isPiketActive());
+        $this->assertFalse($afternoonTeacher->isPiketActive());
         $this->actingAs($morningTeacher)->get(route('dashboard.piket'))->assertOk();
         $this->actingAs($afternoonTeacher)->get(route('dashboard.piket'))->assertSee('Anda Tidak Sedang Piket');
 
         $this->travelTo(Carbon::parse('2026-09-22 11:00:00', 'Asia/Jakarta'));
+        $this->assertFalse($morningTeacher->isPiketActive());
+        $this->assertTrue($afternoonTeacher->isPiketActive());
         $this->actingAs($morningTeacher)->get(route('dashboard.piket'))->assertSee('Anda Tidak Sedang Piket');
         $this->actingAs($afternoonTeacher)->get(route('dashboard.piket'))->assertOk();
 
@@ -500,6 +504,12 @@ class PiketLoginWorkflowTest extends TestCase
 
         $this->actingAs($piket)
             ->get(route('piket.dispensasi.history', ['search' => 'NamaTidakAda']))
+            ->assertOk()
+            ->assertDontSee('Bintang Kejora')
+            ->assertSee('Tidak ada data dispensasi');
+
+        $this->actingAs($piket)
+            ->get(route('piket.dispensasi.history', ['status' => 'ditolak']))
             ->assertOk()
             ->assertDontSee('Bintang Kejora')
             ->assertSee('Tidak ada data dispensasi');

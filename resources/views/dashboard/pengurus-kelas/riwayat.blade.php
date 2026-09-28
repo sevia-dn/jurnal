@@ -12,10 +12,6 @@
 
 @section('content')
     <div class="mx-auto w-full max-w-6xl px-4 py-3 pb-24 sm:px-6 lg:px-8">
-        <header class="mb-3 flex items-center justify-between">
-            <p class="text-xs font-bold uppercase tracking-wider text-emerald-700">{{ $kelas?->nama_kelas ?? 'Kelas' }}</p>
-            <p class="text-xs text-slate-500">Daftar seluruh logbook dikirim guru pengajar</p>
-        </header>
 
         <form method="GET" action="{{ route('pengurus-kelas.jurnal-detail') }}" class="mb-5 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
             <div class="grid gap-3 sm:grid-cols-[minmax(0,1fr)_11rem_11rem_auto] sm:items-end">

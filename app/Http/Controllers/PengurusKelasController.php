@@ -259,16 +259,18 @@ class PengurusKelasController extends Controller
     }
 
     /**
-     * Validasi / Setujui / Minta Revisi Logbook oleh Pengurus Kelas
+     * Validasi logbook oleh Pengurus Kelas.
      */
     public function validasiJurnal(Request $request, $id)
     {
         $request->validate([
-            'action' => 'required|in:setujui,tolak',
-            'catatan_validasi' => 'nullable|string|max:500',
+            'action' => 'required|in:setujui',
         ]);
 
-        $jurnal = JurnalMengajar::findOrFail($id);
+        $kelasId = $this->getKelasPengurus()?->id_kelas;
+        $jurnal = JurnalMengajar::with(['mapel', 'kelas'])
+            ->when($kelasId, fn ($query) => $query->where('id_kelas', $kelasId))
+            ->findOrFail($id);
 
         if ($jurnal->status_validasi !== 'belum_divalidasi') {
             return redirect()
@@ -276,31 +278,23 @@ class PengurusKelasController extends Controller
                 ->with('error', 'Logbook ini sudah memiliki keputusan validasi dan tidak dapat divalidasi ulang.');
         }
 
-        $status = $request->action === 'setujui' ? 'disetujui' : 'ditolak';
         $jurnal->update([
-            'status_validasi' => $status,
-            'catatan_validasi' => $request->catatan_validasi,
+            'status_validasi' => 'disetujui',
             'divalidasi_pada' => Carbon::now('Asia/Jakarta'),
         ]);
 
-        if ($status === 'disetujui') {
-            Notifikasi::create([
-                'id_user' => $jurnal->id_user,
-                'id_kelas' => null,
-                'judul' => 'Logbook Disetujui',
-                'pesan' => "Logbook {$jurnal->mapel?->nama_mapel} kelas {$jurnal->kelas?->nama_kelas} telah divalidasi Pengurus Kelas.",
-                'tipe' => 'logbook_disetujui',
-                'is_read' => false,
-            ]);
-        }
-
-        $msg = $status === 'disetujui'
-            ? 'Logbook berhasil disetujui!'
-            : 'Logbook ditolak dan catatan revisi telah dikirim ke guru.';
+        Notifikasi::create([
+            'id_user' => $jurnal->id_user,
+            'id_kelas' => null,
+            'judul' => 'Logbook Disetujui',
+            'pesan' => "Logbook {$jurnal->mapel?->nama_mapel} kelas {$jurnal->kelas?->nama_kelas} telah divalidasi Pengurus Kelas.",
+            'tipe' => 'logbook_disetujui',
+            'is_read' => false,
+        ]);
 
         return redirect()
             ->route('pengurus-kelas.jurnal-detail', ['id' => $id])
-            ->with('success', $msg);
+            ->with('success', 'Logbook berhasil divalidasi.');
     }
 
     /**

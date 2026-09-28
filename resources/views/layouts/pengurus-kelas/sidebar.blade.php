@@ -14,7 +14,7 @@
             <i class="bi bi-grid-1x2-fill text-lg"></i><span>Dashboard</span>
         </a>
         <a href="{{ route('pengurus-kelas.jurnal-detail') }}" class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors !no-underline {{ request()->routeIs('pengurus-kelas.jurnal-detail') ? 'bg-[#1BA886] !text-white shadow-sm' : '!text-[#D9F7EE] hover:bg-[#1BA886]/10 hover:!text-white' }}">
-            <i class="bi bi-clock-history text-lg"></i><span>Riwayat Logbook</span>
+            <i class="bi bi-clock-history text-lg"></i><span>Riwayat Jurnal</span>
         </a>
         <a href="{{ route('pengurus-kelas.kehadiran-siswa') }}" class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors !no-underline {{ request()->routeIs('pengurus-kelas.kehadiran-siswa') ? 'bg-[#1BA886] !text-white shadow-sm' : '!text-[#D9F7EE] hover:bg-[#1BA886]/10 hover:!text-white' }}">
             <i class="bi bi-people-fill text-lg"></i><span>Absensi Siswa</span>

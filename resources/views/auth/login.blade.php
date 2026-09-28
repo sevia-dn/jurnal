@@ -133,10 +133,9 @@
                         </button>
                     </div>
 
-                    <!-- Tombol Sign In -->
-                    <button type="submit" class="w-full py-3 bg-jk-btn hover:bg-jk-green text-white font-semibold text-sm rounded-lg shadow-sm transition duration-200">
-                        Sign In
-                    </button>
+<button type="submit" class="w-full py-3 bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-sm rounded-lg shadow-sm transition duration-200">
+    Sign In
+</button>
                 </form>
 
                 <!-- Contact Admin -->

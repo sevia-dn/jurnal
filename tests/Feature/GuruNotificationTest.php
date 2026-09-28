@@ -54,6 +54,27 @@ class GuruNotificationTest extends TestCase
         ]);
     }
 
+    public function test_dispensasi_notification_redirects_teacher_to_dispensasi_history(): void
+    {
+        $teacher = User::factory()->create(['role' => 'guru']);
+        $notification = Notifikasi::create([
+            'id_user' => $teacher->id,
+            'judul' => 'Pengajuan dispensasi',
+            'pesan' => 'Ada laporan dispensasi baru.',
+            'tipe' => 'dispensasi_menunggu',
+            'is_read' => false,
+        ]);
+
+        $this->actingAs($teacher)
+            ->post(route('guru.notifikasi.read', $notification))
+            ->assertRedirect(route('piket.dispensasi.history'));
+
+        $this->assertDatabaseHas('notifikasis', [
+            'id' => $notification->id,
+            'is_read' => true,
+        ]);
+    }
+
     public function test_teacher_can_mark_all_of_their_notifications_as_read(): void
     {
         $teacher = User::factory()->create(['role' => 'guru']);

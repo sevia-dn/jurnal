@@ -1,4 +1,4 @@
-@extends('layouts.app')
+@extends('layouts.dispensasi-approval')
 
 @section('title', 'Verifikasi Dispensasi Siswa - JurnalKita')
 
@@ -33,7 +33,20 @@
                         <dt class="text-xs font-bold uppercase tracking-wide text-slate-400">Jenis</dt>
                         <dd class="mt-1 font-semibold">{{ ucfirst($dispensasi->jenis_dispensasi ?? '-') }}</dd>
                     </div>
+                    <div>
+                        <dt class="text-xs font-bold uppercase tracking-wide text-slate-400">Waka penyetuju</dt>
+                        <dd class="mt-1 font-bold text-slate-800">{{ $dispensasi->pemroses?->name ?? 'Waka Kesiswaan' }}</dd>
+                    </div>
+                    <div>
+                        <dt class="text-xs font-bold uppercase tracking-wide text-slate-400">Guru Piket pengaju</dt>
+                        <dd class="mt-1 font-semibold text-slate-800">{{ $dispensasi->pembuat?->name ?? 'Guru Piket' }}</dd>
+                    </div>
                 </dl>
+
+                <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                    <p class="text-xs font-bold uppercase tracking-wide text-slate-400">Waktu dispensasi</p>
+                    <p class="mt-1 text-sm font-semibold text-slate-800">{{ $dispensasi->deskripsi_waktu }}</p>
+                </div>
 
                 <div class="border-t border-slate-100 pt-4">
                     <p class="text-xs font-bold uppercase tracking-wide text-slate-400">Alasan</p>

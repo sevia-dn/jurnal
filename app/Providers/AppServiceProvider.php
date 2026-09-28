@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Models\PasswordResetRequest;
+use App\Services\WaliKelasService;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
@@ -40,6 +41,13 @@ class AppServiceProvider extends ServiceProvider
                 'laporanGantiPw' => $laporanGantiPw,
                 'unreadLaporanCount' => $unreadLaporanCount,
             ]);
+        });
+
+        View::composer(['layouts.guru-pengajar.sidebar', 'layouts.guru-pengajar.navbar'], function ($view) {
+            $user = auth()->user();
+            $waliKelases = $user ? app(WaliKelasService::class)->classesFor($user) : collect();
+
+            $view->with('waliKelases', $waliKelases);
         });
     }
 }

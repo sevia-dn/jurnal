@@ -26,44 +26,9 @@
 
         </div>
 
-        {{-- STATS CARDS --}}
-        <div class="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
-            <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs">
-                <div class="flex items-center justify-between">
-                    <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Total Pengajuan</span>
-                    <span class="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 text-slate-600"><i class="bi bi-files"></i></span>
-                </div>
-                <p class="mt-2 text-2xl font-extrabold text-slate-900">{{ $totalCount }}</p>
-            </div>
-
-            <div class="rounded-2xl border border-amber-200 bg-amber-50/50 p-4 shadow-xs">
-                <div class="flex items-center justify-between">
-                    <span class="text-xs font-bold uppercase tracking-wider text-amber-700">Menunggu Validasi</span>
-                    <span class="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-100 text-amber-700"><i class="bi bi-hourglass-split"></i></span>
-                </div>
-                <p class="mt-2 text-2xl font-extrabold text-amber-800">{{ $pendingCount }}</p>
-            </div>
-
-            <div class="rounded-2xl border border-emerald-200 bg-emerald-50/50 p-4 shadow-xs">
-                <div class="flex items-center justify-between">
-                    <span class="text-xs font-bold uppercase tracking-wider text-emerald-700">Disetujui Wakasek</span>
-                    <span class="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700"><i class="bi bi-check-circle-fill"></i></span>
-                </div>
-                <p class="mt-2 text-2xl font-extrabold text-emerald-800">{{ $approvedCount }}</p>
-            </div>
-
-            <div class="rounded-2xl border border-rose-200 bg-rose-50/50 p-4 shadow-xs">
-                <div class="flex items-center justify-between">
-                    <span class="text-xs font-bold uppercase tracking-wider text-rose-700">Ditolak</span>
-                    <span class="flex h-9 w-9 items-center justify-center rounded-xl bg-rose-100 text-rose-700"><i class="bi bi-x-circle-fill"></i></span>
-                </div>
-                <p class="mt-2 text-2xl font-extrabold text-rose-800">{{ $rejectedCount }}</p>
-            </div>
-        </div>
-
         {{-- FILTER & SEARCH SECTION --}}
-        <section class="mb-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-xs" aria-label="Filter dispensasi">
-            <form method="GET" action="{{ route('piket.dispensasi.history') }}" class="space-y-4">
+        <section class="mb-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-xs" aria-label="Filter dispensasi">
+            <form id="dispensasiFilterForm" method="GET" action="{{ route('piket.dispensasi.history') }}" class="space-y-3">
                 {{-- SEARCH BAR --}}
                 <div class="relative">
                     <i class="bi bi-search absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm pointer-events-none"></i>
@@ -71,7 +36,8 @@
                         type="text"
                         name="search"
                         value="{{ $search }}"
-                        placeholder="Cari berdasarkan nama siswa, NIS, jenis, atau alasan dispensasi..."
+                        oninput="submitDispensasiSearch()"
+                        placeholder="Cari nama siswa, NIS, jenis, alasan, atau guru piket..."
                         class="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-10 pr-10 text-sm text-slate-800 outline-none transition focus:border-emerald-500 focus:bg-white focus:ring-4 focus:ring-emerald-100"
                     >
                     @if($search)
@@ -81,51 +47,31 @@
                     @endif
                 </div>
 
-                {{-- FILTER DROPDOWNS --}}
-                <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                    {{-- STATUS --}}
-                    <div>
-                        <label class="block text-xs font-bold text-slate-600 mb-1">Status Validasi</label>
-                        <select name="status" class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100">
-                            <option value="all" {{ $status === 'all' ? 'selected' : '' }}>Semua Status</option>
-                            <option value="menunggu" {{ $status === 'menunggu' ? 'selected' : '' }}>Menunggu Validasi</option>
-                            <option value="disetujui" {{ $status === 'disetujui' ? 'selected' : '' }}>Disetujui</option>
-                            <option value="ditolak" {{ $status === 'ditolak' ? 'selected' : '' }}>Ditolak</option>
-                        </select>
-                    </div>
+                <div class="flex flex-col gap-3 border-t border-slate-100 pt-3 lg:flex-row lg:items-end lg:justify-between">
+                    <fieldset class="flex flex-wrap items-center gap-x-4 gap-y-2">
+                        <legend class="mr-2 text-xs font-bold text-slate-600">Status Validasi</legend>
+                        @foreach (['all' => 'Semua', 'menunggu' => 'Menunggu', 'disetujui' => 'Disetujui', 'ditolak' => 'Ditolak'] as $value => $label)
+                            <label class="inline-flex cursor-pointer items-center gap-1.5 text-xs font-medium text-slate-700">
+                                <input type="radio" name="status" value="{{ $value }}" @checked($status === $value) onchange="this.form.submit()" class="h-3.5 w-3.5 border-slate-300 text-emerald-600 focus:ring-emerald-500">
+                                {{ $label }}
+                            </label>
+                        @endforeach
+                    </fieldset>
 
-                    {{-- KELAS --}}
-                    <div>
-                        <label class="block text-xs font-bold text-slate-600 mb-1">Kelas</label>
-                        <select name="kelas_id" class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100">
-                            <option value="">Semua Kelas</option>
-                            @foreach($kelasList as $k)
-                                <option value="{{ $k->id_kelas }}" {{ (string)$kelasId === (string)$k->id_kelas ? 'selected' : '' }}>{{ $k->nama_kelas }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-
-                    {{-- TANGGAL MULAI --}}
-                    <div>
-                        <label class="block text-xs font-bold text-slate-600 mb-1">Tanggal Mulai</label>
-                        <input type="date" name="tanggal_mulai" value="{{ $startDate }}" class="w-full rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-700 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100">
-                    </div>
-
-                    {{-- TANGGAL SELESAI --}}
-                    <div>
-                        <label class="block text-xs font-bold text-slate-600 mb-1">Tanggal Selesai</label>
-                        <input type="date" name="tanggal_selesai" value="{{ $endDate }}" class="w-full rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-700 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100">
+                    <div class="grid grid-cols-2 gap-2 sm:w-auto">
+                        <label class="block text-xs font-bold text-slate-600">Dari
+                            <input type="date" name="tanggal_mulai" value="{{ $startDate }}" onchange="this.form.submit()" class="mt-1 block w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100">
+                        </label>
+                        <label class="block text-xs font-bold text-slate-600">Sampai
+                            <input type="date" name="tanggal_selesai" value="{{ $endDate }}" onchange="this.form.submit()" class="mt-1 block w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100">
+                        </label>
                     </div>
                 </div>
 
-                <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                <div class="flex items-center justify-end">
                     <a href="{{ route('piket.dispensasi.history') }}" class="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50 transition">
                         Reset Filter
                     </a>
-                    <button type="submit" class="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-emerald-700 transition">
-                        <i class="bi bi-funnel-fill text-xs"></i>
-                        Terapkan Filter
-                    </button>
                 </div>
             </form>
         </section>
@@ -216,9 +162,13 @@
                                             Cetak
                                         </a>
                                         @if($dispensasi->token_verifikasi)
+                                            @php
+                                                $verificationBaseUrl = rtrim((string) config('services.whatsapp.approval_base_url'), '/');
+                                                $verificationUrl = $verificationBaseUrl.route('dispensasi.verify', $dispensasi->token_verifikasi, false);
+                                            @endphp
                                             <button
                                                 type="button"
-                                                data-qr-url="{{ route('dispensasi.verify', $dispensasi->token_verifikasi) }}"
+                                                data-qr-url="{{ $verificationUrl }}"
                                                 data-qr-name="{{ $dispensasi->siswa?->nama ?? 'Siswa' }}"
                                                 data-qr-kelas="{{ $dispensasi->siswa?->kelas?->nama_kelas ?? '-' }}"
                                                 data-qr-alasan="{{ $dispensasi->alasan }}"
@@ -286,6 +236,15 @@
 </div>
 
 <script>
+let dispensasiSearchTimer;
+
+function submitDispensasiSearch() {
+    window.clearTimeout(dispensasiSearchTimer);
+    dispensasiSearchTimer = window.setTimeout(() => {
+        document.getElementById('dispensasiFilterForm')?.requestSubmit();
+    }, 350);
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     const qrModal = document.getElementById('dispensasi-qr-modal');
     const qrImage = document.getElementById('dispensasi-qr-image');
@@ -296,7 +255,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('[data-qr-url]').forEach((button) => {
         button.addEventListener('click', () => {
             const verificationUrl = button.dataset.qrUrl;
-            qrImage.src = `https://api.qrserver.com/v1/create-qr-code/?size=208x208&data=${encodeURIComponent(verificationUrl)}`;
+            qrImage.src = `https://api.qrserver.com/v1/create-qr-code/?size=512x512&margin=1&format=png&data=${encodeURIComponent(verificationUrl)}`;
             qrLink.href = verificationUrl;
             qrName.textContent = button.dataset.qrName;
             qrInfo.textContent = `${button.dataset.qrKelas} · ${button.dataset.qrWaktu}`;
@@ -318,4 +277,3 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 </script>
 @endsection
-

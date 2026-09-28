@@ -770,10 +770,10 @@ function guruLogbookState(config) {
                                             data-siswa-row
                                             data-siswa-nama="{{ $siswa->nama }}"
                                             data-siswa-nis="{{ $siswa->nis ?? '-' }}"
-                                            class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 rounded-xl border border-slate-200/80 bg-white p-3 shadow-2xs transition hover:border-emerald-300"
+                                            class="grid gap-2.5 rounded-xl border border-slate-200/80 bg-white p-3 shadow-2xs transition hover:border-emerald-300 sm:grid-cols-[minmax(15rem,1fr)_auto] sm:items-center"
                                         >
                                             {{-- NOMOR & NAMA SISWA (FULL WIDTH DI MOBILE) --}}
-                                            <div class="flex items-center gap-2.5 w-full sm:flex-1 sm:min-w-0">
+                                            <div class="flex min-w-0 items-center gap-2.5">
                                                 <span class="flex h-6 min-w-6 px-1.5 items-center justify-center rounded-full bg-emerald-50 text-[11px] font-bold text-emerald-800 border border-emerald-200/80 shrink-0">
                                                     {{ $idx + 1 }}
                                                 </span>
@@ -788,7 +788,7 @@ function guruLogbookState(config) {
                                             </div>
 
                                             {{-- PILIHAN STATUS H, S, I, A, D (FULL WIDTH DI MOBILE) --}}
-                                        <fieldset class="flex items-center gap-1 w-full sm:w-auto sm:shrink-0 sm:justify-end justify-between">
+                                        <fieldset class="flex w-full items-center justify-between gap-1 sm:w-auto sm:justify-end">
                                             {{-- HADIR (H) --}}
                                             <div class="flex-1 sm:flex-none">
                                                 <input
@@ -864,7 +864,7 @@ function guruLogbookState(config) {
                                                 </label>
                                             </div>
                                         </fieldset>
-                                        <label class="w-full sm:basis-full">
+                                        <label class="w-full sm:col-span-2">
                                             <span class="sr-only">Keterangan absensi {{ $siswa->nama }}</span>
                                             <input
                                                 type="text"

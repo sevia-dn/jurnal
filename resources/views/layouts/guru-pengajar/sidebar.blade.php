@@ -2,6 +2,7 @@
     $activePage = $activePage ?? 'utama';
     $homeUrl = route('guru.utama');
     $historyUrl = route('guru.riwayat');
+    $hasWaliKelas = ($waliKelases ?? collect())->isNotEmpty();
 @endphp
 
 <!-- PERUBAHAN: Menambahkan z-50 di sini agar sidebar selalu di atas efek blur -->
@@ -27,11 +28,19 @@
             <span>Riwayat &amp; Rekap</span>
         </a>
 
+        @if($hasWaliKelas)
+            <a href="{{ route('guru.wali-kelas') }}"
+               class="flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors !no-underline {{ request()->routeIs('guru.wali-kelas') || $activePage === 'wali-kelas' ? 'bg-[#1BA886] !text-white shadow-sm' : '!text-[#D9F7EE] hover:bg-[#1BA886]/10 hover:!text-white' }}">
+                <i class="bi bi-people text-lg" aria-hidden="true"></i>
+                <span>Wali Kelas</span>
+            </a>
+        @endif
+
         <a href="{{ route('dashboard.piket') }}"
            class="flex items-center justify-between gap-3 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors !no-underline {{ request()->is('dashboard/piket*') || request()->is('piket*') || $activePage === 'piket' ? 'bg-[#1BA886] !text-white shadow-sm' : '!text-[#D9F7EE] hover:bg-[#1BA886]/10 hover:!text-white' }}">
             <div class="flex items-center gap-3">
                 <i class="bi bi-shield-check text-lg" aria-hidden="true"></i>
-                <span>{{ ($isPiketActive ?? auth()->user()?->isPiketActive()) ? 'Tugas Piket' : 'Anda sedang tidak piket' }}</span>
+                <span>{{ ($isPiketActive ?? auth()->user()?->isPiketActive()) ? 'Tugas Piket' : 'Piket' }}</span>
             </div>
             @if($isPiketActive ?? auth()->user()?->isPiketActive())
                 <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-300 text-emerald-950 shadow-xs">
