@@ -18,6 +18,7 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', [AuthController::class, 'showLoginForm']);
 Route::get('/login', [AuthController::class, 'showLoginForm'])->name('login');
 Route::post('/login', [AuthController::class, 'login']);
+Route::post('/lupa-password', [AuthController::class, 'requestPasswordReset'])->name('password.request.submit');
 
 Route::get('/verifikasi-dispensasi/{token}', [DispensasiApprovalController::class, 'verify'])
     ->name('dispensasi.verify');

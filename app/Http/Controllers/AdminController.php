@@ -14,6 +14,7 @@ use App\Models\PasswordResetRequest;
 use App\Models\Pengaturan;
 use App\Models\Siswa;
 use App\Models\User;
+use App\Services\WhatsAppService;
 use App\SimplePdfDocument;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -1961,7 +1962,7 @@ class AdminController extends Controller
     // =========================================================================
     // 9. LAPORAN GANTI PASSWORD (NOTIFIKASI NAVBAR)
     // =========================================================================
-    public function terimaResetPassword(Request $request, $id)
+    public function terimaResetPassword(Request $request, $id, WhatsAppService $whatsAppService)
     {
         $request->validate([
             'password_baru' => 'required|min:4',
@@ -1991,7 +1992,30 @@ class AdminController extends Controller
             'handled_at' => now(),
         ]);
 
-        return back()->with('success', "Password untuk akun {$user->name} ({$user->username}) berhasil diubah menjadi '{$request->password_baru}'!");
+        // Buat template pesan konfirmasi reset password untuk pengguna
+        $templatePesan = $whatsAppService->buildPasswordResetApprovedMessage(
+            $user->name,
+            $user->username,
+            $request->password_baru
+        );
+
+        $targetNoHp = $laporan->no_hp ?: $user->no_hp;
+        $waSendUrl = null;
+
+        if ($targetNoHp) {
+            // Coba kirim via gateway WhatsApp jika gateway aktif
+            $whatsAppService->sendMessage($targetNoHp, $templatePesan);
+
+            // Tautan langsung untuk admin mengirim via WhatsApp
+            $waSendUrl = $whatsAppService->formatWhatsAppUrl($targetNoHp, $templatePesan);
+        }
+
+        return back()
+            ->with('success', "Password untuk akun {$user->name} ({$user->username}) berhasil diubah menjadi '{$request->password_baru}'!")
+            ->with('pesan_wa_reset', $templatePesan)
+            ->with('wa_send_url', $waSendUrl)
+            ->with('wa_target_nama', $user->name)
+            ->with('wa_target_phone', $targetNoHp);
     }
 
     public function tolakResetPassword(Request $request, $id)

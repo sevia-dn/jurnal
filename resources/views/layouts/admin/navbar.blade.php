@@ -418,6 +418,74 @@
   </div>
 </div>
 
+@if(session('pesan_wa_reset'))
+<!-- ========================================================================= -->
+<!-- MODAL 3: TEMPLATE PESAN WHATSAPP PASSWORD BARU -->
+<!-- ========================================================================= -->
+<div id="modalWaSuccess" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-[100] flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl max-w-lg w-full shadow-2xl border border-gray-100 overflow-hidden">
+    <div class="p-4 bg-gradient-to-r from-emerald-800 to-[#0f463c] text-white flex justify-between items-center">
+      <div class="flex items-center gap-2">
+        <i class="bi bi-whatsapp text-emerald-300 text-lg"></i>
+        <h3 class="font-bold text-sm">Template Pesan WhatsApp Reset Password</h3>
+      </div>
+      <button type="button" onclick="document.getElementById('modalWaSuccess').remove()" class="text-emerald-200 hover:text-white p-1 rounded-lg cursor-pointer">
+        <i class="bi bi-x-lg text-sm"></i>
+      </button>
+    </div>
+
+    <div class="p-5 space-y-3">
+      <div class="p-3 bg-emerald-50 rounded-xl border border-emerald-200 text-xs text-emerald-900 flex items-center gap-2">
+        <i class="bi bi-check-circle-fill text-emerald-600 text-base"></i>
+        <span>Password akun <strong>{{ session('wa_target_nama') }}</strong> berhasil diperbarui.</span>
+      </div>
+
+      <p class="text-xs text-gray-500 font-medium">
+        Kirimkan template pesan berikut kepada pengguna untuk memberitahukan password baru mereka:
+      </p>
+
+      <div class="relative">
+        <textarea
+          id="waApprovedTemplate"
+          readonly
+          rows="9"
+          class="w-full p-3 text-xs font-mono bg-slate-50 border border-slate-200 rounded-xl text-slate-800 leading-relaxed resize-none focus:outline-none"
+        >{{ session('pesan_wa_reset') }}</textarea>
+      </div>
+
+      <div class="flex items-center justify-between pt-2">
+        <button
+          type="button"
+          onclick="navigator.clipboard.writeText(document.getElementById('waApprovedTemplate').value); this.innerHTML='<i class=\'bi bi-check-lg\'></i> Tersalin!'; setTimeout(() => this.innerHTML='<i class=\'bi bi-clipboard\'></i> Salin Pesan', 2000);"
+          class="px-3.5 py-2 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition flex items-center gap-1.5 cursor-pointer"
+        >
+          <i class="bi bi-clipboard"></i> Salin Pesan
+        </button>
+
+        <div class="flex items-center gap-2">
+          <button
+            type="button"
+            onclick="document.getElementById('modalWaSuccess').remove()"
+            class="px-3 py-2 text-xs font-semibold text-slate-500 hover:text-slate-700 cursor-pointer"
+          >
+            Tutup
+          </button>
+          @if(session('wa_send_url'))
+            <a
+              href="{{ session('wa_send_url') }}"
+              target="_blank"
+              class="px-4 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl shadow-xs transition flex items-center gap-1.5 !no-underline"
+            >
+              <i class="bi bi-whatsapp"></i> Buka WhatsApp ({{ session('wa_target_phone') }})
+            </a>
+          @endif
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+@endif
+
 <!-- ========================================================================= -->
 <!-- JAVASCRIPT LOGIC UNTUK DROPDOWN & MODAL NOTIFIKASI -->
 <!-- ========================================================================= -->

@@ -156,31 +156,87 @@
     </div>
 </div> <!-- Penutup grid container -->
 
-    <!-- MODAL BANTUAN ADMIN (Tailwind Backdrop & Dialog) -->
-    <div id="adminHelpModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 opacity-0 pointer-events-none transition-opacity duration-200">
+    <!-- MODAL BANTUAN ADMIN & LUPA PASSWORD (Tailwind Backdrop & Dialog) -->
+    <div id="adminHelpModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex items-center justify-center p-4 opacity-0 pointer-events-none transition-opacity duration-200">
         <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl relative transform scale-95 transition-transform duration-200" id="modalCard">
-            
-            <div class="flex justify-between items-center mb-4">
-                <h3 class="text-base font-bold text-slate-900">Bantuan Akses Akun</h3>
-                <button type="button" onclick="toggleModal(false)" class="text-slate-400 hover:text-slate-600 p-1">
-                    <i class="bi bi-x-lg text-lg"></i>
+
+            <div class="flex justify-between items-center mb-3">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-9 h-9 rounded-xl bg-emerald-50 text-[#0D6B5A] flex items-center justify-center text-lg shadow-2xs">
+                        <i class="bi bi-shield-lock"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-base font-bold text-slate-900 leading-tight">Lupa Kata Sandi</h3>
+                        <p class="text-[11px] text-slate-500">Ajukan permohonan reset password ke Admin via WhatsApp</p>
+                    </div>
+                </div>
+                <button type="button" onclick="toggleModal(false)" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg">
+                    <i class="bi bi-x-lg text-sm"></i>
                 </button>
             </div>
 
-            <div class="text-center pb-2">
-                <div class="w-16 h-16 bg-emerald-50 text-jk-green rounded-full flex items-center justify-center text-3xl mx-auto mb-4">
-                    <i class="bi bi-shield-lock"></i>
+            <form action="{{ route('password.request.submit') }}" method="POST" class="space-y-3 mt-3">
+                @csrf
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">
+                        NIP atau Username Anda <span class="text-rose-500">*</span>
+                    </label>
+                    <div class="relative">
+                        <i class="bi bi-person absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+                        <input
+                            type="text"
+                            name="identity"
+                            id="modalIdentityInput"
+                            required
+                            placeholder="Contoh: 19800101... atau budisantoso"
+                            class="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:border-[#0D6B5A] focus:ring-2 focus:ring-[#0D6B5A]/15 transition placeholder:text-slate-400"
+                        >
+                    </div>
                 </div>
-                
-                <p class="text-sm text-slate-800 font-medium mb-1">
-                    Pendaftaran akun baru dan pengaturan ulang kata sandi (reset password) dikelola secara terpusat.
-                </p>
-                <p class="text-xs text-slate-500 mb-6">
-                    Silakan hubungi Administrator Sekolah atau Waka Kurikulum untuk meminta akses atau mereset password Anda.
-                </p>
-                
-                <a href="https://wa.me/6281234567890?text=Halo%20Admin,%20saya%20butuh%20bantuan%20terkait%20akun%20JurnalKita%20saya." target="_blank" class="flex items-center justify-center gap-2 w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-sm rounded-xl py-3 shadow-sm transition">
-                    <i class="bi bi-whatsapp text-lg"></i> Hubungi Admin via WhatsApp
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">
+                        Nomor WhatsApp Anda <span class="text-slate-400 font-normal">(Opsional)</span>
+                    </label>
+                    <div class="relative">
+                        <i class="bi bi-whatsapp absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+                        <input
+                            type="tel"
+                            name="no_hp"
+                            placeholder="Contoh: 081234567890"
+                            class="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:border-[#0D6B5A] focus:ring-2 focus:ring-[#0D6B5A]/15 transition placeholder:text-slate-400"
+                        >
+                    </div>
+                    <span class="text-[10px] text-slate-400 mt-0.5 block">Nomor kontak agar Admin dapat membalas dan mengirimkan password baru Anda.</span>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">
+                        Keterangan Kendala <span class="text-slate-400 font-normal">(Opsional)</span>
+                    </label>
+                    <textarea
+                        name="alasan"
+                        rows="2"
+                        placeholder="Contoh: Lupa password lama setelah logout / ganti perangkat..."
+                        class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:border-[#0D6B5A] focus:ring-2 focus:ring-[#0D6B5A]/15 transition resize-none placeholder:text-slate-400"
+                    ></textarea>
+                </div>
+
+                <button
+                    type="submit"
+                    class="w-full py-2.5 bg-[#0D6B5A] hover:bg-[#0a5547] text-white font-semibold text-xs rounded-xl shadow-xs transition flex items-center justify-center gap-2 cursor-pointer mt-1"
+                >
+                    <i class="bi bi-whatsapp text-sm"></i> Kirim Permohonan ke WhatsApp Admin
+                </button>
+            </form>
+
+            <div class="mt-3 pt-3 border-t border-slate-100 text-center">
+                <a
+                    href="{{ $adminWaUrl ?? ('https://wa.me/6283838606396?text=' . urlencode('Halo Admin JurnalKita, saya butuh bantuan terkait lupa password akun saya.')) }}"
+                    target="_blank"
+                    class="inline-flex items-center gap-1.5 text-xs text-slate-500 hover:text-[#0D6B5A] transition font-medium"
+                >
+                    <i class="bi bi-chat-dots"></i> Langsung Chat WhatsApp Admin ({{ $adminWaNumber ?? '083838606396' }})
                 </a>
             </div>
 
@@ -192,7 +248,7 @@
         // Toggle Show/Hide Password
         const pwd = document.getElementById('passwordField');
         const toggle = document.getElementById('togglePassword');
-        
+
         if (toggle && pwd) {
             toggle.addEventListener('click', function() {
                 const isPassword = pwd.type === 'password';
@@ -207,6 +263,13 @@
             const modal = document.getElementById('adminHelpModal');
             const card = document.getElementById('modalCard');
             if (show) {
+                // Auto-fill NIP/Username jika sudah diisi di form login
+                const mainIdentity = document.querySelector('input[name="identity"]')?.value;
+                const modalInput = document.getElementById('modalIdentityInput');
+                if (mainIdentity && modalInput && !modalInput.value) {
+                    modalInput.value = mainIdentity;
+                }
+
                 modal.classList.remove('opacity-0', 'pointer-events-none');
                 card.classList.remove('scale-95');
                 card.classList.add('scale-100');
