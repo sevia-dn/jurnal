@@ -61,9 +61,9 @@
             </div>
         @endif
 
-        {{-- FORM PENCARIAN & FILTER (TAMPILAN MOBILE MENYAMPING) --}}
+        {{-- FORM PENCARIAN & FILTER --}}
         <section class="mt-4 rounded-2xl bg-white p-3.5 shadow-sm border border-slate-100 sm:p-4">
-            <form method="GET" action="{{ route('guru.riwayat') }}" class="flex flex-col gap-2.5 lg:flex-row lg:items-center">
+            <form method="GET" action="{{ route('guru.riwayat') }}" id="riwayatForm" class="flex flex-col gap-2.5 lg:flex-row lg:items-center">
 
                 {{-- Keyword input --}}
                 <div class="relative flex-1 min-w-0">
@@ -79,23 +79,7 @@
                     >
                 </div>
 
-                {{-- Filter Status Validasi --}}
-                <div class="relative">
-                    <i class="bi bi-funnel pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#0D6B5A] text-xs" aria-hidden="true"></i>
-                    <select
-                        name="status_validasi"
-                        onchange="this.form.submit()"
-                        class="w-full cursor-pointer appearance-none rounded-lg border border-slate-200 bg-slate-50/60 py-2 pl-8 pr-7 text-xs text-slate-700 outline-none transition focus:border-[#0D6B5A] focus:bg-white focus:ring-2 focus:ring-[#0D6B5A]/10 sm:text-sm sm:w-44"
-                    >
-                        <option value="" {{ ($filterStatus ?? '') === '' ? 'selected' : '' }}>Semua Status</option>
-                        <option value="disetujui" {{ ($filterStatus ?? '') === 'disetujui' ? 'selected' : '' }}>✓ Divalidasi</option>
-                        <option value="menunggu" {{ ($filterStatus ?? '') === 'menunggu' ? 'selected' : '' }}>⏳ Menunggu Validasi</option>
-                        <option value="ditolak" {{ ($filterStatus ?? '') === 'ditolak' ? 'selected' : '' }}>✗ Ditolak</option>
-                    </select>
-                    <i class="bi bi-chevron-down pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-[10px]"></i>
-                </div>
-
-                {{-- Filter Tanggal (Menyamping di Mobile) --}}
+                {{-- Filter Tanggal --}}
                 <div class="grid grid-cols-2 gap-2 lg:flex lg:items-center">
                     <div class="relative flex items-center">
                         <i class="bi bi-calendar3 pointer-events-none absolute left-3 text-[#0D6B5A] text-xs" aria-hidden="true"></i>
@@ -109,7 +93,6 @@
                             placeholder="Mulai"
                         >
                     </div>
-
                     <div class="relative flex items-center">
                         <i class="bi bi-calendar3 pointer-events-none absolute left-3 text-[#0D6B5A] text-xs" aria-hidden="true"></i>
                         <input
@@ -131,37 +114,40 @@
                 </button>
             </form>
 
-            {{-- Total Data + Active Filter Tags --}}
-            <div class="mt-2.5 flex flex-wrap items-center justify-between gap-2">
-                <div class="flex flex-wrap items-center gap-2">
-                    @if($keyword || $filterStart || $filterEnd || ($filterStatus ?? ''))
-                        <a href="{{ route('guru.riwayat') }}" class="text-xs font-medium text-slate-500 hover:text-rose-600">
-                            <i class="bi bi-x-circle mr-1"></i>Reset filter
-                        </a>
-                        @if($keyword)
-                            <span class="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] text-slate-600">"{{ $keyword }}"</span>
-                        @endif
-                        @if($filterStatus ?? '')
-                            @php
-                                $statusLabel = match($filterStatus) {
-                                    'disetujui' => 'Divalidasi',
-                                    'menunggu' => 'Menunggu Validasi',
-                                    'ditolak' => 'Ditolak',
-                                    default => ''
-                                };
-                                $statusClass = match($filterStatus) {
-                                    'disetujui' => 'bg-emerald-100 text-emerald-700',
-                                    'menunggu' => 'bg-amber-100 text-amber-700',
-                                    'ditolak' => 'bg-rose-100 text-rose-700',
-                                    default => ''
-                                };
-                            @endphp
-                            @if($statusLabel)
-                                <span class="rounded-full px-2 py-0.5 text-[11px] font-semibold {{ $statusClass }}">{{ $statusLabel }}</span>
+            {{-- Baris bawah: Radio Status + Counter + Reset --}}
+            <div class="mt-3 flex flex-wrap items-center justify-between gap-2">
+
+                {{-- Radio Buttons Status Validasi --}}
+                <div class="flex items-center gap-1 flex-wrap">
+                    @foreach(['' => 'Semua', 'disetujui' => 'Divalidasi', 'menunggu' => 'Menunggu Validasi'] as $val => $label)
+                        @php
+                            $isActive = ($filterStatus ?? '') === $val;
+                            $activeClass = match($val) {
+                                'disetujui' => 'bg-[#0D6B5A] text-white border-[#0D6B5A]',
+                                'menunggu'  => 'bg-amber-500 text-white border-amber-500',
+                                default     => 'bg-slate-700 text-white border-slate-700',
+                            };
+                            $inactiveClass = 'bg-white text-slate-500 border-slate-200 hover:border-slate-400 hover:text-slate-700';
+                        @endphp
+                        <a href="{{ route('guru.riwayat', array_merge(request()->except('status_validasi'), $val ? ['status_validasi' => $val] : [])) }}"
+                           class="inline-flex items-center gap-1 rounded-full border px-3 py-1 text-[11px] font-semibold transition {{ $isActive ? $activeClass : $inactiveClass }}">
+                            @if($val === 'disetujui') <i class="bi bi-check-circle-fill text-[10px]"></i>
+                            @elseif($val === 'menunggu') <i class="bi bi-clock-fill text-[10px]"></i>
+                            @else <i class="bi bi-list-ul text-[10px]"></i>
                             @endif
-                        @endif
+                            {{ $label }}
+                        </a>
+                    @endforeach
+
+                    @if($keyword || $filterStart || $filterEnd)
+                        <a href="{{ route('guru.riwayat', ($filterStatus ?? '') ? ['status_validasi' => $filterStatus] : []) }}"
+                           class="text-[11px] font-medium text-slate-400 hover:text-rose-500 ml-1">
+                            <i class="bi bi-x-circle"></i> Reset
+                        </a>
                     @endif
                 </div>
+
+                {{-- Counter --}}
                 <span class="rounded-full bg-slate-50 border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-600">
                     {{ $riwayatJurnals->count() }} data ditemukan
                 </span>

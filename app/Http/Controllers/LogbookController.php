@@ -285,8 +285,6 @@ class LogbookController extends Controller
 
         if ($filterStatus === 'disetujui') {
             $query->where('status_validasi', 'disetujui');
-        } elseif ($filterStatus === 'ditolak') {
-            $query->where('status_validasi', 'ditolak');
         } elseif ($filterStatus === 'menunggu') {
             $query->where(function ($q) {
                 $q->whereNull('status_validasi')
