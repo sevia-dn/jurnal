@@ -4,6 +4,9 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Sign In - JurnalKita</title>
+    <link rel="icon" type="image/x-icon" href="{{ asset('favicon.ico') }}">
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('img/logo-mark-64.png') }}">
+    <link rel="apple-touch-icon" href="{{ asset('img/apple-touch-icon.png') }}">
     
     <!-- Google Fonts Inter & Bootstrap Icons -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -42,9 +45,7 @@
     <div class="z-10">
         <!-- Logo Top Kiri -->
         <div class="flex items-center gap-3 mb-8 lg:mb-12">
-            <div class="w-11 h-11 bg-jk-btn text-jk-dark rounded-xl flex items-center justify-center text-lg shadow-sm">
-                <i class="bi bi-mortarboard-fill"></i>
-            </div>
+            <img src="{{ asset('img/logo-rounded.png') }}" alt="Logo JurnalKita" class="w-12 h-12 rounded-xl shadow-md border border-white/20 object-cover">
             <span class="font-bold text-xl tracking-tight text-white">JurnalKita</span>
         </div>
 
@@ -59,11 +60,11 @@
         </div>
     </div>
 
-    <!-- Bagian Tengah/Bawah: Ilustrasi -->
+    <!-- Bagian Tengah/Bawah: Ilustrasi / Logo Showcase -->
     <!-- flex-1 akan mengambil seluruh sisa ruang ke bawah, lalu justify-center & items-center menaruh gambar persis di tengah ruang tersebut -->
     <div class="flex-1 flex justify-center items-center z-10 w-full mt-4">
-        <!-- Ukuran gambar dibesarkan menggunakan max-w-md atau lg:max-w-[80%] -->
-        <img src="{{ asset('img/hero-illustration.png') }}" alt="Ilustrasi JurnalKita" class="max-w-sm lg:max-w-md xl:max-w-[80%] w-full object-contain">
+        <!-- Logo JurnalKita dengan drop shadow -->
+        <img src="{{ asset('img/logo-transparent.png') }}" alt="Logo JurnalKita" class="max-w-[260px] lg:max-w-[300px] xl:max-w-[340px] w-full object-contain drop-shadow-2xl">
     </div>
 
 </div>
@@ -74,9 +75,7 @@
             
             <!-- Logo Khusus Tampilan Mobile (Sembunyi di Desktop) -->
             <div class="flex md:hidden items-center gap-3 mb-8">
-                <div class="w-11 h-11 bg-jk-btn text-jk-dark rounded-xl flex items-center justify-center text-lg shadow-sm">
-                    <i class="bi bi-mortarboard-fill"></i>
-                </div>
+                <img src="{{ asset('img/logo-rounded.png') }}" alt="Logo JurnalKita" class="w-12 h-12 rounded-xl shadow-md border border-emerald-100 object-cover">
                 <span class="font-bold text-2xl text-jk-green tracking-tight">JurnalKita</span>
             </div>
 

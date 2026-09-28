@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>@yield('title', 'JurnalKita')</title>
+    <link rel="icon" type="image/x-icon" href="{{ asset('favicon.ico') }}">
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('img/logo-mark-64.png') }}">
+    <link rel="apple-touch-icon" href="{{ asset('img/apple-touch-icon.png') }}">
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -26,9 +29,13 @@
                 options,
                 open: false,
                 filteredOptions() {
-                    const keyword = this.query.toLowerCase().trim();
-
-                    return keyword ? this.options.filter((option) => option.label.toLowerCase().includes(keyword)) : this.options;
+                    const keyword = (this.query || '').toLowerCase().trim();
+                    if (!keyword) return this.options;
+                    const terms = keyword.split(/\s+/).filter(Boolean);
+                    return this.options.filter((option) => {
+                        const lbl = (option.label || '').toLowerCase();
+                        return terms.every(term => lbl.includes(term));
+                    });
                 },
                 choose(option) {
                     this.selected = option.value;

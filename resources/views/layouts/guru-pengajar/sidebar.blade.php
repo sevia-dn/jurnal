@@ -7,9 +7,7 @@
 <!-- PERUBAHAN: Menambahkan z-50 di sini agar sidebar selalu di atas efek blur -->
 <aside class="sticky top-0 z-50 flex h-screen w-64 flex-col border-r border-[#17826E] bg-[#0D6B5A] font-sans">
     <div class="flex items-center gap-3 px-6 pb-8 pt-10">
-        <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-[#1BA886]/30 text-xl text-[#B9F1E1]">
-            <i class="bi bi-mortarboard-fill" aria-hidden="true"></i>
-        </div>
+        <img src="{{ asset('img/logo-rounded.png') }}" alt="Logo JurnalKita" class="h-11 w-11 rounded-xl shadow-sm border border-emerald-400/20 object-cover">
         <div>
             <div class="text-[22px] font-bold leading-none text-white">JurnalKita</div>
             <div class="mt-1 text-[11px] font-medium tracking-wide text-[#AEE5D4]">Guru Pengajar</div>

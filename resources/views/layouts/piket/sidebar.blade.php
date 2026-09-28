@@ -3,9 +3,7 @@
   
   <!-- Brand Logo -->
   <div class="px-6 pt-10 pb-8 flex items-center gap-3">
-    <div class="w-11 h-11 bg-[#1BA886]/30 text-[#4dbd9f] rounded-xl flex items-center justify-center text-xl shadow-sm">
-      <i class="bi bi-mortarboard-fill"></i>
-    </div>
+    <img src="{{ asset('img/logo-rounded.png') }}" alt="Logo JurnalKita" class="w-11 h-11 rounded-xl shadow-sm border border-emerald-400/20 object-cover">
     <div>
       <div class="text-[22px] font-bold text-white leading-none mb-1">JurnalKita</div>
       <div class="text-[11px] text-[#8EBEB2] font-semibold uppercase tracking-wider">Portal Piket</div>

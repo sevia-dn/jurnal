@@ -16,7 +16,13 @@
 <header class="sticky top-0 z-40 flex h-16 w-full items-center border-b border-slate-200 bg-white px-6 md:h-20 lg:px-10">
   <div class="relative flex w-full items-center justify-between">
 
-    <div class="md:hidden text-xl font-bold text-gray-800">Admin</div>
+    <div class="md:hidden flex items-center gap-2.5">
+      <img src="{{ asset('img/logo-rounded.png') }}" alt="Logo JurnalKita" class="h-8 w-8 rounded-lg shadow-xs object-cover">
+      <div class="flex items-center gap-1.5">
+        <span class="text-base font-bold text-gray-800">JurnalKita</span>
+        <span class="rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold text-emerald-800">Admin</span>
+      </div>
+    </div>
     <div class="hidden min-w-0 md:block">
       <div class="mb-1 flex items-center gap-2 text-[11px] font-semibold text-slate-400">
         <span>Admin</span>

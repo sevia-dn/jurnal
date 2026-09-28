@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Surat Dispensasi - {{ $dispensasi->nama }}</title>
+    <link rel="icon" type="image/x-icon" href="{{ asset('favicon.ico') }}">
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('img/logo-mark-64.png') }}">
+    <link rel="apple-touch-icon" href="{{ asset('img/apple-touch-icon.png') }}">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <style>
@@ -30,9 +33,16 @@
 
     <!-- Action Bar (Hidden on Print) -->
     <div class="no-print max-w-3xl mx-auto mb-6 flex items-center justify-between bg-white p-4 rounded-xl shadow-sm border border-slate-200">
-        <a href="javascript:history.back()" class="inline-flex items-center gap-2 text-sm font-sans font-semibold text-slate-600 hover:text-slate-900">
-            <i class="bi bi-arrow-left"></i> Kembali
-        </a>
+        <div class="flex items-center gap-3">
+            <a href="javascript:history.back()" class="inline-flex items-center gap-2 text-sm font-sans font-semibold text-slate-600 hover:text-slate-900">
+                <i class="bi bi-arrow-left"></i> Kembali
+            </a>
+            <span class="h-4 w-px bg-slate-200"></span>
+            <div class="flex items-center gap-2 font-sans">
+                <img src="{{ asset('img/logo-rounded.png') }}" alt="Logo JurnalKita" class="h-6 w-6 rounded object-cover">
+                <span class="text-xs font-bold text-slate-700">JurnalKita</span>
+            </div>
+        </div>
         <div class="flex items-center gap-3 font-sans">
             <span class="text-xs text-slate-500">ID Dispensasi: #{{ $dispensasi->id }}</span>
             <button onclick="window.print()" class="inline-flex items-center gap-2 bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-sm px-5 py-2.5 rounded-lg shadow transition cursor-pointer">

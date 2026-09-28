@@ -1,9 +1,7 @@
 <aside class="hidden md:flex flex-col w-64 bg-[#0D6B5A] h-screen fixed left-0 top-0 font-sans border-r border-[#17826E] z-40">
     {{-- Logo --}}
     <div class="px-6 pt-10 pb-8 flex items-center gap-3">
-        <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-[#1BA886]/30 text-xl text-[#B9F1E1]">
-            <i class="bi bi-journal-text"></i>
-        </div>
+        <img src="{{ asset('img/logo-rounded.png') }}" alt="Logo JurnalKita" class="h-11 w-11 rounded-xl shadow-sm border border-emerald-400/20 object-cover">
         <div>
             <div class="text-[22px] font-bold text-white leading-none">JurnalKita</div>
             <div class="text-[11px] text-emerald-200 font-semibold uppercase tracking-wider mt-1">Pengurus Kelas</div>

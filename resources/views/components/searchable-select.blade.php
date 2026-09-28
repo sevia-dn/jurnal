@@ -27,7 +27,7 @@
     <input x-ref="value" type="hidden" name="{{ $name }}" x-model="selected" @if($id) id="{{ $id }}" @endif @if($required) required @endif @if($onchange) onchange="{{ $onchange }}" @endif>
     <div class="relative">
         <i class="bi bi-search pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
-        <input x-model="query" @focus="open = true" @input="selected = ''; open = true" type="search" autocomplete="off" placeholder="{{ $placeholder }}" class="w-full rounded-lg border border-slate-300 bg-white py-2 pl-9 pr-8 text-xs text-slate-700 outline-none transition focus:border-[#155d50] focus:ring-2 focus:ring-[#155d50]/10">
+        <input x-model="query" @focus="open = true; $event.target.select()" @input="selected = ''; open = true" type="search" autocomplete="off" placeholder="{{ $placeholder }}" class="w-full rounded-lg border border-slate-300 bg-white py-2 pl-9 pr-8 text-xs text-slate-700 outline-none transition focus:border-[#155d50] focus:ring-2 focus:ring-[#155d50]/10">
         <button x-cloak x-show="query" type="button" @click="clear()" class="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 transition hover:text-slate-700" aria-label="Kosongkan pilihan"><i class="bi bi-x-circle"></i></button>
     </div>
     <div x-cloak x-show="open" x-transition class="absolute z-40 mt-1 max-h-56 w-full overflow-y-auto rounded-lg border border-slate-200 bg-white p-1 shadow-lg">

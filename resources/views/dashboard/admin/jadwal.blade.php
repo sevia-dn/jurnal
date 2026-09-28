@@ -844,11 +844,12 @@
         const hari = currentSelectedHari || 'Senin';
         const rows = document.querySelectorAll('.schedule-row');
         let visibleCount = 0;
+        const isSearching = query.length > 0;
 
         rows.forEach(row => {
             const rowHari = row.getAttribute('data-hari');
-            const matchesDay = hari === 'Semua' || rowHari === hari;
-            const matchesQuery = !query || row.textContent.toLowerCase().includes(query);
+            const matchesDay = isSearching ? true : (hari === 'Semua' || rowHari === hari);
+            const matchesQuery = !isSearching || row.textContent.toLowerCase().includes(query);
 
             if (matchesDay && matchesQuery) {
                 row.classList.remove('hidden');
@@ -873,7 +874,16 @@
             if (emptyFiltered) emptyFiltered.classList.add('hidden');
         }
 
-        // Update footer text
+        // Update header & footer text
+        const titleEl = document.getElementById('activeHariTitle');
+        const subTitleEl = document.getElementById('activeHariSubtitle');
+        if (titleEl) {
+            titleEl.textContent = isSearching ? `Hasil Pencarian "${query}"` : (hari === 'Semua' ? 'Semua Jadwal Pelajaran' : 'Jadwal Hari ' + hari);
+        }
+        if (subTitleEl) {
+            subTitleEl.textContent = `(${visibleCount} Sesi Jam Pelajaran)`;
+        }
+
         const footerText = document.getElementById('footerCountText');
         if (footerText) {
             footerText.textContent = `Menampilkan ${visibleCount} sesi jadwal pelajaran`;

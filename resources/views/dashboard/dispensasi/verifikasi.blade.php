@@ -6,10 +6,8 @@
     <main class="flex min-h-full items-center justify-center bg-slate-50 p-4 sm:p-6">
         <section class="w-full max-w-lg overflow-hidden rounded-3xl border border-emerald-200 bg-white shadow-xl">
             <div class="bg-emerald-600 px-6 py-7 text-center text-white">
-                <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-white/20 text-3xl">
-                    <i class="bi bi-patch-check-fill"></i>
-                </div>
-                <p class="mt-3 text-sm font-semibold uppercase tracking-[0.18em] text-emerald-100">JurnalKita</p>
+                <img src="{{ asset('img/logo-rounded.png') }}" alt="Logo JurnalKita" class="mx-auto h-16 w-16 rounded-2xl shadow-lg border-2 border-white/20 object-cover mb-3">
+                <p class="text-sm font-semibold uppercase tracking-[0.18em] text-emerald-100">JurnalKita</p>
                 <h1 class="mt-1 text-xl font-extrabold">Dispensasi Siswa Valid</h1>
             </div>
 
