@@ -55,10 +55,31 @@
             <div>
                 <h2 class="text-xs font-bold uppercase tracking-wider text-slate-700 transition group-hover:text-emerald-700">Kehadiran Siswa</h2>
                 <p class="mt-4 text-3xl font-extrabold text-emerald-700">{{ $kehadiranSiswaText }}</p>
-                <p class="mt-1 flex items-center gap-1 text-[11px] font-medium text-slate-500">
-                    <span>Siswa hadir / total</span>
-                    <i class="bi bi-arrow-right" aria-hidden="true"></i>
-                </p>
+                <p class="text-[10px] text-slate-500 leading-none mb-1">siswa hadir</p>
+                <div class="mt-1 flex flex-col gap-1">
+                    @if($siswaTidakHadirCount > 0)
+
+                        <div class="flex items-center gap-1 mt-0.5 flex-wrap">
+                            @if($jmlIzin > 0)
+                                <span class="inline-flex items-center rounded bg-blue-100 px-1.5 py-0.5 text-[10px] font-bold text-blue-700">I: {{ $jmlIzin }}</span>
+                            @endif
+                            @if($jmlSakit > 0)
+                                <span class="inline-flex items-center rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold text-amber-700">S: {{ $jmlSakit }}</span>
+                            @endif
+                            @if($jmlAlpa > 0)
+                                <span class="inline-flex items-center rounded bg-rose-100 px-1.5 py-0.5 text-[10px] font-bold text-rose-700">A: {{ $jmlAlpa }}</span>
+                            @endif
+                            @if($jmlDispensasi > 0)
+                                <span class="inline-flex items-center rounded bg-purple-100 px-1.5 py-0.5 text-[10px] font-bold text-purple-700">D: {{ $jmlDispensasi }}</span>
+                            @endif
+                        </div>
+                    @else
+                        <span class="inline-flex items-center gap-1 rounded-md bg-emerald-100/80 px-2 py-0.5 text-[11px] font-bold text-emerald-800 w-fit">
+                            <i class="bi bi-check-circle-fill text-xs text-emerald-600"></i>
+                            Semua hadir
+                        </span>
+                    @endif
+                </div>
             </div>
             <span class="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-200/80 text-lg text-emerald-800 transition group-hover:bg-emerald-300/80">
                 <i class="bi bi-people-fill" aria-hidden="true"></i>

@@ -75,30 +75,93 @@ class PengurusKelasController extends Controller
         }
         $perluPersetujuan = $perluPersetujuanQuery->count();
 
-        // 3. Kehadiran Siswa
-        $totalSiswa = $kelas?->jumlah_siswa ?? ($kelasId ? Siswa::where('kelas_id', $kelasId)->count() : 0);
-        $siswaHadirTerakhir = null;
-        $jurnalTerakhir = null;
-        if ($kelasId) {
-            $jurnalTerakhir = JurnalMengajar::where('id_kelas', $kelasId)
-                ->whereDate('tanggal', $now->toDateString())
-                ->latest('id_jurnal')
-                ->first();
-            if ($jurnalTerakhir) {
-                $siswaHadirTerakhir = $jurnalTerakhir->jumlah_hadir;
-            } else {
-                // Jika belum ada jurnal hari ini, kurangkan dengan ketidakhadiran yang dicatat guru piket
-                $tidakHadirPiket = PiketKehadiranSiswa::where('kelas_id', $kelasId)
-                    ->whereDate('tanggal', $now->toDateString())
-                    ->whereIn('status', ['Sakit', 'Izin', 'Alpa', 'Alfa', 'D'])
-                    ->count();
+        // 3. Kehadiran Siswa — selalu hitung dari tabel siswa, bukan kolom jumlah_siswa
+        $totalSiswa = $kelasId ? Siswa::where('kelas_id', $kelasId)->count() : 0;
+        $siswaHadirCount = $totalSiswa;
+        $siswaTidakHadirCount = 0;
+        $jmlSakit = 0;
+        $jmlIzin = 0;
+        $jmlAlpa = 0;
+        $jmlDispensasi = 0;
 
-                if ($tidakHadirPiket > 0 && $totalSiswa > 0) {
-                    $siswaHadirTerakhir = max(0, $totalSiswa - $tidakHadirPiket);
+        if ($kelasId && $totalSiswa > 0) {
+            $siswas = Siswa::where('kelas_id', $kelasId)->pluck('id');
+            $jurnalHariIniIds = JurnalMengajar::where('id_kelas', $kelasId)
+                ->whereDate('tanggal', $now->toDateString())
+                ->pluck('id_jurnal');
+
+            // Absensi siswa dari jurnal guru hari ini
+            $absensiJurnal = collect();
+            if ($jurnalHariIniIds->isNotEmpty()) {
+                $priority = [
+                    'D' => 5, 'DISPENSASI' => 5,
+                    'SAKIT' => 4, 'S' => 4,
+                    'IZIN' => 3, 'I' => 3,
+                    'ALPA' => 2, 'ALFA' => 2, 'A' => 2,
+                    'HADIR' => 1, 'H' => 1,
+                ];
+                $absensiJurnal = Absensi::whereIn('id_jurnal', $jurnalHariIniIds)
+                    ->get()
+                    ->groupBy('id_siswa')
+                    ->map(fn ($records) => $records->sortByDesc(fn ($r) => $priority[strtoupper(trim((string) $r->status))] ?? 0)->first());
+            }
+
+            // Kehadiran siswa yang dicatat piket hari ini
+            $piketKehadiranToday = PiketKehadiranSiswa::where('kelas_id', $kelasId)
+                ->whereDate('tanggal', $now->toDateString())
+                ->get()
+                ->keyBy('siswa_id');
+
+            // Dispensasi aktif & disetujui hari ini
+            $dispensasiAktifHariIni = Dispensasi::whereHas('siswa', fn ($q) => $q->where('kelas_id', $kelasId))
+                ->whereDate('tanggal', '<=', $now->toDateString())
+                ->whereDate('tanggal_selesai', '>=', $now->toDateString())
+                ->where('status_akhir', 'disetujui')
+                ->pluck('siswa_id')
+                ->flip();
+
+            foreach ($siswas as $sid) {
+                if ($dispensasiAktifHariIni->has($sid)) {
+                    $jmlDispensasi++;
+
+                    continue;
+                }
+
+                $piketRec = $piketKehadiranToday->get($sid);
+                $jurnalRec = $absensiJurnal->get($sid);
+
+                // Ambil status terbaik (piket lebih prioritas)
+                $status = null;
+                if ($piketRec) {
+                    $ps = strtoupper(trim((string) $piketRec->status));
+                    if (in_array($ps, ['S', 'SAKIT', 'I', 'IZIN', 'A', 'ALPA', 'ALFA'], true)) {
+                        $status = $ps;
+                    }
+                }
+
+                if (! $status && $jurnalRec) {
+                    $js = strtoupper(trim((string) $jurnalRec->status));
+                    if (in_array($js, ['S', 'SAKIT', 'I', 'IZIN', 'A', 'ALPA', 'ALFA'], true)) {
+                        $status = $js;
+                    }
+                }
+
+                if ($status) {
+                    if (in_array($status, ['S', 'SAKIT'], true)) {
+                        $jmlSakit++;
+                    } elseif (in_array($status, ['I', 'IZIN'], true)) {
+                        $jmlIzin++;
+                    } elseif (in_array($status, ['A', 'ALPA', 'ALFA'], true)) {
+                        $jmlAlpa++;
+                    }
                 }
             }
+
+            $siswaTidakHadirCount = $jmlSakit + $jmlIzin + $jmlAlpa + $jmlDispensasi;
+            $siswaHadirCount = max(0, $totalSiswa - $siswaTidakHadirCount);
         }
-        $kehadiranSiswaText = $siswaHadirTerakhir !== null ? "{$siswaHadirTerakhir}/{$totalSiswa}" : "-/{$totalSiswa}";
+
+        $kehadiranSiswaText = "{$siswaHadirCount}/{$totalSiswa}";
 
         // Daftar jurnal yang menunggu validasi (untuk quick action di dashboard)
         $jurnalAntrean = JurnalMengajar::with(['user', 'mapel', 'kelas'])
@@ -116,6 +179,13 @@ class PengurusKelasController extends Controller
             'totalSesi',
             'perluPersetujuan',
             'kehadiranSiswaText',
+            'siswaHadirCount',
+            'siswaTidakHadirCount',
+            'totalSiswa',
+            'jmlSakit',
+            'jmlIzin',
+            'jmlAlpa',
+            'jmlDispensasi',
             'jurnalAntrean',
             'jadwals',
             'jurnalHariIni'
@@ -216,7 +286,7 @@ class PengurusKelasController extends Controller
         if ($status === 'disetujui') {
             Notifikasi::create([
                 'id_user' => $jurnal->id_user,
-                'id_kelas' => $jurnal->id_kelas,
+                'id_kelas' => null,
                 'judul' => 'Logbook Disetujui',
                 'pesan' => "Logbook {$jurnal->mapel?->nama_mapel} kelas {$jurnal->kelas?->nama_kelas} telah divalidasi Pengurus Kelas.",
                 'tipe' => 'logbook_disetujui',
@@ -331,10 +401,17 @@ class PengurusKelasController extends Controller
                 ->keyBy('siswa_id');
 
             foreach ($piketKehadiranToday as $siswaId => $piketRec) {
-                $absensiTerakhir->put($siswaId, (object) [
-                    'status' => $piketRec->status,
-                    'catatan' => $piketRec->catatan ? 'Dicatat Piket: '.$piketRec->catatan : 'Dicatat oleh Guru Piket',
-                ]);
+                $existing = $absensiTerakhir->get($siswaId);
+                $existingStatus = strtoupper(trim((string) ($existing?->status ?? '')));
+                $isExistingNonHadir = in_array($existingStatus, ['S', 'SAKIT', 'I', 'IZIN', 'A', 'ALPA', 'ALFA', 'D', 'DISPENSASI'], true);
+                $isPiketNonHadir = in_array(strtoupper(trim((string) $piketRec->status)), ['S', 'SAKIT', 'I', 'IZIN', 'A', 'ALPA', 'ALFA', 'D', 'DISPENSASI'], true);
+
+                if ($isPiketNonHadir || ! $isExistingNonHadir) {
+                    $absensiTerakhir->put($siswaId, (object) [
+                        'status' => $piketRec->status,
+                        'catatan' => $piketRec->catatan ? 'Dicatat Piket: '.$piketRec->catatan : 'Dicatat oleh Guru Piket',
+                    ]);
+                }
             }
         }
 

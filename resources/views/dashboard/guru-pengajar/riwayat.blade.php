@@ -216,6 +216,7 @@
                             @php
                                 $tidakHadirList = $jurnal->absensis
                                     ->where('status', '!=', 'Hadir')
+                                    ->filter(fn($a) => !in_array(strtolower(trim($a->status ?? '')), ['hadir', 'h', '']))
                                     ->map(function($a) {
                                         return [
                                             'nama' => $a->siswa->nama ?? 'Siswa',

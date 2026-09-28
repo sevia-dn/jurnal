@@ -9,13 +9,14 @@
         ->orWhere('nama_kelas', $rawName)
         ->first();
 
-    // Notifikasi: dispensasi disetujui + guru tidak hadir + kehadiran piket
+    // Notifikasi pengurus kelas: hanya notifikasi jurnal baru yang dikirim dan notifikasi dispensasi siswa
     $notifNavbarPengurus = \App\Models\Notifikasi::where(function ($query) use ($user, $kelasPengurusNavbar) {
             $query->where('id_user', $user?->id);
             if ($kelasPengurusNavbar) {
                 $query->orWhere('id_kelas', $kelasPengurusNavbar->id_kelas);
             }
         })
+        ->whereIn('tipe', ['jurnal_baru', 'dispensasi'])
         ->latest()
         ->take(10)
         ->get();
@@ -85,17 +86,17 @@
                 <div class="max-h-96 overflow-y-auto p-2">
                     @forelse($notifNavbarPengurus as $notif)
                         @php
-                            $isGuruTidakHadir = $notif->tipe === 'guru_tidak_hadir';
-                            $isKehadiranPiket = $notif->tipe === 'kehadiran_siswa_piket';
-                            $badgeColor = $isGuruTidakHadir
-                                ? 'bg-amber-100 text-amber-600'
-                                : ($isKehadiranPiket ? 'bg-purple-100 text-purple-700' : 'bg-indigo-100 text-indigo-600');
+                            $isJurnalBaru = $notif->tipe === 'jurnal_baru';
+                            $isDispensasi = $notif->tipe === 'dispensasi';
+                            $badgeColor = $isJurnalBaru
+                                ? 'bg-emerald-100 text-emerald-700'
+                                : 'bg-indigo-100 text-indigo-700';
                             $borderColor = $notif->is_read
                                 ? 'border-slate-100 bg-slate-50/40'
-                                : ($isGuruTidakHadir ? 'border-amber-100 bg-amber-50/40' : ($isKehadiranPiket ? 'border-purple-100 bg-purple-50/40' : 'border-indigo-100 bg-indigo-50/40'));
-                            $iconClass = $isGuruTidakHadir
-                                ? 'bi-person-x-fill'
-                                : ($isKehadiranPiket ? 'bi-clipboard-check-fill' : 'bi-patch-check-fill');
+                                : ($isJurnalBaru ? 'border-emerald-200 bg-emerald-50/50' : 'border-indigo-100 bg-indigo-50/40');
+                            $iconClass = $isJurnalBaru
+                                ? 'bi-journal-plus'
+                                : 'bi-patch-check-fill';
                         @endphp
                         <div class="rounded-xl border p-3 mb-2 {{ $borderColor }}">
                             <div class="flex items-start gap-3">

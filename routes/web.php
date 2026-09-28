@@ -103,6 +103,10 @@ Route::middleware('auth')->group(function () {
         Route::post('/piket/dispensasi', [PiketController::class, 'dispensasiStore'])
             ->name('piket.dispensasi.store');
 
+        Route::get('/piket/dispensasi/riwayat', [PiketController::class, 'dispensasiHistory'])
+            ->name('piket.dispensasi.history');
+        Route::redirect('/piket/dispensasi/history', '/piket/dispensasi/riwayat');
+
         Route::get('/piket/kehadiran-siswa', [PiketController::class, 'kehadiranSiswa'])
             ->name('piket.kehadiran-siswa');
 

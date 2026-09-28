@@ -29,31 +29,39 @@
     $kelasMap = $kelases->mapWithKeys(fn ($kelas) => [
         (string) $kelas->id_kelas => $kelas->nama_kelas ?? '',
     ])->all();
-    $mapelMapEncoded = base64_encode(json_encode($mapelMap) ?: '{}');
-    $kelasMapEncoded = base64_encode(json_encode($kelasMap) ?: '{}');
 @endphp
 
-<div
-    x-data="{
+<script>
+function guruLogbookState(config) {
+    return {
         selectedKelas: '',
         selectedMapel: '',
         selectedJamKe: '',
         selectedJamSelesai: '',
-        selectedTanggal: '{{ $todayDate }}',
+        selectedTanggal: config.todayDate || '',
         searchSiswa: '',
         searchKelas: '',
         searchMapel: '',
         openKelasDropdown: false,
         openMapelDropdown: false,
-        liveClock: '{{ $currentFullTime ?? \Carbon\Carbon::now("Asia/Jakarta")->format("H:i:s") }}',
+        liveClock: config.currentFullTime || '',
         cameraActive: false,
         cameraStream: null,
         capturedPhoto: null,
         previewModal: false,
+        materiText: '',
+        catatanText: '',
+        attendanceSummary: {
+            Hadir: 0,
+            Sakit: 0,
+            Izin: 0,
+            Alpa: 0,
+            Dispensasi: 0
+        },
+        absentStudents: [],
 
-        mapelMap: JSON.parse(atob('{{ $mapelMapEncoded }}')),
-
-        kelasMap: JSON.parse(atob('{{ $kelasMapEncoded }}')),
+        mapelMap: config.mapelMap || {},
+        kelasMap: config.kelasMap || {},
 
         getMapelName(id) {
             return this.mapelMap[id] || '';
@@ -79,10 +87,15 @@
             this.selectedJamKe = String(jamMulai);
             this.selectedJamSelesai = String(jamSelesai || jamMulai);
             this.searchSiswa = '';
-            const logbookEl = document.getElementById('form-logbook-section');
-            if (logbookEl) {
-                logbookEl.scrollIntoView({ behavior: 'smooth' });
-            }
+            this.$nextTick(() => {
+                const logbookEl = document.getElementById('form-logbook-section');
+                if (logbookEl) {
+                    logbookEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+                setTimeout(() => {
+                    this.$refs.materiInput?.focus();
+                }, 300);
+            });
         },
 
         matchesSearch(nama, nis, nisn) {
@@ -93,35 +106,57 @@
                 || (nisn && String(nisn).toLowerCase().includes(query));
         },
 
-        attendanceCount(status) {
-            if (!this.$refs.logbookForm || !this.selectedKelas) return 0;
-            const container = this.$refs.logbookForm.querySelector(`[data-kelas-container="${this.selectedKelas}"]`);
-            if (!container) return 0;
-            return [...container.querySelectorAll('input[type=radio]:checked')]
-                .filter((input) => input.value === status).length;
-        },
+        updateAttendanceSummary() {
+            this.attendanceSummary = {
+                Hadir: 0,
+                Sakit: 0,
+                Izin: 0,
+                Alpa: 0,
+                Dispensasi: 0
+            };
+            this.absentStudents = [];
 
-        getAbsentStudentsList() {
-            if (!this.$refs.logbookForm || !this.selectedKelas) return [];
-            const container = this.$refs.logbookForm.querySelector(`[data-kelas-container="${this.selectedKelas}"]`);
-            if (!container) return [];
-            const list = [];
+            if (!this.selectedKelas) return;
+            const container = document.querySelector('[data-kelas-container="' + this.selectedKelas + '"]');
+            if (!container) return;
+
             const rows = container.querySelectorAll('[data-siswa-row]');
             rows.forEach((row) => {
                 const checked = row.querySelector('input[type=radio]:checked');
-                if (checked && checked.value !== 'Hadir') {
+                const rawVal = checked ? checked.value : 'Hadir';
+                let status = 'Hadir';
+                if (/^sakit$/i.test(rawVal)) status = 'Sakit';
+                else if (/^izin$/i.test(rawVal)) status = 'Izin';
+                else if (/^(alpa|alfa)$/i.test(rawVal)) status = 'Alpa';
+                else if (/^(dispensasi|d)$/i.test(rawVal)) status = 'Dispensasi';
+                else status = 'Hadir';
+
+                if (this.attendanceSummary[status] !== undefined) {
+                    this.attendanceSummary[status]++;
+                } else {
+                    this.attendanceSummary.Hadir++;
+                }
+
+                if (status !== 'Hadir') {
                     const nama = row.getAttribute('data-siswa-nama') || 'Siswa';
                     const nis = row.getAttribute('data-siswa-nis') || '-';
                     const noteInput = row.querySelector('input[name^="absensi_catatan"]');
-                    list.push({
+                    this.absentStudents.push({
                         nama: nama,
                         nis: nis,
-                        status: checked.value,
+                        status: status,
                         catatan: noteInput ? noteInput.value.trim() : ''
                     });
                 }
             });
-            return list;
+        },
+
+        attendanceCount(status) {
+            return this.attendanceSummary[status] ?? 0;
+        },
+
+        getAbsentStudentsList() {
+            return this.absentStudents;
         },
 
         async startCamera() {
@@ -146,7 +181,7 @@
                     this.cameraActive = true;
                     this.capturedPhoto = null;
                 } catch(err) {
-                    alert('Kamera tidak dapat diakses. Pastikan izin kamera telah diberikan pada browser Anda.');
+                    alert('Kamera tidak dapat diakses. Pastikan izin kamera telah diberikan pada browser Anda, atau gunakan opsi pilih file foto.');
                 }
             }
         },
@@ -173,6 +208,9 @@
 
         retakePhoto() {
             this.capturedPhoto = null;
+            if (this.$refs.lampiranInput) {
+                this.$refs.lampiranInput.value = '';
+            }
             this.startCamera();
         },
 
@@ -195,6 +233,22 @@
                 alert('Silakan pilih Mata Pelajaran terlebih dahulu!');
                 return false;
             }
+
+            if (this.$refs.materiInput && this.$refs.materiInput.value) {
+                this.materiText = this.$refs.materiInput.value;
+            }
+            if (!this.materiText || this.materiText.trim() === '') {
+                e.preventDefault();
+                alert('Silakan isi Materi / Pokok Pembahasan terlebih dahulu!');
+                this.$refs.materiInput?.focus();
+                return false;
+            }
+
+            const catatanEl = document.getElementById('catatan-khusus');
+            if (catatanEl && catatanEl.value !== undefined) {
+                this.catatanText = catatanEl.value;
+            }
+
             if (!this.capturedPhoto || !this.$refs.lampiranInput.files || this.$refs.lampiranInput.files.length === 0) {
                 e.preventDefault();
                 alert('Wajib mengambil foto live bukti kehadiran di kelas sebelum mengirim logbook!');
@@ -205,6 +259,7 @@
                 return false;
             }
             e.preventDefault();
+            this.updateAttendanceSummary();
             this.previewModal = true;
             return false;
         },
@@ -212,9 +267,30 @@
         sendLogbook() {
             this.previewModal = false;
             this.stopCamera();
-            this.$refs.logbookForm.submit();
+            if (this.$refs.logbookForm) {
+                const currentKelas = String(this.selectedKelas);
+                const allKelasContainers = this.$refs.logbookForm.querySelectorAll('[data-kelas-container]');
+                allKelasContainers.forEach(container => {
+                    const isSelected = container.getAttribute('data-kelas-container') === currentKelas;
+                    container.querySelectorAll('input, select, textarea').forEach(el => {
+                        el.disabled = !isSelected;
+                    });
+                });
+
+                this.$refs.logbookForm.submit();
+            }
         }
-    }"
+    };
+}
+</script>
+
+<div
+    x-data="guruLogbookState({
+        todayDate: @js($todayDate),
+        currentFullTime: @js($currentFullTime ?? \Carbon\Carbon::now('Asia/Jakarta')->format('H:i:s')),
+        mapelMap: @js($mapelMap),
+        kelasMap: @js($kelasMap)
+    })"
     class="mx-auto w-full max-w-7xl px-4 py-5 sm:px-6 lg:px-8"
 >
 
@@ -608,7 +684,9 @@
                             type="text"
                             name="materi"
                             x-ref="materiInput"
+                            x-model="materiText"
                             required
+                            placeholder="Tulis materi pokok pembelajaran hari ini..."
                             class="mt-1.5 w-full rounded-lg border border-slate-200 px-3.5 py-2.5 text-sm text-slate-700 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100"
                         >
                     </label>
@@ -718,7 +796,6 @@
                                                     id="absensi_{{ $siswa->id }}_hadir"
                                                     name="absensi[{{ $siswa->id }}]"
                                                     value="Hadir"
-                                                    :disabled="selectedKelas !== '{{ (string) $kelasId }}'"
                                                     @checked($statusSiswa === 'Hadir')
                                                     class="peer sr-only"
                                                 >
@@ -734,7 +811,6 @@
                                                     id="absensi_{{ $siswa->id }}_sakit"
                                                     name="absensi[{{ $siswa->id }}]"
                                                     value="Sakit"
-                                                    :disabled="selectedKelas !== '{{ (string) $kelasId }}'"
                                                     @checked($statusSiswa === 'Sakit')
                                                     class="peer sr-only"
                                                 >
@@ -750,7 +826,6 @@
                                                     id="absensi_{{ $siswa->id }}_izin"
                                                     name="absensi[{{ $siswa->id }}]"
                                                     value="Izin"
-                                                    :disabled="selectedKelas !== '{{ (string) $kelasId }}'"
                                                     @checked($statusSiswa === 'Izin')
                                                     class="peer sr-only"
                                                 >
@@ -766,7 +841,6 @@
                                                     id="absensi_{{ $siswa->id }}_alpa"
                                                     name="absensi[{{ $siswa->id }}]"
                                                     value="Alpa"
-                                                    :disabled="selectedKelas !== '{{ (string) $kelasId }}'"
                                                     @checked(in_array($statusSiswa, ['Alpa', 'Alfa'], true))
                                                     class="peer sr-only"
                                                 >
@@ -782,7 +856,6 @@
                                                     id="absensi_{{ $siswa->id }}_dispensasi"
                                                     name="absensi[{{ $siswa->id }}]"
                                                     value="Dispensasi"
-                                                    :disabled="selectedKelas !== '{{ (string) $kelasId }}'"
                                                     @checked(in_array($statusSiswa, ['D', 'Dispensasi'], true))
                                                     class="peer sr-only"
                                                 >
@@ -797,7 +870,6 @@
                                                 type="text"
                                                 name="absensi_catatan[{{ $siswa->id }}]"
                                                 maxlength="255"
-                                                :disabled="selectedKelas !== '{{ (string) $kelasId }}'"
                                                 value="{{ $catatanPiket?->catatan }}"
                                                 placeholder="Keterangan jika tidak hadir (opsional)"
                                                 class="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-xs text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100"
@@ -816,7 +888,7 @@
                 </div>
             </div>
 
-{{-- 2. LAMPIRAN BUKTI HADIR DI KELAS (FOTO LIVE) --}}
+            {{-- 2. LAMPIRAN BUKTI HADIR DI KELAS (FOTO LIVE) --}}
             <div id="section-lampiran-logbook" class="rounded-2xl bg-white p-4 shadow-sm border border-slate-100 sm:p-5">
                 <div class="border-b border-slate-100 pb-3 flex items-center gap-2">
                     <span class="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-100 text-sm text-emerald-700">
@@ -892,6 +964,7 @@
                     <textarea
                         id="catatan-khusus"
                         name="catatan"
+                        x-model="catatanText"
                         rows="3"
                         placeholder="Tulis catatan atau kendala pembelajaran jika ada..."
                         class="mt-1.5 w-full resize-none rounded-lg border border-slate-200 px-3.5 py-2.5 text-sm text-slate-700 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100"
@@ -959,7 +1032,15 @@
                             {{-- Materi --}}
                             <div class="rounded-xl border border-slate-200 p-3">
                                 <p class="text-xs font-bold text-slate-700">Materi / Pokok Pembahasan</p>
-                                <p class="mt-1 text-xs leading-relaxed text-slate-600 whitespace-pre-line" x-text="$refs.materiInput?.value || '-' "></p>
+                                <p class="mt-1 text-xs leading-relaxed text-slate-800 whitespace-pre-line" x-text="materiText || '-'"></p>
+                            </div>
+
+                            {{-- Catatan Khusus / Hambatan (Opsional) --}}
+                            <div class="rounded-xl border border-slate-200 p-3" :class="catatanText && catatanText.trim() !== '' ? 'bg-amber-50/60 border-amber-200' : 'bg-slate-50/50'">
+                                <p class="text-xs font-bold" :class="catatanText && catatanText.trim() !== '' ? 'text-amber-900' : 'text-slate-700'">
+                                    Catatan Khusus / Hambatan (Opsional)
+                                </p>
+                                <p class="mt-1 text-xs leading-relaxed whitespace-pre-line" :class="catatanText && catatanText.trim() !== '' ? 'text-amber-950 font-medium' : 'text-slate-500 italic'" x-text="catatanText && catatanText.trim() !== '' ? catatanText : 'Tidak ada catatan khusus / hambatan'"></p>
                             </div>
 
                             {{-- Ringkasan Absensi --}}

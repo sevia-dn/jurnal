@@ -4,7 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Models\Dispensasi;
 use App\Models\JurnalMengajar;
+use App\Models\Kelas;
+use App\Models\Notifikasi;
 use App\Models\Siswa;
+use App\Models\User;
 use App\Services\DispensasiWorkflowService;
 use App\Services\LogbookDeadlinePolicy;
 use App\Services\ScheduleTimeService;
@@ -101,10 +104,8 @@ class LogbookController extends Controller
             ->orderBy('id')
             ->get();
         $idSiswaKelas = $daftarSiswaKelas->pluck('id')->all();
-        $inputAbsensi = collect($request->input('absensi', []))
-            ->only($idSiswaKelas);
-        $inputCatatanAbsensi = collect($request->input('absensi_catatan', []))
-            ->only($idSiswaKelas);
+        $inputAbsensi = collect($request->input('absensi', []));
+        $inputCatatanAbsensi = collect($request->input('absensi_catatan', []));
         $dispensasis = Dispensasi::query()
             ->whereIn('siswa_id', $idSiswaKelas)
             ->where('status_akhir', 'disetujui')
@@ -121,19 +122,34 @@ class LogbookController extends Controller
 
         $absensiFinal = [];
         foreach ($daftarSiswaKelas as $s) {
-            // Default status adalah 'Hadir' jika tidak ditentukan
-            $st = $inputAbsensi->get($s->id, 'Hadir');
-            if ($st === 'Dispensasi') {
+            // Status absensi siswa dari input form (dukung key integer dan string)
+            $rawStatus = $inputAbsensi->get($s->id) ?? $inputAbsensi->get((string) $s->id) ?? 'Hadir';
+            $st = trim((string) $rawStatus);
+
+            if (in_array(strtolower($st), ['d', 'dispensasi'], true)) {
                 $st = 'D';
+            } elseif (in_array(strtolower($st), ['a', 'alpa', 'alfa'], true)) {
+                $st = 'Alpa';
+            } elseif (in_array(strtolower($st), ['s', 'sakit'], true)) {
+                $st = 'Sakit';
+            } elseif (in_array(strtolower($st), ['i', 'izin'], true)) {
+                $st = 'Izin';
+            } else {
+                $st = 'Hadir';
             }
+
             if ($dispensasis->get($s->id, collect())->contains(
                 fn (Dispensasi $dispensasi): bool => $workflowService->isActiveForStudentAt($dispensasi, $journalDateString, $jamMulai)
             )) {
                 $st = 'D';
             }
+
+            $rawCatatan = $inputCatatanAbsensi->get($s->id) ?? $inputCatatanAbsensi->get((string) $s->id);
+            $catatan = $st === 'Hadir' ? null : (trim((string) $rawCatatan) ?: null);
+
             $absensiFinal[$s->id] = [
                 'status' => $st,
-                'catatan' => $st === 'Hadir' ? null : $inputCatatanAbsensi->get($s->id),
+                'catatan' => $catatan,
             ];
 
             switch ($st) {
@@ -191,6 +207,31 @@ class LogbookController extends Controller
                     'catatan' => $absensiSiswa['catatan'],
                 ])->values()->all()
             );
+
+            // Kirim notifikasi ke pengurus kelas bahwa jurnal baru telah dikirim dan butuh validasi
+            $targetKelas = Kelas::find($request->id_kelas);
+            if ($targetKelas) {
+                $namaKelasTarget = $targetKelas->nama_kelas;
+                $pengurusUsers = User::where('role', 'pengurus_kelas')
+                    ->get()
+                    ->filter(function ($u) use ($namaKelasTarget) {
+                        $clean = trim(str_ireplace('Pengurus Kelas ', '', $u->name));
+
+                        return $clean === $namaKelasTarget || $u->name === $namaKelasTarget;
+                    });
+
+                foreach ($pengurusUsers as $pengurus) {
+                    Notifikasi::create([
+                        'id_user' => $pengurus->id,
+                        'id_kelas' => $targetKelas->id_kelas,
+                        'id_dispensasi' => null,
+                        'judul' => 'Jurnal Baru Menunggu Validasi',
+                        'pesan' => "Bpk/Ibu {$user->name} baru saja mengirimkan jurnal mengajar kelas {$namaKelasTarget} jam ke-{$jamMulai}. Silakan periksa dan validasi.",
+                        'tipe' => 'jurnal_baru',
+                        'is_read' => false,
+                    ]);
+                }
+            }
 
             DB::commit();
 

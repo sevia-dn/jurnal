@@ -403,6 +403,108 @@ class PiketLoginWorkflowTest extends TestCase
             ->assertSee('Acara keluarga');
     }
 
+    public function test_piket_utama_shows_logbook_history_and_supports_filters(): void
+    {
+        $this->travelTo(Carbon::parse('2026-09-28 08:00:00', 'Asia/Jakarta'));
+        $piket = $this->teacher('petugas-piket-history');
+        $this->schedule($piket, '2026-09-28');
+
+        $guru = $this->teacher('guru-matematika');
+        $kelas = Kelas::create(['nama_kelas' => 'XII RPL 1', 'jumlah_siswa' => 30]);
+        $mapel = Mapel::create(['nama_mapel' => 'Matematika', 'kode_mapel' => 'MTK']);
+
+        // Logbook dari 5 hari lalu
+        JurnalMengajar::create([
+            'id_user' => $guru->id,
+            'id_kelas' => $kelas->id_kelas,
+            'id_mapel' => $mapel->id,
+            'tanggal' => '2026-09-23',
+            'jam_ke' => 1,
+            'jam_selesai' => 2,
+            'materi' => 'Integral Parsial dan Substitusi',
+            'keterangan' => 'KBM Lancar',
+            'jumlah_hadir' => 28,
+            'jumlah_sakit' => 2,
+            'jumlah_izin' => 0,
+            'jumlah_alpa' => 0,
+            'jumlah_dispensasi' => 0,
+            'jumlah_tidak_hadir' => 2,
+            'status_validasi' => 'disetujui',
+        ]);
+
+        // Default: semua riwayat logbook muncul (tidak kosong)
+        $this->actingAs($piket)
+            ->get(route('dashboard.piket'))
+            ->assertOk()
+            ->assertSee('Integral Parsial dan Substitusi')
+            ->assertSee('XII RPL 1')
+            ->assertSee('Matematika')
+            ->assertSee('Riwayat &amp; Pemantauan Dispensasi', false);
+
+        // Filter pencarian berdasarkan materi
+        $this->actingAs($piket)
+            ->get(route('dashboard.piket', ['search' => 'Integral']))
+            ->assertOk()
+            ->assertSee('Integral Parsial dan Substitusi');
+
+        // Filter pencarian yang tidak cocok
+        $this->actingAs($piket)
+            ->get(route('dashboard.piket', ['search' => 'Biologi Molekuler']))
+            ->assertOk()
+            ->assertDontSee('Integral Parsial dan Substitusi');
+    }
+
+    public function test_piket_dispensasi_history_page_loads_with_filters_and_search(): void
+    {
+        $this->travelTo(Carbon::parse('2026-09-28 08:00:00', 'Asia/Jakarta'));
+        $piket = $this->teacher('petugas-piket-dispen');
+        $this->schedule($piket, '2026-09-28');
+
+        $kelas = Kelas::create(['nama_kelas' => 'XI TKJ 2', 'jumlah_siswa' => 25]);
+        $siswa = Siswa::create([
+            'kelas_id' => $kelas->id_kelas,
+            'nis' => '2026099',
+            'nama' => 'Bintang Kejora',
+            'jenis_kelamin' => 'L',
+        ]);
+
+        $dispensasi = Dispensasi::create([
+            'siswa_id' => $siswa->id,
+            'jenis_dispensasi' => 'Lomba Akademik',
+            'tipe_dispensasi' => 'satu_hari',
+            'tanggal' => '2026-09-28',
+            'tanggal_selesai' => '2026-09-28',
+            'alasan' => 'Mengikuti olimpiade sains tingkat kota',
+            'status_piket' => 'disetujui',
+            'status_waka' => 'disetujui',
+            'token_approval' => 'token-dispen-history',
+            'token_verifikasi' => 'verif-token-123',
+            'dibuat_oleh' => $piket->id,
+        ]);
+
+        // Halaman riwayat dispensasi dapat diakses secara terpisah
+        $response = $this->actingAs($piket)
+            ->get(route('piket.dispensasi.history'))
+            ->assertOk()
+            ->assertSee('Riwayat &amp; Pemantauan Dispensasi', false)
+            ->assertSee('Bintang Kejora')
+            ->assertSee('XI TKJ 2')
+            ->assertSee('Lomba Akademik')
+            ->assertSee('Disetujui');
+
+        // Search pada halaman riwayat dispensasi
+        $this->actingAs($piket)
+            ->get(route('piket.dispensasi.history', ['search' => 'Bintang']))
+            ->assertOk()
+            ->assertSee('Bintang Kejora');
+
+        $this->actingAs($piket)
+            ->get(route('piket.dispensasi.history', ['search' => 'NamaTidakAda']))
+            ->assertOk()
+            ->assertDontSee('Bintang Kejora')
+            ->assertSee('Tidak ada data dispensasi');
+    }
+
     private function teacher(string $username, bool $isWaka = false): User
     {
         return User::factory()->create([
