@@ -1,13 +1,13 @@
 @extends('layouts.app')
 
-@section('title', 'Dashboard Admin - Rekap Jurnal')
+@section('title', 'Dashboard Piket - Rekap Jurnal')
 
 @section('sidebar')
-    @include('layouts.admin.sidebar')
+    @include('layouts.piket.sidebar')
 @endsection
 
 @section('navbar')
-    @include('layouts.admin.navbar')
+    @include('layouts.piket.navbar')
 @endsection
 
 @section('content')
@@ -54,7 +54,7 @@
     <!-- Header Halaman -->
     <div class="mb-6 flex flex-col items-start justify-between gap-4 border-b border-slate-200 pb-5 lg:flex-row lg:items-center lg:gap-6">
       <div class="flex flex-wrap items-center gap-2.5">
-        <a href="{{ route('dashboard.rekap-jurnal.download-pdf', request()->query()) }}" class="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3.5 py-2 text-xs font-bold text-slate-700 shadow-xs transition hover:bg-slate-50">
+        <a href="{{ route('piket.rekap-jurnal.download-pdf', request()->query()) }}" class="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3.5 py-2 text-xs font-bold text-slate-700 shadow-xs transition hover:bg-slate-50">
           <i class="bi bi-file-earmark-pdf text-rose-600"></i>
           <span>Unduh Rekap PDF</span>
         </a>
@@ -202,21 +202,21 @@
 
       <!-- Baris Tabs -->
       <div class="flex items-center gap-2 text-sm overflow-x-auto px-5 py-3.5 bg-white border-b border-[#E8F2EE]">
-        <a href="{{ route('dashboard.rekap-jurnal', ['tab' => 'jurnal']) }}"
+        <a href="{{ route('piket.rekap-jurnal', ['tab' => 'jurnal']) }}"
            class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition whitespace-nowrap {{ in_array($tab ?? 'jurnal', ['jurnal', 'all']) ? 'bg-[#E3F2ED] !text-[#0D6B5A]' : 'text-slate-500 hover:text-[#0D6B5A] hover:bg-slate-50' }} !no-underline flex items-center gap-1.5">
           <i class="bi bi-journals"></i>
           <span>Riwayat Jurnal Mengajar</span>
           <span class="px-1.5 py-0.5 rounded-full text-[10px] {{ in_array($tab ?? 'jurnal', ['jurnal', 'all']) ? 'bg-[#0D6B5A]/15 text-[#0D6B5A]' : 'bg-slate-200 text-slate-600' }}">{{ count($jurnals) }}</span>
         </a>
 
-        <a href="{{ route('dashboard.rekap-jurnal', ['tab' => 'rekap_guru']) }}"
+        <a href="{{ route('piket.rekap-jurnal', ['tab' => 'rekap_guru']) }}"
            class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition whitespace-nowrap {{ ($tab ?? '') === 'rekap_guru' ? 'bg-[#E3F2ED] !text-[#0D6B5A]' : 'text-slate-500 hover:text-[#0D6B5A] hover:bg-slate-50' }} !no-underline flex items-center gap-1.5">
           <i class="bi bi-person-lines-fill"></i>
           <span>Rekapitulasi Per Guru</span>
           <span class="px-1.5 py-0.5 rounded-full text-[10px] {{ ($tab ?? '') === 'rekap_guru' ? 'bg-[#0D6B5A]/15 text-[#0D6B5A]' : 'bg-slate-200 text-slate-600' }}">{{ $rekapGuru->count() }}</span>
         </a>
 
-        <a href="{{ route('dashboard.rekap-jurnal', ['tab' => 'rekap_kelas']) }}"
+        <a href="{{ route('piket.rekap-jurnal', ['tab' => 'rekap_kelas']) }}"
            class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition whitespace-nowrap {{ ($tab ?? '') === 'rekap_kelas' ? 'bg-[#E3F2ED] !text-[#0D6B5A]' : 'text-slate-500 hover:text-[#0D6B5A] hover:bg-slate-50' }} !no-underline flex items-center gap-1.5">
           <i class="bi bi-people-fill"></i>
           <span>Rekapitulasi Per Kelas</span>
@@ -228,7 +228,7 @@
       @if(in_array(($tab ?? 'jurnal'), ['jurnal', 'all'], true))
         {{-- Filter Inline Tab Jurnal --}}
         <div class="bg-[#F6FAF8] border-b border-[#E8F2EE] px-5 py-4">
-          <form method="GET" action="{{ route('dashboard.rekap-jurnal') }}" autocomplete="off">
+          <form method="GET" action="{{ route('piket.rekap-jurnal') }}" autocomplete="off">
             <input type="hidden" name="tab" value="jurnal">
             <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
               <div>
@@ -260,7 +260,7 @@
               </div>
             </div>
             <div class="flex justify-end gap-2 mt-3">
-              <a href="{{ route('dashboard.rekap-jurnal', ['tab' => 'jurnal']) }}" class="px-3.5 py-1.5 rounded-lg border border-slate-300 text-slate-600 hover:bg-white text-xs font-semibold transition !no-underline flex items-center gap-1">
+              <a href="{{ route('piket.rekap-jurnal', ['tab' => 'jurnal']) }}" class="px-3.5 py-1.5 rounded-lg border border-slate-300 text-slate-600 hover:bg-white text-xs font-semibold transition !no-underline flex items-center gap-1">
                 <i class="bi bi-arrow-counterclockwise"></i> Reset
               </a>
               <button type="submit" class="px-4 py-1.5 rounded-lg bg-[#155d50] hover:bg-[#0f463c] text-white text-xs font-bold transition shadow-xs flex items-center gap-1.5 cursor-pointer">
@@ -351,7 +351,7 @@
       @elseif(($tab ?? '') === 'rekap_guru')
         {{-- Filter Inline Tab Rekap Guru --}}
         <div class="bg-[#F6FAF8] border-b border-[#E8F2EE] px-5 py-4">
-          <form method="GET" action="{{ route('dashboard.rekap-jurnal') }}" autocomplete="off">
+          <form method="GET" action="{{ route('piket.rekap-jurnal') }}" autocomplete="off">
             <input type="hidden" name="tab" value="rekap_guru">
             <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
               <div>
@@ -389,7 +389,7 @@
               </div>
             </div>
             <div class="flex justify-end gap-2 mt-3">
-              <a href="{{ route('dashboard.rekap-jurnal', ['tab' => 'rekap_guru']) }}" class="px-3.5 py-1.5 rounded-lg border border-slate-300 text-slate-600 hover:bg-white text-xs font-semibold transition !no-underline flex items-center gap-1">
+              <a href="{{ route('piket.rekap-jurnal', ['tab' => 'rekap_guru']) }}" class="px-3.5 py-1.5 rounded-lg border border-slate-300 text-slate-600 hover:bg-white text-xs font-semibold transition !no-underline flex items-center gap-1">
                 <i class="bi bi-arrow-counterclockwise"></i> Reset
               </a>
               <button type="submit" class="px-4 py-1.5 rounded-lg bg-[#155d50] hover:bg-[#0f463c] text-white text-xs font-bold transition shadow-xs flex items-center gap-1.5 cursor-pointer">
@@ -510,7 +510,7 @@
       @else
         {{-- Filter Inline Tab Rekap Kelas --}}
         <div class="bg-[#F6FAF8] border-b border-[#E8F2EE] px-5 py-4">
-          <form method="GET" action="{{ route('dashboard.rekap-jurnal') }}" autocomplete="off">
+          <form method="GET" action="{{ route('piket.rekap-jurnal') }}" autocomplete="off">
             <input type="hidden" name="tab" value="rekap_kelas">
             <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
               <div>
@@ -523,7 +523,7 @@
               </div>
               <div class="flex items-end">
                 <div class="flex gap-2 w-full">
-                  <a href="{{ route('dashboard.rekap-jurnal', ['tab' => 'rekap_kelas']) }}" class="flex-1 px-3.5 py-1.5 rounded-lg border border-slate-300 text-slate-600 hover:bg-white text-xs font-semibold transition !no-underline flex items-center justify-center gap-1">
+                  <a href="{{ route('piket.rekap-jurnal', ['tab' => 'rekap_kelas']) }}" class="flex-1 px-3.5 py-1.5 rounded-lg border border-slate-300 text-slate-600 hover:bg-white text-xs font-semibold transition !no-underline flex items-center justify-center gap-1">
                     <i class="bi bi-arrow-counterclockwise"></i> Reset
                   </a>
                   <button type="submit" class="flex-1 px-4 py-1.5 rounded-lg bg-[#155d50] hover:bg-[#0f463c] text-white text-xs font-bold transition shadow-xs flex items-center justify-center gap-1.5 cursor-pointer">
@@ -784,7 +784,7 @@
     // Digunakan di tab Rekap Guru & Rekap Kelas (pass id, fetch data via AJAX)
     async function openDetailModal(jurnalId) {
         try {
-            const res = await fetch(`/dashboard/rekap-jurnal/detail/${jurnalId}`, {
+            const res = await fetch(`/piket/rekap-jurnal/detail/${jurnalId}`, {
                 headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
             });
             if (!res.ok) throw new Error('Not found');

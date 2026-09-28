@@ -3,6 +3,8 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Services\PiketScheduleService;
+use App\Services\ScheduleTimeService;
 use Carbon\Carbon;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -67,8 +69,13 @@ class User extends Authenticatable
      */
     public function getJadwalPiketAktifAttribute()
     {
-        $todayDate = Carbon::now('Asia/Jakarta')->toDateString();
-        $nowTime = Carbon::now('Asia/Jakarta')->format('H:i:s');
+        $now = Carbon::now('Asia/Jakarta');
+        $todayDate = $now->toDateString();
+        $dismissalTime = app(ScheduleTimeService::class)->dismissalTimeForDate($todayDate);
+        if ($dismissalTime !== null && $now->format('H:i') >= $dismissalTime) {
+            return null;
+        }
+        $nowTime = $now->format('H:i:s');
 
         return $this->jadwalPikets()
             ->whereDate('tanggal', $todayDate)
@@ -82,13 +89,6 @@ class User extends Authenticatable
      */
     public function isPiketActive(): bool
     {
-        $todayDate = Carbon::now('Asia/Jakarta')->toDateString();
-        $nowTime = Carbon::now('Asia/Jakarta')->format('H:i:s');
-
-        return $this->jadwalPikets()
-            ->whereDate('tanggal', $todayDate)
-            ->where('jam_mulai', '<=', $nowTime)
-            ->where('jam_selesai', '>', $nowTime)
-            ->exists();
+        return app(PiketScheduleService::class)->isScheduledNow($this);
     }
 }

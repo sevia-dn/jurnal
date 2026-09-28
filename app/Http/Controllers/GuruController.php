@@ -10,6 +10,7 @@ use App\Models\Kelas;
 use App\Models\KetidakhadiranGuru;
 use App\Models\Mapel;
 use App\Models\Notifikasi;
+use App\Models\Pengaturan;
 use App\Models\PiketKehadiranSiswa;
 use App\Models\Siswa;
 use App\Models\TeacherAttendance;
@@ -43,6 +44,8 @@ class GuruController extends Controller
         $currentTime = $now->format('H:i');
         $currentFullTime = $now->format('H:i:s');
         $logbookPolicy = $deadlinePolicy->configuration();
+        $eventDismissalTime = $scheduleTimeService->dismissalTimeForDate($todayDate);
+        $eventSchoolName = (string) Pengaturan::getValue('event_sekolah', '');
 
         $isPiketActive = $piketScheduleService->isScheduledNow($user);
         $isWaka = $user->isWaka();
@@ -92,7 +95,14 @@ class GuruController extends Controller
             ->where('id_user', $user->id)
             ->where('hari', $hariIni)
             ->orderBy('jam_mulai')
-            ->get();
+            ->get()
+            ->filter(fn (JadwalMengajar $jadwal): bool => $scheduleTimeService->isLessonRangeApplicableOnDate(
+                $todayDate,
+                $hariIni,
+                (int) $jadwal->jam_mulai,
+                (int) $jadwal->jam_selesai,
+            ))
+            ->values();
 
         // Cek status waktu dan status pengisian jurnal per jadwal hari ini
         foreach ($jadwals as $jadwal) {
@@ -175,6 +185,8 @@ class GuruController extends Controller
             'ketidakhadiranHariIni',
             'isGuruTidakHadirDisetujui',
             'isGuruTidakHadirPending',
+            'eventDismissalTime',
+            'eventSchoolName',
         ));
     }
 

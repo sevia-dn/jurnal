@@ -129,8 +129,8 @@ class PiketLoginWorkflowTest extends TestCase
 
         $this->actingAs($guru)->get(route('dashboard.piket'))->assertOk()->assertSee('Pengajuan Dispensasi');
         $this->actingAs($guru)->get(route('piket.kehadiran'))->assertOk()->assertSee('Daftar Kehadiran Guru');
-        $this->actingAs($guru)->get(route('piket.kehadiran.form'))->assertOk()->assertSee('Lapor Kehadiran Guru');
         $this->actingAs($guru)->get(route('piket.dispensasi.form'))->assertOk()->assertSee('Form Pengajuan Dispensasi');
+        $this->actingAs($guru)->get('/dashboard/piket/kehadiran/lapor')->assertNotFound();
     }
 
     public function test_piket_access_follows_the_morning_and_afternoon_shift_boundaries(): void
@@ -220,33 +220,6 @@ class PiketLoginWorkflowTest extends TestCase
             ->assertSee('Algoritma dasar')
             ->assertSee('Absensi Siswa');
 
-        $this->actingAs($petugas)
-            ->post(route('piket.kehadiran.store'), [
-                'user_id' => $guruSakit->id,
-                'status' => 'Sakit',
-                'keterangan' => 'Istirahat karena sakit.',
-            ])
-            ->assertRedirect(route('piket.kehadiran'));
-
-        $this->assertDatabaseHas('kehadiran_gurus', [
-            'user_id' => $guruSakit->id,
-            'tanggal' => '2026-09-22',
-            'status' => 'Sakit',
-            'keterangan' => 'Istirahat karena sakit.',
-        ]);
-
-        $this->actingAs($petugas)
-            ->post(route('piket.kehadiran.store'), [
-                'user_id' => $guruHadir->id,
-                'status' => 'Izin',
-                'keterangan' => 'Tidak boleh menimpa jurnal.',
-            ])
-            ->assertSessionHas('error');
-
-        $this->assertDatabaseMissing('kehadiran_gurus', [
-            'user_id' => $guruHadir->id,
-            'tanggal' => '2026-09-22',
-        ]);
     }
 
     public function test_piket_can_only_change_student_attendance_for_today(): void

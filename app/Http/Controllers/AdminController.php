@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Imports\GuruImport;
 use App\Imports\JadwalImport;
+use App\Models\Absensi;
 use App\Models\Dispensasi;
 use App\Models\JadwalPelajaran;
 use App\Models\JadwalPiket;
@@ -12,13 +13,17 @@ use App\Models\Kelas;
 use App\Models\Mapel;
 use App\Models\PasswordResetRequest;
 use App\Models\Pengaturan;
+use App\Models\PiketKehadiranSiswa;
 use App\Models\Siswa;
 use App\Models\User;
+use App\Services\ScheduleTimeService;
 use App\Services\WhatsAppService;
 use App\SimplePdfDocument;
 use Carbon\Carbon;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -962,8 +967,16 @@ class AdminController extends Controller
         );
     }
 
+    public function rekapJurnalDetail(int $id): JsonResponse
+    {
+        $jurnal = JurnalMengajar::with(['kelas', 'mapel', 'guru'])->findOrFail($id);
+
+        return response()->json($jurnal);
+    }
+
     public function downloadRekapJurnalPdf(Request $request): Response
     {
+
         $periode = $request->query('periode', 'harian');
         $tanggal = $request->query('tanggal', now('Asia/Jakarta')->toDateString());
         $bulan = min(12, max(1, $request->integer('bulan', now('Asia/Jakarta')->month)));
@@ -1230,6 +1243,11 @@ class AdminController extends Controller
         $jumatShiftedMinutes = (int) Pengaturan::getValue('jumat_shifted_minutes', $shiftJumat);
 
         $tenggatOpsi = (string) Pengaturan::getValue('tenggat_opsi', 'terbatas_jam');
+        $publikJurnalAktif = (bool) Pengaturan::getValue('publik_jurnal_aktif', 1);
+        $publikRiwayatAktif = (bool) Pengaturan::getValue('publik_riwayat_aktif', 1);
+        $eventSekolah = (string) Pengaturan::getValue('event_sekolah', '');
+        $eventSekolahTanggal = (string) Pengaturan::getValue('event_sekolah_tanggal', '');
+        $eventSekolahJamPulang = (string) Pengaturan::getValue('event_sekolah_jam_pulang', '');
 
         $totalKelas = Kelas::count();
 
@@ -1241,6 +1259,11 @@ class AdminController extends Controller
             'isJumatMaju',
             'jumatShiftedMinutes',
             'tenggatOpsi',
+            'publikJurnalAktif',
+            'publikRiwayatAktif',
+            'eventSekolah',
+            'eventSekolahTanggal',
+            'eventSekolahJamPulang',
             'totalKelas'
         ));
     }
@@ -1248,6 +1271,37 @@ class AdminController extends Controller
     public function updatePengaturan(Request $request)
     {
         $this->ensureAdminAccess();
+
+        if ($request->input('action_type') === 'publik') {
+            $validated = $request->validate([
+                'publik_jurnal_aktif' => 'required|boolean',
+                'publik_riwayat_aktif' => 'required|boolean',
+            ]);
+
+            Pengaturan::setValue('publik_jurnal_aktif', (int) $validated['publik_jurnal_aktif']);
+            Pengaturan::setValue('publik_riwayat_aktif', (int) $validated['publik_riwayat_aktif']);
+
+            return redirect()->to(route('admin.pengaturan').'#jurnal-publik')->with('success', 'Pengaturan jurnal publik dan riwayat berhasil diperbarui.');
+        }
+
+        if ($request->input('action_type') === 'event') {
+            $validated = $request->validate([
+                'event_sekolah' => 'nullable|string|max:120|required_with:event_sekolah_tanggal,event_sekolah_jam_pulang',
+                'event_sekolah_tanggal' => 'nullable|date|required_with:event_sekolah_jam_pulang',
+                'event_sekolah_jam_pulang' => ['nullable', 'regex:/^(?:[01][0-9]|2[0-3])[:.][0-5][0-9]$/', 'required_with:event_sekolah_tanggal'],
+            ], [
+                'event_sekolah.required_with' => 'Nama kegiatan wajib diisi jika tanggal atau jam pulang diatur.',
+                'event_sekolah_tanggal.required_with' => 'Tanggal kegiatan wajib diisi jika jam pulang khusus diatur.',
+                'event_sekolah_jam_pulang.required_with' => 'Jam pulang khusus wajib diisi jika tanggal kegiatan diatur.',
+            ]);
+
+            Pengaturan::setValue('event_sekolah', trim((string) ($validated['event_sekolah'] ?? '')));
+            Pengaturan::setValue('event_sekolah_tanggal', (string) ($validated['event_sekolah_tanggal'] ?? ''));
+            $dismissalTime = str_replace('.', ':', (string) ($validated['event_sekolah_jam_pulang'] ?? ''));
+            Pengaturan::setValue('event_sekolah_jam_pulang', $dismissalTime);
+
+            return redirect()->to(route('admin.pengaturan').'#pemajuan-jam')->with('success', 'Pengaturan event sekolah dan jam pulang berhasil diperbarui.');
+        }
 
         // Pengaturan Kebijakan Tenggat Waktu Pengisian Jurnal
         if ($request->has('tenggat_form') || $request->has('tenggat_opsi') || $request->input('action_type') === 'tenggat') {
@@ -1360,7 +1414,7 @@ class AdminController extends Controller
     // =========================================================================
     // 7. REKAP JURNAL MONITORING
     // =========================================================================
-    public function rekapJurnal(Request $request)
+    public function rekapJurnal(Request $request, ScheduleTimeService $scheduleTimeService)
     {
         $periode = $request->query('periode', 'harian');
         $tanggal = $request->query('tanggal', now()->toDateString());
@@ -1460,7 +1514,7 @@ class AdminController extends Controller
         $totalKelas = $kelases->count();
         $gurus = User::where('role', 'guru')->orderBy('name', 'asc')->get();
 
-        // Hitung statistik sesi terjadwal, terisi, dan sesi kosong
+        // Jadwal yang melewati jam pulang event pada tanggal tertentu tidak dihitung.
         $jadwalQuery = JadwalPelajaran::query();
         if ($guruId && $guruId !== 'all') {
             $jadwalQuery->where('id_user', $guruId);
@@ -1469,62 +1523,75 @@ class AdminController extends Controller
             $jadwalQuery->where('id_kelas', $kelasId);
         }
 
+        $jadwalRows = $jadwalQuery->get();
+        $reportDates = [];
         if ($periode === 'bulanan') {
-            $jadwalsPerHari = $jadwalQuery->selectRaw('hari, count(*) as count')->groupBy('hari')->pluck('count', 'hari');
-            $totalTerjadwal = 0;
-            foreach ($daysCount as $h => $c) {
-                $totalTerjadwal += $c * ($jadwalsPerHari[$h] ?? 0);
+            for ($day = $startOfMonth->copy(); $day->lte($endOfMonth); $day->addDay()) {
+                $reportDates[] = $day->toDateString();
             }
-            $kelasLapor = JurnalMengajar::whereYear('tanggal', $tahun)->whereMonth('tanggal', $bulan)->distinct('id_kelas')->count('id_kelas');
-            $guruTerlambat = JurnalMengajar::whereYear('tanggal', $tahun)->whereMonth('tanggal', $bulan)->where('menit_keterlambatan', '>', 0)->count();
         } else {
-            $totalTerjadwal = $namaHari ? $jadwalQuery->where('hari', $namaHari)->count() : 0;
-            $kelasLapor = JurnalMengajar::whereDate('tanggal', $tanggal)->distinct('id_kelas')->count('id_kelas');
-            $guruTerlambat = JurnalMengajar::whereDate('tanggal', $tanggal)->where('menit_keterlambatan', '>', 0)->count();
+            $reportDates[] = $tanggal;
         }
+
+        $namaHariByNumber = [0 => 'Minggu', 1 => 'Senin', 2 => 'Selasa', 3 => 'Rabu', 4 => 'Kamis', 5 => 'Jumat', 6 => 'Sabtu'];
+        $scheduledByTeacher = [];
+        $totalTerjadwal = 0;
+        foreach ($reportDates as $reportDate) {
+            $reportDay = $namaHariByNumber[Carbon::parse($reportDate)->dayOfWeek];
+            foreach ($jadwalRows->where('hari', $reportDay) as $jadwal) {
+                if (! $scheduleTimeService->isScheduleEndApplicableOnDate($reportDate, (string) $jadwal->jam_selesai)) {
+                    continue;
+                }
+
+                $totalTerjadwal++;
+                $scheduledByTeacher[$jadwal->id_user] = ($scheduledByTeacher[$jadwal->id_user] ?? 0) + 1;
+            }
+        }
+
+        $kelasLapor = $periode === 'bulanan'
+            ? JurnalMengajar::whereYear('tanggal', $tahun)->whereMonth('tanggal', $bulan)->distinct('id_kelas')->count('id_kelas')
+            : JurnalMengajar::whereDate('tanggal', $tanggal)->distinct('id_kelas')->count('id_kelas');
+        $guruTerlambat = $periode === 'bulanan'
+            ? JurnalMengajar::whereYear('tanggal', $tahun)->whereMonth('tanggal', $bulan)->where('menit_keterlambatan', '>', 0)->count()
+            : JurnalMengajar::whereDate('tanggal', $tanggal)->where('menit_keterlambatan', '>', 0)->count();
 
         $totalTerisi = $allJurnals->count();
         $totalKosong = max(0, $totalTerjadwal - $totalTerisi);
-        $guruHadir = $totalTerisi; // Guru dianggap hadir jika mengisi jurnal / mengajar
+        $guruHadir = $totalTerisi;
         $guruTidakHadir = 0;
         $guruAbsen = 0;
 
-        // Rekapitulasi Mengajar Per Guru (untuk melihat riwayat & berapa kali kosong di bulan/tanggal ini)
-        $jadwalGuruGrouped = JadwalPelajaran::selectRaw('id_user, hari, count(*) as count')
-            ->groupBy('id_user', 'hari')
-            ->get()
-            ->groupBy('id_user');
-
+        // 1. Ambil jurnal lengkap untuk masing-masing guru pada periode terpilih
+        $guruJurnalsQuery = JurnalMengajar::with(['kelas', 'mapel', 'guru']);
         if ($periode === 'bulanan') {
-            $jurnalGuruGrouped = JurnalMengajar::whereYear('tanggal', $tahun)
-                ->whereMonth('tanggal', $bulan)
-                ->selectRaw('id_user, count(*) as count, max(tanggal) as terakhir')
-                ->groupBy('id_user')
-                ->get()
-                ->keyBy('id_user');
-        } else {
-            $jurnalGuruGrouped = JurnalMengajar::whereDate('tanggal', $tanggal)
-                ->selectRaw('id_user, count(*) as count, max(tanggal) as terakhir')
-                ->groupBy('id_user')
-                ->get()
-                ->keyBy('id_user');
+            $guruJurnalsQuery->whereYear('tanggal', $tahun)->whereMonth('tanggal', $bulan);
+        } elseif ($hasExplicitTanggal) {
+            $guruJurnalsQuery->whereDate('tanggal', $tanggal);
+        } elseif (! $hasSearch) {
+            $guruJurnalsQuery->whereDate('tanggal', $tanggal);
         }
 
-        $rekapGuru = $gurus->map(function ($g) use ($jadwalGuruGrouped, $jurnalGuruGrouped, $periode, $daysCount, $namaHari) {
-            $jadwals = $jadwalGuruGrouped->get($g->id, collect());
-            $terjadwal = 0;
-            if ($periode === 'bulanan') {
-                foreach ($jadwals as $j) {
-                    $terjadwal += ($daysCount[$j->hari] ?? 0) * $j->count;
-                }
-            } else {
-                $jHari = $jadwals->firstWhere('hari', $namaHari);
-                $terjadwal = $jHari ? $jHari->count : 0;
-            }
+        if ($guruId && $guruId !== 'all') {
+            $guruJurnalsQuery->where('id_user', $guruId);
+        }
 
-            $jurnalInfo = $jurnalGuruGrouped->get($g->id);
-            $terisi = $jurnalInfo ? $jurnalInfo->count : 0;
-            $terakhir = $jurnalInfo ? $jurnalInfo->terakhir : null;
+        if ($request->filled('search')) {
+            $term = trim($request->query('search'));
+            $guruJurnalsQuery->where(function ($q) use ($term) {
+                $q->where('materi', 'like', "%{$term}%")
+                    ->orWhereHas('guru', fn ($g) => $g->where('name', 'like', "%{$term}%"))
+                    ->orWhereHas('mapel', fn ($m) => $m->where('nama_mapel', 'like', "%{$term}%"))
+                    ->orWhereHas('kelas', fn ($k) => $k->where('nama_kelas', 'like', "%{$term}%"));
+            });
+        }
+
+        $allGuruJurnalsGrouped = $guruJurnalsQuery->orderBy('tanggal', 'desc')->orderBy('jam_ke', 'asc')->get()->groupBy('id_user');
+
+        $rekapGuru = $gurus->map(function ($g) use ($scheduledByTeacher, $allGuruJurnalsGrouped) {
+            $terjadwal = $scheduledByTeacher[$g->id] ?? 0;
+            $daftarJurnal = $allGuruJurnalsGrouped->get($g->id, collect());
+            $terisi = $daftarJurnal->count();
+            $terakhir = $daftarJurnal->first()?->tanggal;
             $kosong = max(0, $terjadwal - $terisi);
 
             return (object) [
@@ -1536,6 +1603,7 @@ class AdminController extends Controller
                 'kosong' => $kosong,
                 'terakhir' => $terakhir,
                 'persentase' => $terjadwal > 0 ? min(100, round(($terisi / $terjadwal) * 100)) : ($terisi > 0 ? 100 : 0),
+                'jurnals' => $daftarJurnal,
             ];
         });
 
@@ -1546,9 +1614,71 @@ class AdminController extends Controller
         if ($request->filled('search')) {
             $termLower = strtolower(trim($request->query('search')));
             $rekapGuru = $rekapGuru->filter(function ($item) use ($termLower) {
-                return str_contains(strtolower($item->name), $termLower) || str_contains(strtolower($item->nip ?? ''), $termLower);
+                return str_contains(strtolower($item->name), $termLower)
+                    || str_contains(strtolower($item->nip ?? ''), $termLower)
+                    || $item->jurnals->isNotEmpty();
             });
         }
+
+        // 2. Rekapitulasi Per Kelas: Menampilkan Jadwal Pelajaran Kelas dengan Status Jurnal per Sesi
+        $classesToInspect = Kelas::query()
+            ->when($kelasId && $kelasId !== 'all', fn ($q) => $q->where('id_kelas', $kelasId))
+            ->orderBy('nama_kelas')
+            ->get();
+
+        $jadwalKelasList = JadwalPelajaran::with(['guru', 'mapelItem'])
+            ->whereIn('id_kelas', $classesToInspect->pluck('id_kelas'))
+            ->where('hari', $namaHari)
+            ->orderBy('jam_ke')
+            ->get()
+            ->groupBy('id_kelas');
+
+        $jurnalKelasList = JurnalMengajar::with(['guru', 'mapel'])
+            ->whereIn('id_kelas', $classesToInspect->pluck('id_kelas'))
+            ->whereDate('tanggal', $tanggal)
+            ->get()
+            ->groupBy('id_kelas');
+
+        $rekapJadwalKelas = $classesToInspect->map(function ($kelas) use ($jadwalKelasList, $jurnalKelasList) {
+            $jadwals = $jadwalKelasList->get($kelas->id_kelas, collect());
+            $jurnals = $jurnalKelasList->get($kelas->id_kelas, collect());
+
+            $sesiItems = $jadwals->map(function ($jadwal) use ($jurnals) {
+                $jurnal = $jurnals->first(function ($j) use ($jadwal) {
+                    return $j->jam_ke == $jadwal->jam_ke
+                        || ($jadwal->id_mapel && $j->id_mapel == $jadwal->id_mapel && $j->jam_ke <= $jadwal->jam_ke && ($j->jam_selesai ?? $j->jam_ke) >= $jadwal->jam_ke);
+                });
+
+                return (object) [
+                    'jam_ke' => $jadwal->jam_ke,
+                    'jam_selesai' => $jadwal->jam_ke_selesai ?? $jadwal->jam_ke,
+                    'jam_ke_formatted' => $jadwal->jam_ke_formatted ?? "Jam ke-{$jadwal->jam_ke}",
+                    'waktu_mulai' => $jadwal->jam_mulai,
+                    'waktu_selesai' => $jadwal->jam_selesai,
+                    'mapel' => $jadwal->mapelItem?->nama_mapel ?? $jadwal->mapel ?? 'Mata Pelajaran',
+                    'guru' => $jadwal->guru?->name ?? 'Guru Pengampu',
+                    'guru_nip' => $jadwal->guru?->nip,
+                    'is_terisi' => $jurnal !== null,
+                    'jurnal' => $jurnal,
+                ];
+            });
+
+            $totalSesi = $sesiItems->count();
+            $totalTerisi = $sesiItems->where('is_terisi', true)->count();
+            $totalKosong = $totalSesi - $totalTerisi;
+
+            return (object) [
+                'id_kelas' => $kelas->id_kelas,
+                'nama_kelas' => $kelas->nama_kelas,
+                'wali_kelas' => $kelas->wali_kelas ?? '-',
+                'total_sesi' => $totalSesi,
+                'total_terisi' => $totalTerisi,
+                'total_kosong' => $totalKosong,
+                'sesi_items' => $sesiItems,
+            ];
+        });
+
+        $rekapKelas = $this->buildClassAttendanceSummary($periode, $tanggal, $bulan, $tahun, $kelasId);
 
         // Notif Approval Dispensasi Siswa
         $requestDispensasi = Dispensasi::with('siswa.kelas')
@@ -1566,6 +1696,8 @@ class AdminController extends Controller
             'kelases',
             'gurus',
             'rekapGuru',
+            'rekapKelas',
+            'rekapJadwalKelas',
             'periode',
             'tanggal',
             'bulan',
@@ -1593,6 +1725,108 @@ class AdminController extends Controller
             'namaHari',
             'requestDispensasi'
         ));
+    }
+
+    private function buildClassAttendanceSummary(string $periode, string $tanggal, int $bulan, int $tahun, mixed $kelasId): Collection
+    {
+        $journalQuery = Absensi::query()
+            ->with(['siswa', 'jurnal'])
+            ->whereIn('status', ['Sakit', 'Izin', 'Alpa', 'D'])
+            ->whereHas('jurnal', function ($query) use ($periode, $tanggal, $bulan, $tahun, $kelasId): void {
+                if ($periode === 'bulanan') {
+                    $query->whereYear('tanggal', $tahun)->whereMonth('tanggal', $bulan);
+                } else {
+                    $query->whereDate('tanggal', $tanggal);
+                }
+                if ($kelasId && $kelasId !== 'all') {
+                    $query->where('id_kelas', $kelasId);
+                }
+            });
+
+        $piketQuery = PiketKehadiranSiswa::query()
+            ->with(['siswa', 'kelas'])
+            ->whereIn('status', ['S', 'Sakit', 'I', 'Izin', 'A', 'Alpa', 'Alfa', 'D', 'Dispensasi']);
+        if ($periode === 'bulanan') {
+            $journalQuery->whereHas('jurnal', fn ($query) => $query->whereYear('tanggal', $tahun)->whereMonth('tanggal', $bulan));
+            $piketQuery->whereYear('tanggal', $tahun)->whereMonth('tanggal', $bulan);
+        } else {
+            $piketQuery->whereDate('tanggal', $tanggal);
+        }
+        if ($kelasId && $kelasId !== 'all') {
+            $piketQuery->where('kelas_id', $kelasId);
+        }
+
+        $absentRecords = collect();
+        $normalise = static function (?string $status): ?string {
+            return match (strtoupper(trim((string) $status))) {
+                'S', 'SAKIT' => 'Sakit',
+                'I', 'IZIN' => 'Izin',
+                'A', 'ALPA', 'ALFA' => 'Alpa',
+                'D', 'DISPENSASI' => 'Dispensasi',
+                default => null,
+            };
+        };
+
+        foreach ($piketQuery->get() as $record) {
+            $status = $normalise($record->status);
+            if ($status === null || ! $record->siswa) {
+                continue;
+            }
+            $key = $record->tanggal->toDateString().':'.$record->siswa_id;
+            $absentRecords->put($key, [
+                'tanggal' => $record->tanggal->toDateString(),
+                'kelas_id' => $record->kelas_id,
+                'kelas' => $record->kelas?->nama_kelas ?? '-',
+                'siswa' => $record->siswa->nama,
+                'nis' => $record->siswa->nis ?? '-',
+                'status' => $status,
+                'catatan' => $record->catatan ?: 'Tidak ada keterangan.',
+            ]);
+        }
+
+        $journalAbsences = $journalQuery->orderByDesc('id')->get()
+            ->filter(fn (Absensi $record): bool => $record->jurnal !== null && $record->siswa !== null)
+            ->groupBy(fn (Absensi $record): string => $record->jurnal->tanggal.':'.$record->id_siswa);
+        foreach ($journalAbsences as $key => $records) {
+            if ($absentRecords->has($key)) {
+                continue;
+            }
+            $record = $records->first();
+            $status = $normalise($record->status);
+            if ($status === null) {
+                continue;
+            }
+            $absentRecords->put($key, [
+                'tanggal' => (string) $record->jurnal->tanggal,
+                'kelas_id' => $record->jurnal->id_kelas,
+                'kelas' => $record->jurnal->kelas?->nama_kelas ?? '-',
+                'siswa' => $record->siswa->nama,
+                'nis' => $record->siswa->nis ?? '-',
+                'status' => $status,
+                'catatan' => $record->catatan ?: 'Tidak ada keterangan.',
+            ]);
+        }
+
+        $classes = Kelas::query()
+            ->when($kelasId && $kelasId !== 'all', fn ($query) => $query->where('id_kelas', $kelasId))
+            ->orderBy('nama_kelas')
+            ->get();
+
+        return $classes->map(function (Kelas $kelas) use ($absentRecords) {
+            $records = $absentRecords->filter(fn (array $record): bool => (int) $record['kelas_id'] === (int) $kelas->id_kelas)
+                ->sortBy([['tanggal', 'desc'], ['siswa', 'asc']])
+                ->values();
+
+            return (object) [
+                'id' => $kelas->id_kelas,
+                'nama' => $kelas->nama_kelas,
+                'sakit' => $records->where('status', 'Sakit')->count(),
+                'izin' => $records->where('status', 'Izin')->count(),
+                'alpa' => $records->where('status', 'Alpa')->count(),
+                'dispensasi' => $records->where('status', 'Dispensasi')->count(),
+                'records' => $records,
+            ];
+        });
     }
 
     public function updatePenugasanPiket(Request $request)

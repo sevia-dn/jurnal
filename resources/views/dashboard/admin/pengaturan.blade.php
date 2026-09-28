@@ -11,7 +11,13 @@
 @endsection
 
 @section('content')
-<div class="mx-auto max-w-7xl space-y-6 p-6 font-sans sm:p-10 lg:p-8 xl:p-10">
+<div class="mx-auto w-full max-w-5xl space-y-6 p-4 font-sans sm:p-8">
+
+    <nav x-data="{ active: window.location.hash || '#tenggat-jurnal' }" x-init="window.addEventListener('hashchange', () => active = window.location.hash || '#tenggat-jurnal')" aria-label="Bagian pengaturan" class="sticky top-0 z-10 flex flex-wrap gap-2 rounded-2xl border border-slate-200 bg-white/95 p-3 shadow-sm backdrop-blur">
+        <a href="#tenggat-jurnal" @click="active = '#tenggat-jurnal'" :class="active === '#tenggat-jurnal' ? 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100' : 'bg-slate-50 text-slate-700 hover:bg-slate-100'" class="rounded-xl px-4 py-2 text-sm font-bold transition-colors"><i class="bi bi-hourglass-split mr-1.5"></i>Tenggat Jurnal</a>
+        <a href="#pemajuan-jam" @click="active = '#pemajuan-jam'" :class="active === '#pemajuan-jam' ? 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100' : 'bg-slate-50 text-slate-700 hover:bg-slate-100'" class="rounded-xl px-4 py-2 text-sm font-bold transition-colors"><i class="bi bi-clock-history mr-1.5"></i>Pemajuan Jam</a>
+        <a href="#jurnal-publik" @click="active = '#jurnal-publik'" :class="active === '#jurnal-publik' ? 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100' : 'bg-slate-50 text-slate-700 hover:bg-slate-100'" class="rounded-xl px-4 py-2 text-sm font-bold transition-colors"><i class="bi bi-globe2 mr-1.5"></i>Jurnal Publik</a>
+    </nav>
 
     @if(session('success'))
         <div class="rounded-xl bg-emerald-50 border border-emerald-200 p-4 text-sm text-emerald-800 flex items-center gap-3 shadow-xs">
@@ -43,7 +49,7 @@
 
 
     <!-- KARTU UTAMA: KEBIJAKAN TENGGAT WAKTU PENGISIAN JURNAL GURU -->
-<div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+<div id="tenggat-jurnal" class="scroll-mt-20 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
     <!-- Header Card -->
     <div class="p-5 sm:p-6 border-b border-slate-100 bg-slate-50/50">
         <div class="flex items-center gap-3.5">
@@ -147,7 +153,7 @@
 </div>
 
 
-<div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col justify-between">
+<div id="pemajuan-jam" class="scroll-mt-20 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col justify-between">
     <div class="p-6">
         <!-- Header Card -->
         <div class="flex items-center gap-3 mb-6">
@@ -254,10 +260,77 @@
             </div>
 
         </div>
+        <section id="event-pulang-cepat" class="scroll-mt-20 mt-7 border-t border-slate-100 pt-6">
+            <div class="mb-5 flex items-center gap-3">
+                <span class="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-100 text-lg text-amber-700"><i class="bi bi-sun"></i></span>
+                <div>
+                    <h3 class="text-base font-bold text-slate-900">Event Sekolah dan Pulang Cepat</h3>
+                    <p class="mt-0.5 text-xs text-slate-500">Catat kegiatan dan jam pulang khusus untuk diumumkan pada halaman jurnal publik.</p>
+                </div>
+            </div>
+            <form action="{{ route('admin.pengaturan.update') }}" method="POST" class="space-y-5 rounded-xl border border-slate-200 bg-slate-50/60 p-4 sm:p-5">
+                @csrf
+                <input type="hidden" name="action_type" value="event">
+                <div class="grid gap-4 sm:grid-cols-3">
+                    <label class="block">
+                        <span class="text-xs font-bold text-slate-700">Nama kegiatan sekolah</span>
+                        <input type="text" name="event_sekolah" value="{{ old('event_sekolah', $eventSekolah) }}" maxlength="120" placeholder="Contoh: Jam kosong / kegiatan sekolah" class="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm focus:border-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-100">
+                    </label>
+                    <label class="block">
+                        <span class="text-xs font-bold text-slate-700">Tanggal kegiatan</span>
+                        <input type="date" name="event_sekolah_tanggal" value="{{ old('event_sekolah_tanggal', $eventSekolahTanggal) }}" class="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm focus:border-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-100">
+                    </label>
+                    <label class="block">
+                        <span class="text-xs font-bold text-slate-700">Jam pulang khusus</span>
+                        <input type="text" name="event_sekolah_jam_pulang" value="{{ old('event_sekolah_jam_pulang', $eventSekolahJamPulang) }}" inputmode="numeric" pattern="(?:[01][0-9]|2[0-3])[:.][0-5][0-9]" maxlength="5" placeholder="HH.MM" autocomplete="off" class="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm focus:border-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-100">
+                    </label>
+                </div>
+                <p class="text-xs text-slate-500">Masukkan jam dalam format 24 jam, contoh 09.00. Pengaturan ini menyimpan pengumuman; jadwal pelajaran dan piket tidak berubah otomatis.</p>
+                <div class="flex justify-end border-t border-slate-200 pt-4">
+                    <button type="submit" class="inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl bg-emerald-600 px-6 py-2.5 text-sm font-bold text-white transition hover:bg-emerald-700"><i class="bi bi-floppy-fill"></i><span>Simpan Event / Jam Pulang</span></button>
+                </div>
+            </form>
+        </section>
+
     </div>
 </div>
 
+<div id="jurnal-publik" class="scroll-mt-20 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+    <div class="border-b border-slate-100 bg-slate-50/50 p-5 sm:p-6">
+        <div class="flex items-center gap-3.5">
+            <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-sky-100 text-xl font-bold text-sky-700"><i class="bi bi-globe2"></i></div>
+            <div>
+                <h2 class="text-base font-bold text-slate-900 sm:text-lg">Jurnal Publik</h2>
+                <p class="mt-0.5 text-xs text-slate-500">Atur apakah pengunjung tanpa login dapat melihat riwayat jurnal yang telah disetujui.</p>
+            </div>
+        </div>
     </div>
+    <form action="{{ route('admin.pengaturan.update') }}" method="POST" class="space-y-5 p-5 sm:p-6">
+        @csrf
+        <input type="hidden" name="action_type" value="publik">
+        <input type="hidden" name="publik_jurnal_aktif" value="0">
+        <input type="hidden" name="publik_riwayat_aktif" value="0">
+        <div class="space-y-3">
+            <label class="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 p-4">
+                <input type="checkbox" name="publik_jurnal_aktif" value="1" {{ old('publik_jurnal_aktif', $publikJurnalAktif) ? 'checked' : '' }} class="mt-1 h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500">
+                <span>
+                    <span class="block text-sm font-bold text-slate-800">Aktifkan jurnal publik di halaman awal</span>
+                    <span class="mt-1 block text-xs text-slate-500">Jika dimatikan, jurnal terbaru tidak ditampilkan untuk pengunjung tanpa login.</span>
+                </span>
+            </label>
+            <label class="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 p-4">
+                <input type="checkbox" name="publik_riwayat_aktif" value="1" {{ old('publik_riwayat_aktif', $publikRiwayatAktif) ? 'checked' : '' }} class="mt-1 h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500">
+                <span>
+                    <span class="block text-sm font-bold text-slate-800">Aktifkan riwayat jurnal publik</span>
+                    <span class="mt-1 block text-xs text-slate-500">Jika dimatikan, arsip riwayat jurnal hanya dapat dibuka setelah login.</span>
+                </span>
+            </label>
+        </div>
+        <div class="flex justify-end border-t border-slate-100 pt-4">
+            <button type="submit" class="inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl bg-emerald-600 px-6 py-2.5 text-sm font-bold text-white transition hover:bg-emerald-700"><i class="bi bi-floppy-fill"></i><span>Simpan Pengaturan Publik</span></button>
+        </div>
+    </form>
+</div>
 
 </div>
 

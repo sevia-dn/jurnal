@@ -26,6 +26,11 @@ class PiketScheduleService
     {
         $now = Carbon::instance($dateTime)->setTimezone('Asia/Jakarta');
         $time = $now->format('H:i:s');
+        $dismissalTime = app(ScheduleTimeService::class)->dismissalTimeForDate($now->toDateString());
+
+        if ($dismissalTime !== null && $now->format('H:i') >= $dismissalTime) {
+            return false;
+        }
 
         return JadwalPiket::query()
             ->where('user_id', $user->id)

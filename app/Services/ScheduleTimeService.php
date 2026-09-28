@@ -30,6 +30,50 @@ class ScheduleTimeService
         ];
     }
 
+    public function dismissalTimeForDate(string $date): ?string
+    {
+        if ((string) Pengaturan::getValue('event_sekolah_tanggal', '') !== $date) {
+            return null;
+        }
+
+        $dismissalTime = trim((string) Pengaturan::getValue('event_sekolah_jam_pulang', ''));
+
+        return $dismissalTime !== '' ? substr($dismissalTime, 0, 5) : null;
+    }
+
+    public function isSessionApplicableOnDate(string $date, string $hari, int $jamKe): bool
+    {
+        $dismissalTime = $this->dismissalTimeForDate($date);
+        if ($dismissalTime === null) {
+            return true;
+        }
+
+        $slot = $this->slot($hari, $jamKe);
+
+        return $slot['end'] <= $dismissalTime;
+    }
+
+    public function isScheduleEndApplicableOnDate(string $date, string $endTime): bool
+    {
+        $dismissalTime = $this->dismissalTimeForDate($date);
+        if ($dismissalTime === null) {
+            return true;
+        }
+
+        return substr(trim($endTime), 0, 5) <= $dismissalTime;
+    }
+
+    public function isLessonRangeApplicableOnDate(string $date, string $hari, int $jamMulai, int $jamSelesai): bool
+    {
+        for ($jamKe = $jamMulai; $jamKe <= $jamSelesai; $jamKe++) {
+            if (! $this->isSessionApplicableOnDate($date, $hari, $jamKe)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     public function advancedMinutes(string $hari): int
     {
         $dayKey = $this->dayKey($hari);

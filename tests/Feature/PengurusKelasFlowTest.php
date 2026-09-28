@@ -5,9 +5,7 @@ namespace Tests\Feature;
 use App\Models\Absensi;
 use App\Models\Dispensasi;
 use App\Models\JadwalMengajar;
-use App\Models\JadwalPiket;
 use App\Models\JurnalMengajar;
-use App\Models\KehadiranGuru;
 use App\Models\Kelas;
 use App\Models\Mapel;
 use App\Models\Siswa;
@@ -259,77 +257,6 @@ class PengurusKelasFlowTest extends TestCase
         $response->assertOk();
         $response->assertSee('Dispensasi');
         $response->assertSee('Ayu Lestari');
-    }
-
-    public function test_piket_store_kehadiran_guru_creates_notification_for_pengurus_kelas(): void
-    {
-        Carbon::setLocale('id');
-        $now = Carbon::parse('2026-09-24 08:00:00', 'Asia/Jakarta');
-        $this->travelTo($now);
-        $hariIni = $now->translatedFormat('l');
-
-        $kelas = Kelas::create(['nama_kelas' => 'XI RPL 3', 'jumlah_siswa' => 32]);
-        $pengurus = User::create([
-            'name' => 'Pengurus Kelas XI RPL 3',
-            'username' => 'xirpl3',
-            'password' => Hash::make('password'),
-            'role' => 'pengurus_kelas',
-        ]);
-        $guru = User::create([
-            'name' => 'Siti Rahayu, M.Pd',
-            'username' => 'sitirahayu',
-            'password' => Hash::make('password'),
-            'role' => 'guru',
-        ]);
-        $mapel = Mapel::create(['nama_mapel' => 'Matematika', 'kode_mapel' => 'MTK']);
-        $piketUser = User::create([
-            'name' => 'Petugas Piket',
-            'username' => 'piketuser',
-            'password' => Hash::make('password'),
-            'role' => 'guru',
-        ]);
-
-        // Jadwal piket untuk piketUser hari ini
-        JadwalPiket::create([
-            'user_id' => $piketUser->id,
-            'hari' => $hariIni,
-            'tanggal' => $now->toDateString(),
-            'jam_mulai' => '07:00:00',
-            'jam_selesai' => '14:00:00',
-        ]);
-
-        // Absen piket hari ini
-        KehadiranGuru::create([
-            'user_id' => $piketUser->id,
-            'tanggal' => $now->toDateString(),
-            'status' => 'Hadir',
-            'jam_masuk' => '07:00:00',
-        ]);
-
-        // Jadwal mengajar guru di kelas ini hari ini
-        JadwalMengajar::create([
-            'id_user' => $guru->id,
-            'id_kelas' => $kelas->id_kelas,
-            'id_mapel' => $mapel->id,
-            'hari' => $hariIni,
-            'jam_mulai' => 1,
-            'jam_selesai' => 3,
-        ]);
-
-        $response = $this->actingAs($piketUser)->post(route('piket.kehadiran.store'), [
-            'user_id' => $guru->id,
-            'status' => 'Sakit',
-            'keterangan' => 'Demam tinggi',
-        ]);
-
-        $response->assertRedirect(route('piket.kehadiran'));
-
-        $this->assertDatabaseHas('notifikasis', [
-            'id_user' => $pengurus->id,
-            'id_kelas' => $kelas->id_kelas,
-            'tipe' => 'guru_tidak_hadir',
-            'is_read' => false,
-        ]);
     }
 
     public function test_kehadiran_siswa_mengikuti_guru_pertama_dan_berganti_ke_dispensasi_saat_disetujui(): void

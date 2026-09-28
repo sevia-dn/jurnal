@@ -21,10 +21,9 @@
                     <span class="min-w-0"><span class="block text-base font-extrabold">Pengajuan Dispensasi</span><span class="mt-1 block text-xs text-emerald-50">Buat dan kirim pengajuan dispensasi siswa ke Wakasek.</span></span>
                     <i class="bi bi-chevron-right ml-auto text-xl text-emerald-100 transition group-hover:translate-x-1"></i>
                 </a>
-                {{-- CARD LAPOR KEHADIRAN GURU -> Mengarah ke form pengisian izin/sakit guru --}}
-                <a href="{{ route('piket.kehadiran.form') }}" class="group flex items-center gap-4 rounded-2xl border border-amber-300 bg-gradient-to-br from-amber-500 to-orange-600 p-5 text-white shadow-lg shadow-amber-600/25 transition hover:-translate-y-0.5 hover:shadow-xl">
+                <a href="{{ route('piket.ketidakhadiran-guru.index') }}" class="group flex items-center gap-4 rounded-2xl border border-amber-300 bg-gradient-to-br from-amber-500 to-orange-600 p-5 text-white shadow-lg shadow-amber-600/25 transition hover:-translate-y-0.5 hover:shadow-xl">
                     <span class="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white/20 text-2xl"><i class="bi bi-person-exclamation"></i></span>
-                    <span class="min-w-0"><span class="block text-base font-extrabold">Lapor Kehadiran Guru</span><span class="mt-1 block text-xs text-amber-50">Form pencatatan sakit atau izin guru yang tidak masuk sekolah.</span></span>
+                    <span class="min-w-0"><span class="block text-base font-extrabold">Pengajuan Ketidakhadiran</span><span class="mt-1 block text-xs text-amber-50">Tinjau pengajuan izin atau sakit yang dikirim langsung oleh guru.</span></span>
                     <i class="bi bi-chevron-right ml-auto text-xl text-amber-100 transition group-hover:translate-x-1"></i>
                 </a>
                 <a href="{{ route('piket.kehadiran-siswa') }}" class="group flex items-center gap-4 rounded-2xl border border-sky-300 bg-gradient-to-br from-sky-600 to-indigo-700 p-5 text-white shadow-lg shadow-sky-600/25 transition hover:-translate-y-0.5 hover:shadow-xl">

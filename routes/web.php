@@ -8,6 +8,7 @@ use App\Http\Controllers\JadwalMengajarController;
 use App\Http\Controllers\LogbookController;
 use App\Http\Controllers\PengurusKelasController;
 use App\Http\Controllers\PiketController;
+use App\Http\Controllers\PublicJournalController;
 use Illuminate\Support\Facades\Route;
 
 // ==========================================
@@ -15,7 +16,8 @@ use Illuminate\Support\Facades\Route;
 // ==========================================
 
 // Public routes – always show the login form regardless of authentication state.
-Route::get('/', [AuthController::class, 'showLoginForm']);
+Route::get('/', [PublicJournalController::class, 'index'])->name('public.jurnal');
+Route::get('/riwayat-jurnal', [PublicJournalController::class, 'history'])->name('public.jurnal.riwayat');
 Route::get('/login', [AuthController::class, 'showLoginForm'])->name('login');
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/lupa-password', [AuthController::class, 'requestPasswordReset'])->name('password.request.submit');
@@ -91,14 +93,15 @@ Route::middleware('auth')->group(function () {
         Route::get('/piket/kehadiran', [PiketController::class, 'kehadiran'])
             ->name('piket.kehadiran');
 
-        Route::get('/piket/kehadiran/lapor', [PiketController::class, 'laporKehadiranForm'])
-            ->name('piket.kehadiran.form');
-
         Route::get('/piket/jurnal/{jurnal}', [PiketController::class, 'jurnalDetail'])
             ->name('piket.jurnal.show');
 
-        Route::post('/piket/kehadiran', [PiketController::class, 'storeKehadiranGuru'])
-            ->name('piket.kehadiran.store');
+        Route::get('/piket/jurnal-publik', [PiketController::class, 'managePublicJournals'])
+            ->name('piket.jurnal-publik.index');
+        Route::put('/piket/jurnal-publik/{jurnal}', [PiketController::class, 'updatePublicJournal'])
+            ->name('piket.jurnal-publik.update');
+        Route::delete('/piket/jurnal-publik/{jurnal}', [PiketController::class, 'destroyPublicJournal'])
+            ->name('piket.jurnal-publik.destroy');
 
         Route::post('/piket/kehadiran/{kehadiran}/verifikasi', [PiketController::class, 'verifikasiKehadiran'])
             ->name('piket.kehadiran.verifikasi');
@@ -177,6 +180,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/siswa/batch-delete', [AdminController::class, 'batchDeleteSiswa'])->name('dashboard.siswa.batch-delete');
         Route::post('/siswa/batch-edit', [AdminController::class, 'batchEditSiswa'])->name('dashboard.siswa.batch-edit');
         Route::get('/rekap-jurnal', [AdminController::class, 'rekapJurnal'])->name('dashboard.rekap-jurnal');
+        Route::get('/rekap-jurnal/detail/{id}', [AdminController::class, 'rekapJurnalDetail'])->name('dashboard.rekap-jurnal.detail');
         Route::get('/rekap-jurnal/unduh-pdf', [AdminController::class, 'downloadRekapJurnalPdf'])->name('dashboard.rekap-jurnal.download-pdf');
         Route::post('/rekap-jurnal/penugasan-piket', [AdminController::class, 'updatePenugasanPiket'])->name('dashboard.rekap-jurnal.penugasan-piket');
         Route::get('/pengaturan', [AdminController::class, 'pengaturan'])->name('admin.pengaturan');
@@ -301,6 +305,9 @@ Route::middleware('auth')->group(function () {
 
         Route::get('/piket/rekap-jurnal', [PiketController::class, 'rekapJurnal'])
             ->name('piket.rekap-jurnal');
+
+        Route::get('/piket/rekap-jurnal/detail/{id}', [PiketController::class, 'rekapJurnalDetail'])
+            ->name('piket.rekap-jurnal.detail');
 
         Route::get('/piket/rekap-jurnal/unduh-pdf', [PiketController::class, 'downloadRekapJurnalPdf'])
             ->name('piket.rekap-jurnal.download-pdf');
