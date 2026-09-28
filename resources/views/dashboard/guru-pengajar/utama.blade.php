@@ -65,6 +65,9 @@ function guruLogbookState(config) {
         modePilihJurnal: false,
         selectedJadwalKey: '',
         openModalKetidakhadiran: false,
+        isGuruTidakHadir: config.isGuruTidakHadirDisetujui || false,
+        isGuruTidakHadirPending: config.isGuruTidakHadirPending || false,
+        isGuruTidakHadirDisetujui: config.isGuruTidakHadirDisetujui || false,
 
         aktifkanIsiJurnal() {
             this.modePilihJurnal = true;
@@ -264,17 +267,22 @@ function guruLogbookState(config) {
                 this.catatanText = catatanEl.value;
             }
 
-            if (!this.capturedPhoto || !this.$refs.lampiranInput.files || this.$refs.lampiranInput.files.length === 0) {
-                e.preventDefault();
-                alert('Wajib mengambil foto live bukti kehadiran di kelas sebelum mengirim logbook!');
-                const lampiranEl = document.getElementById('section-lampiran-logbook');
-                if (lampiranEl) {
-                    lampiranEl.scrollIntoView({ behavior: 'smooth' });
+            // Hanya wajib foto live jika guru hadir di kelas (bukan tidak hadir disetujui piket)
+            if (!this.isGuruTidakHadir) {
+                if (!this.capturedPhoto || !this.$refs.lampiranInput.files || this.$refs.lampiranInput.files.length === 0) {
+                    e.preventDefault();
+                    alert('Wajib mengambil foto live bukti kehadiran di kelas sebelum mengirim logbook!');
+                    const lampiranEl = document.getElementById('section-lampiran-logbook');
+                    if (lampiranEl) {
+                        lampiranEl.scrollIntoView({ behavior: 'smooth' });
+                    }
+                    return false;
                 }
-                return false;
             }
             e.preventDefault();
-            this.updateAttendanceSummary();
+            if (!this.isGuruTidakHadir) {
+                this.updateAttendanceSummary();
+            }
             this.previewModal = true;
             return false;
         },
@@ -304,7 +312,9 @@ function guruLogbookState(config) {
         todayDate: @js($todayDate),
         currentFullTime: @js($currentFullTime ?? \Carbon\Carbon::now('Asia/Jakarta')->format('H:i:s')),
         mapelMap: @js($mapelMap),
-        kelasMap: @js($kelasMap)
+        kelasMap: @js($kelasMap),
+        isGuruTidakHadirPending: @js($isGuruTidakHadirPending ?? false),
+        isGuruTidakHadirDisetujui: @js($isGuruTidakHadirDisetujui ?? false)
     })"
     class="mx-auto w-full max-w-7xl px-4 py-5 sm:px-6 lg:px-8"
 >
@@ -332,6 +342,48 @@ function guruLogbookState(config) {
     {{-- ========================================================= --}}
     {{-- SECTION 1 : PILIHAN UTAMA GURU (PALING ATAS) --}}
     {{-- ========================================================= --}}
+
+    {{-- BANNER: KETIDAKHADIRAN PENDING (menunggu validasi piket) --}}
+    @if($isGuruTidakHadirPending ?? false)
+        <div class="mb-4 rounded-2xl border border-amber-300 bg-amber-50 p-4 shadow-sm" role="alert">
+            <div class="flex items-start gap-3">
+                <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-xl text-amber-600">
+                    <i class="bi bi-hourglass-split"></i>
+                </span>
+                <div class="min-w-0 flex-1">
+                    <p class="text-sm font-bold text-amber-900">Menunggu Validasi Guru Piket</p>
+                    <p class="mt-0.5 text-xs text-amber-800">
+                        Laporan ketidakhadiran Anda (<strong>{{ ucfirst($ketidakhadiranHariIni?->alasan ?? 'izin') }}</strong>)
+                        sudah terkirim ke Guru Piket dan sedang menunggu diverifikasi.
+                        Pengisian jurnal penugasan akan tersedia setelah Guru Piket menyetujuinya.
+                    </p>
+                </div>
+            </div>
+        </div>
+    @endif
+
+    {{-- BANNER: KETIDAKHADIRAN DISETUJUI (mode jurnal penugasan) --}}
+    @if($isGuruTidakHadirDisetujui ?? false)
+        <div class="mb-4 rounded-2xl border border-blue-300 bg-blue-50 p-4 shadow-sm" role="alert">
+            <div class="flex items-start gap-3">
+                <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-100 text-xl text-blue-600">
+                    <i class="bi bi-info-circle-fill"></i>
+                </span>
+                <div class="min-w-0 flex-1">
+                    <p class="text-sm font-bold text-blue-900">
+                        Mode Jurnal Penugasan — Anda Tercatat Tidak Hadir
+                        ({{ ucfirst($ketidakhadiranHariIni?->alasan ?? 'izin') }})
+                    </p>
+                    <p class="mt-0.5 text-xs text-blue-800">
+                        Ketidakhadiran Anda sudah disetujui Guru Piket. Silakan isi materi/penugasan untuk kelas Anda.
+                        Presensi siswa dan foto live tidak diperlukan dalam mode ini.
+                    </p>
+                </div>
+            </div>
+        </div>
+    @endif
+
+    @if(! ($isGuruTidakHadirPending ?? false))
     <section class="mt-4 flex flex-col sm:flex-row gap-3">
         {{-- Opsi A: Isi Jurnal Mengajar --}}
         <button
@@ -533,6 +585,8 @@ function guruLogbookState(config) {
             </form>
         </div>
     </div>
+
+    @endif {{-- end @if(! $isGuruTidakHadirPending) --}}
 
     {{-- ========================================================= --}}
     {{-- SECTION 2 : JADWAL MENGAJAR GURU HARI INI (MOBILE FRIENDLY) --}}
@@ -944,7 +998,8 @@ function guruLogbookState(config) {
             </div>
 
 
-            {{-- 3. PRESENSI KEHADIRAN SISWA --}}
+            {{-- 3. PRESENSI KEHADIRAN SISWA (disembunyikan saat guru tidak hadir & disetujui piket) --}}
+            @unless($isGuruTidakHadirDisetujui ?? false)
             <div class="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm sm:p-5">
                 <div class="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 pb-3 mb-3">
                     <div class="flex items-center gap-2">
@@ -1136,9 +1191,35 @@ function guruLogbookState(config) {
                         @endforelse
                     </div>
                 </div>
-            </div>
+            @endunless
 
-            {{-- 2. LAMPIRAN BUKTI HADIR DI KELAS (FOTO LIVE) --}}
+            {{-- 2. LAMPIRAN BUKTI HADIR DI KELAS (FOTO LIVE) — atau Upload Berkas Tugas untuk guru tidak hadir --}}
+            @if($isGuruTidakHadirDisetujui ?? false)
+            {{-- Mode Guru Tidak Hadir: Upload berkas tugas opsional + hidden inputs --}}
+            <div class="rounded-2xl bg-white p-4 shadow-sm border border-slate-100 sm:p-5">
+                <div class="border-b border-slate-100 pb-3 flex items-center gap-2">
+                    <span class="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-100 text-sm text-blue-700">
+                        <i class="bi bi-paperclip"></i>
+                    </span>
+                    <h3 class="text-base font-bold text-slate-800">
+                        Lampiran Berkas Tugas <span class="text-xs text-slate-400 font-normal">(Opsional, maks 10 MB)</span>
+                    </h3>
+                </div>
+                <div class="mt-3">
+                    <input
+                        type="file"
+                        name="lampiran"
+                        accept=".jpg,.jpeg,.png,.webp,.pdf,.doc,.docx"
+                        x-ref="lampiranInput"
+                        class="block w-full text-xs text-slate-700 file:mr-3 file:rounded-lg file:border-0 file:bg-blue-50 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-blue-700 hover:file:bg-blue-100"
+                    >
+                    <p class="mt-1 text-[11px] text-slate-500">Format: JPG, PNG, PDF, Word. Unggah soal/materi jika ada.</p>
+                </div>
+                {{-- Hidden inputs untuk status guru tidak hadir --}}
+                <input type="hidden" name="status_kehadiran_guru" value="{{ $ketidakhadiranHariIni?->label_alasan ?? 'Izin' }}">
+                <input type="hidden" name="ada_tugas" value="Ya">
+            </div>
+            @else
             <div id="section-lampiran-logbook" class="rounded-2xl bg-white p-4 shadow-sm border border-slate-100 sm:p-5">
                 <div class="border-b border-slate-100 pb-3 flex items-center gap-2">
                     <span class="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-100 text-sm text-emerald-700">
@@ -1205,6 +1286,7 @@ function guruLogbookState(config) {
                     </div>
                 </div>
             </div>
+            @endif {{-- end @if($isGuruTidakHadirDisetujui) camera vs upload --}}
 
 
             {{-- 4. CATATAN KHUSUS (OPSIONAL) --}}

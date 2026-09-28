@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Dispensasi;
 use App\Models\JurnalMengajar;
 use App\Models\Kelas;
+use App\Models\KetidakhadiranGuru;
 use App\Models\Notifikasi;
 use App\Models\Siswa;
 use App\Models\User;
@@ -32,35 +33,72 @@ class LogbookController extends Controller
         $user = Auth::user();
         $now = Carbon::now('Asia/Jakarta');
         $todayDate = $now->toDateString();
-
-        // 1. Validasi input form jurnal, lampiran bukti hadir, dan absensi siswa
-        $request->validate([
-            'id_kelas' => 'required|exists:kelas,id_kelas',
-            'id_mapel' => 'required|exists:mapels,id',
-            'jam_ke' => 'required|integer|min:1|max:13',
-            'jam_selesai' => 'nullable|integer|min:1|max:13|gte:jam_ke',
-            'tanggal' => 'nullable|date',
-            'materi' => 'required|string|max:500',
-            'ada_tugas' => 'required|in:Ya,Tidak',
-            'catatan' => 'nullable|string',
-            'lampiran' => 'required|file|mimes:jpeg,png,jpg,webp,pdf|max:5120',
-            'absensi' => 'nullable|array',
-            'absensi.*' => 'nullable|in:Hadir,Sakit,Izin,Alpa,D,Dispensasi',
-            'absensi_catatan' => 'nullable|array',
-            'absensi_catatan.*' => 'nullable|string|max:255',
-        ], [
-            'materi.required' => 'Materi / Pokok Pembahasan wajib diisi.',
-            'jam_selesai.gte' => 'Jam selesai mengajar harus lebih besar atau sama dengan jam mulai.',
-            'lampiran.required' => 'Lampiran foto atau berkas bukti kehadiran di kelas wajib diunggah.',
-            'lampiran.file' => 'Lampiran harus berupa berkas/file yang valid.',
-            'lampiran.mimes' => 'Format lampiran harus berupa foto (JPG, PNG, WebP) atau berkas PDF.',
-            'lampiran.max' => 'Ukuran berkas lampiran maksimal 5 MB.',
-        ]);
-
         $jamMulai = (int) $request->jam_ke;
         $jamSelesai = (int) ($request->jam_selesai ?: $request->jam_ke);
         $journalDate = Carbon::parse($request->input('tanggal', $todayDate), 'Asia/Jakarta')->startOfDay();
         $journalDateString = $journalDate->toDateString();
+
+        $ketidakhadiranPending = KetidakhadiranGuru::where('user_id', $user->id)
+            ->whereDate('tanggal', $journalDateString)
+            ->where('status', 'pending')
+            ->first();
+
+        if ($ketidakhadiranPending) {
+            return redirect()
+                ->back()
+                ->withInput()
+                ->with('error', 'Laporan ketidakhadiran Anda masih menunggu validasi dari Guru Piket. Anda baru dapat mengisi jurnal penugasan setelah pengajuan disetujui.');
+        }
+
+        $ketidakhadiranApproved = KetidakhadiranGuru::where('user_id', $user->id)
+            ->whereDate('tanggal', $journalDateString)
+            ->where('status', 'disetujui')
+            ->first();
+
+        $isGuruTidakHadir = $ketidakhadiranApproved !== null || in_array($request->input('status_kehadiran_guru'), ['Izin', 'Sakit'], true);
+        $statusKehadiranGuru = $ketidakhadiranApproved ? $ketidakhadiranApproved->label_alasan : ($request->input('status_kehadiran_guru') ?: 'Hadir');
+
+        // 1. Validasi input form jurnal, lampiran bukti hadir, dan absensi siswa
+        if ($isGuruTidakHadir) {
+            $request->validate([
+                'id_kelas' => 'required|exists:kelas,id_kelas',
+                'id_mapel' => 'required|exists:mapels,id',
+                'jam_ke' => 'required|integer|min:1|max:13',
+                'jam_selesai' => 'nullable|integer|min:1|max:13|gte:jam_ke',
+                'tanggal' => 'nullable|date',
+                'materi' => 'required|string|max:500',
+                'catatan' => 'nullable|string',
+                'lampiran' => 'nullable|file|mimes:jpeg,png,jpg,webp,pdf,doc,docx|max:10240',
+            ], [
+                'materi.required' => 'Materi / Rincian Penugasan Siswa wajib diisi.',
+                'jam_selesai.gte' => 'Jam selesai mengajar harus lebih besar atau sama dengan jam mulai.',
+                'lampiran.file' => 'Lampiran harus berupa berkas/file yang valid.',
+                'lampiran.max' => 'Ukuran berkas lampiran maksimal 10 MB.',
+            ]);
+        } else {
+            $request->validate([
+                'id_kelas' => 'required|exists:kelas,id_kelas',
+                'id_mapel' => 'required|exists:mapels,id',
+                'jam_ke' => 'required|integer|min:1|max:13',
+                'jam_selesai' => 'nullable|integer|min:1|max:13|gte:jam_ke',
+                'tanggal' => 'nullable|date',
+                'materi' => 'required|string|max:500',
+                'ada_tugas' => 'required|in:Ya,Tidak',
+                'catatan' => 'nullable|string',
+                'lampiran' => 'required|file|mimes:jpeg,png,jpg,webp,pdf|max:5120',
+                'absensi' => 'nullable|array',
+                'absensi.*' => 'nullable|in:Hadir,Sakit,Izin,Alpa,D,Dispensasi',
+                'absensi_catatan' => 'nullable|array',
+                'absensi_catatan.*' => 'nullable|string|max:255',
+            ], [
+                'materi.required' => 'Materi / Pokok Pembahasan wajib diisi.',
+                'jam_selesai.gte' => 'Jam selesai mengajar harus lebih besar atau sama dengan jam mulai.',
+                'lampiran.required' => 'Lampiran foto atau berkas bukti kehadiran di kelas wajib diunggah.',
+                'lampiran.file' => 'Lampiran harus berupa berkas/file yang valid.',
+                'lampiran.mimes' => 'Format lampiran harus berupa foto (JPG, PNG, WebP) atau berkas PDF.',
+                'lampiran.max' => 'Ukuran berkas lampiran maksimal 5 MB.',
+            ]);
+        }
 
         // 2. Terapkan kebijakan yang disimpan Admin pada tanggal jurnal yang dipilih.
         $hariJurnal = $journalDate->translatedFormat('l');
@@ -98,79 +136,81 @@ class LogbookController extends Controller
             $lampiranPath = $request->file('lampiran')->store('jurnal-lampiran', 'public');
         }
 
-        // 5. Hitung rekap absensi siswa di kelas yang dipilih
-        // Ambil semua siswa yang terdaftar di kelas tersebut
-        $daftarSiswaKelas = Siswa::where('kelas_id', $request->id_kelas)
-            ->orderBy('id')
-            ->get();
-        $idSiswaKelas = $daftarSiswaKelas->pluck('id')->all();
-        $inputAbsensi = collect($request->input('absensi', []));
-        $inputCatatanAbsensi = collect($request->input('absensi_catatan', []));
-        $dispensasis = Dispensasi::query()
-            ->whereIn('siswa_id', $idSiswaKelas)
-            ->where('status_akhir', 'disetujui')
-            ->whereDate('tanggal', '<=', $journalDateString)
-            ->whereDate('tanggal_selesai', '>=', $journalDateString)
-            ->get()
-            ->groupBy('siswa_id');
-
+        // 5. Hitung rekap absensi siswa di kelas yang dipilih (hanya jika guru hadir di kelas)
+        $absensiFinal = [];
         $jmlHadir = 0;
         $jmlSakit = 0;
         $jmlIzin = 0;
         $jmlAlpa = 0;
         $jmlDispensasi = 0;
+        $jmlTidakHadir = 0;
 
-        $absensiFinal = [];
-        foreach ($daftarSiswaKelas as $s) {
-            // Status absensi siswa dari input form (dukung key integer dan string)
-            $rawStatus = $inputAbsensi->get($s->id) ?? $inputAbsensi->get((string) $s->id) ?? 'Hadir';
-            $st = trim((string) $rawStatus);
+        if (! $isGuruTidakHadir) {
+            $daftarSiswaKelas = Siswa::where('kelas_id', $request->id_kelas)
+                ->orderBy('id')
+                ->get();
+            $idSiswaKelas = $daftarSiswaKelas->pluck('id')->all();
+            $inputAbsensi = collect($request->input('absensi', []));
+            $inputCatatanAbsensi = collect($request->input('absensi_catatan', []));
+            $dispensasis = Dispensasi::query()
+                ->whereIn('siswa_id', $idSiswaKelas)
+                ->where('status_akhir', 'disetujui')
+                ->whereDate('tanggal', '<=', $journalDateString)
+                ->whereDate('tanggal_selesai', '>=', $journalDateString)
+                ->get()
+                ->groupBy('siswa_id');
 
-            if (in_array(strtolower($st), ['d', 'dispensasi'], true)) {
-                $st = 'D';
-            } elseif (in_array(strtolower($st), ['a', 'alpa', 'alfa'], true)) {
-                $st = 'Alpa';
-            } elseif (in_array(strtolower($st), ['s', 'sakit'], true)) {
-                $st = 'Sakit';
-            } elseif (in_array(strtolower($st), ['i', 'izin'], true)) {
-                $st = 'Izin';
-            } else {
-                $st = 'Hadir';
+            foreach ($daftarSiswaKelas as $s) {
+                // Status absensi siswa dari input form (dukung key integer dan string)
+                $rawStatus = $inputAbsensi->get($s->id) ?? $inputAbsensi->get((string) $s->id) ?? 'Hadir';
+                $st = trim((string) $rawStatus);
+
+                if (in_array(strtolower($st), ['d', 'dispensasi'], true)) {
+                    $st = 'D';
+                } elseif (in_array(strtolower($st), ['a', 'alpa', 'alfa'], true)) {
+                    $st = 'Alpa';
+                } elseif (in_array(strtolower($st), ['s', 'sakit'], true)) {
+                    $st = 'Sakit';
+                } elseif (in_array(strtolower($st), ['i', 'izin'], true)) {
+                    $st = 'Izin';
+                } else {
+                    $st = 'Hadir';
+                }
+
+                if ($dispensasis->get($s->id, collect())->contains(
+                    fn (Dispensasi $dispensasi): bool => $workflowService->isActiveForStudentAt($dispensasi, $journalDateString, $jamMulai)
+                )) {
+                    $st = 'D';
+                }
+
+                $rawCatatan = $inputCatatanAbsensi->get($s->id) ?? $inputCatatanAbsensi->get((string) $s->id);
+                $catatan = $st === 'Hadir' ? null : (trim((string) $rawCatatan) ?: null);
+
+                $absensiFinal[$s->id] = [
+                    'status' => $st,
+                    'catatan' => $catatan,
+                ];
+
+                switch ($st) {
+                    case 'Sakit':
+                        $jmlSakit++;
+                        break;
+                    case 'Izin':
+                        $jmlIzin++;
+                        break;
+                    case 'Alpa':
+                        $jmlAlpa++;
+                        break;
+                    case 'D':
+                        $jmlDispensasi++;
+                        break;
+                    default:
+                        $jmlHadir++;
+                        break;
+                }
             }
-
-            if ($dispensasis->get($s->id, collect())->contains(
-                fn (Dispensasi $dispensasi): bool => $workflowService->isActiveForStudentAt($dispensasi, $journalDateString, $jamMulai)
-            )) {
-                $st = 'D';
-            }
-
-            $rawCatatan = $inputCatatanAbsensi->get($s->id) ?? $inputCatatanAbsensi->get((string) $s->id);
-            $catatan = $st === 'Hadir' ? null : (trim((string) $rawCatatan) ?: null);
-
-            $absensiFinal[$s->id] = [
-                'status' => $st,
-                'catatan' => $catatan,
-            ];
-
-            switch ($st) {
-                case 'Sakit':
-                    $jmlSakit++;
-                    break;
-                case 'Izin':
-                    $jmlIzin++;
-                    break;
-                case 'Alpa':
-                    $jmlAlpa++;
-                    break;
-                case 'D':
-                    $jmlDispensasi++;
-                    break;
-                default:
-                    $jmlHadir++;
-                    break;
-            }
+            $jmlTidakHadir = $jmlSakit + $jmlIzin + $jmlAlpa + $jmlDispensasi;
         }
-        $jmlTidakHadir = $jmlSakit + $jmlIzin + $jmlAlpa + $jmlDispensasi;
 
         // 6. Database Transaction
         DB::beginTransaction();
@@ -190,8 +230,8 @@ class LogbookController extends Controller
                 'jumlah_alpa' => $jmlAlpa,
                 'jumlah_dispensasi' => $jmlDispensasi,
                 'jumlah_tidak_hadir' => $jmlTidakHadir,
-                'status_kehadiran_guru' => 'Hadir',
-                'ada_tugas' => $request->ada_tugas === 'Ya',
+                'status_kehadiran_guru' => $isGuruTidakHadir ? $statusKehadiranGuru : 'Hadir',
+                'ada_tugas' => $isGuruTidakHadir ? true : ($request->ada_tugas === 'Ya'),
                 'catatan' => $request->catatan,
                 'lampiran' => $lampiranPath,
                 'status_validasi' => 'belum_divalidasi',
@@ -199,14 +239,16 @@ class LogbookController extends Controller
                 'divalidasi_pada' => null,
             ]);
 
-            // Simpan satu detail presensi untuk setiap siswa di kelas jurnal.
-            $jurnal->absensis()->createMany(
-                collect($absensiFinal)->map(fn (array $absensiSiswa, int $idSiswa): array => [
-                    'id_siswa' => $idSiswa,
-                    'status' => $absensiSiswa['status'],
-                    'catatan' => $absensiSiswa['catatan'],
-                ])->values()->all()
-            );
+            // Simpan satu detail presensi untuk setiap siswa jika guru hadir
+            if (! $isGuruTidakHadir && count($absensiFinal) > 0) {
+                $jurnal->absensis()->createMany(
+                    collect($absensiFinal)->map(fn (array $absensiSiswa, int $idSiswa): array => [
+                        'id_siswa' => $idSiswa,
+                        'status' => $absensiSiswa['status'],
+                        'catatan' => $absensiSiswa['catatan'],
+                    ])->values()->all()
+                );
+            }
 
             // Kirim notifikasi ke pengurus kelas bahwa jurnal baru telah dikirim dan butuh validasi
             $targetKelas = Kelas::find($request->id_kelas);
@@ -221,12 +263,17 @@ class LogbookController extends Controller
                     });
 
                 foreach ($pengurusUsers as $pengurus) {
+                    $judulNotif = $isGuruTidakHadir ? 'Jurnal Penugasan Baru Menunggu Validasi' : 'Jurnal Baru Menunggu Validasi';
+                    $pesanNotif = $isGuruTidakHadir
+                        ? "Bpk/Ibu {$user->name} ({$statusKehadiranGuru}) baru saja mengirimkan materi & tugas untuk kelas {$namaKelasTarget} jam ke-{$jamMulai}. Silakan periksa dan validasi."
+                        : "Bpk/Ibu {$user->name} baru saja mengirimkan jurnal mengajar kelas {$namaKelasTarget} jam ke-{$jamMulai}. Silakan periksa dan validasi.";
+
                     Notifikasi::create([
                         'id_user' => $pengurus->id,
                         'id_kelas' => $targetKelas->id_kelas,
                         'id_dispensasi' => null,
-                        'judul' => 'Jurnal Baru Menunggu Validasi',
-                        'pesan' => "Bpk/Ibu {$user->name} baru saja mengirimkan jurnal mengajar kelas {$namaKelasTarget} jam ke-{$jamMulai}. Silakan periksa dan validasi.",
+                        'judul' => $judulNotif,
+                        'pesan' => $pesanNotif,
                         'tipe' => 'jurnal_baru',
                         'is_read' => false,
                     ]);
@@ -235,9 +282,13 @@ class LogbookController extends Controller
 
             DB::commit();
 
+            $successMessage = $isGuruTidakHadir
+                ? 'Jurnal penugasan mandiri (Guru '.$statusKehadiranGuru.') berhasil disimpan! Status: Menunggu Validasi Pengurus Kelas.'
+                : 'Jurnal pembelajaran dan presensi siswa berhasil disimpan! Status: Menunggu Validasi Pengurus Kelas.';
+
             return redirect()
                 ->route('guru.riwayat')
-                ->with('success', 'Jurnal pembelajaran dan presensi siswa berhasil disimpan! Status: Menunggu Validasi Pengurus Kelas.');
+                ->with('success', $successMessage);
         } catch (\Exception $e) {
             DB::rollBack();
 

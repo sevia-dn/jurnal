@@ -7,6 +7,7 @@ use App\Models\Dispensasi;
 use App\Models\JadwalMengajar;
 use App\Models\JurnalMengajar;
 use App\Models\Kelas;
+use App\Models\KetidakhadiranGuru;
 use App\Models\Notifikasi;
 use App\Models\PiketKehadiranSiswa;
 use App\Models\Siswa;
@@ -172,6 +173,11 @@ class PengurusKelasController extends Controller
             ->take(5)
             ->get();
 
+        $ketidakhadiranGuruHariIni = KetidakhadiranGuru::whereDate('tanggal', $now->toDateString())
+            ->where('status', 'disetujui')
+            ->get()
+            ->keyBy('user_id');
+
         return view('dashboard.pengurus-kelas.utama', compact(
             'kelas',
             'hariIni',
@@ -188,7 +194,8 @@ class PengurusKelasController extends Controller
             'jmlDispensasi',
             'jurnalAntrean',
             'jadwals',
-            'jurnalHariIni'
+            'jurnalHariIni',
+            'ketidakhadiranGuruHariIni'
         ));
     }
 
@@ -327,12 +334,18 @@ class PengurusKelasController extends Controller
                 ->keyBy('jam_ke');
         }
 
+        $ketidakhadiranGuruHariIni = KetidakhadiranGuru::whereDate('tanggal', $now->toDateString())
+            ->where('status', 'disetujui')
+            ->get()
+            ->keyBy('user_id');
+
         return view('dashboard.pengurus-kelas.kehadiran-guru', compact(
             'kelas',
             'tanggalFormatted',
             'hariIni',
             'jadwals',
-            'jurnalHariIni'
+            'jurnalHariIni',
+            'ketidakhadiranGuruHariIni'
         ));
     }
 

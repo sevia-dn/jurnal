@@ -113,9 +113,21 @@
                     </div>
                     <div class="rounded-xl bg-slate-50 p-3.5 border border-slate-100">
                         <dt class="text-[11px] font-bold uppercase tracking-wide text-slate-400">Status Kehadiran Guru</dt>
-                        <dd class="mt-1 text-sm font-bold text-emerald-700 flex items-center gap-1">
-                            <i class="bi bi-person-check-fill"></i> {{ $jurnal->status_kehadiran_guru ?? 'Hadir' }}
-                        </dd>
+                        @php
+                            $statusKehadiran = $jurnal->status_kehadiran_guru ?? 'Hadir';
+                            $isGuruTidakHadirJurnal = in_array($statusKehadiran, ['Izin', 'Sakit']);
+                        @endphp
+                        @if($isGuruTidakHadirJurnal)
+                            <dd class="mt-1 text-sm font-bold text-blue-700 flex items-center gap-1">
+                                <i class="bi bi-person-x-fill"></i>
+                                Tidak Hadir ({{ $statusKehadiran }}
+                                @if($jurnal->ada_tugas) — Memberi Tugas @endif)
+                            </dd>
+                        @else
+                            <dd class="mt-1 text-sm font-bold text-emerald-700 flex items-center gap-1">
+                                <i class="bi bi-person-check-fill"></i> {{ $statusKehadiran }}
+                            </dd>
+                        @endif
                     </div>
                 </dl>
             </section>
@@ -170,6 +182,19 @@
                     </span>
                 </div>
 
+                @if($isGuruTidakHadirJurnal)
+                    {{-- Banner informatif bahwa presensi siswa ditiadakan karena guru tidak hadir --}}
+                    <div class="mt-4 rounded-xl border border-blue-200 bg-blue-50/80 p-4 flex items-start gap-3">
+                        <i class="bi bi-info-circle-fill text-blue-600 text-lg shrink-0 mt-0.5"></i>
+                        <div>
+                            <p class="text-sm font-bold text-blue-900">Presensi siswa tidak diinput</p>
+                            <p class="mt-0.5 text-xs text-blue-700">
+                                Guru tercatat <strong>Tidak Hadir ({{ $statusKehadiran }})</strong> dan hanya mengirimkan materi/tugas.
+                                Presensi siswa tidak dilakukan pada sesi ini.
+                            </p>
+                        </div>
+                    </div>
+                @else
                 {{-- Badges Ringkasan --}}
                 <div class="mt-3 flex flex-wrap gap-2 text-xs font-bold">
                     <span class="rounded-full bg-emerald-100 px-3 py-1 text-emerald-800">
@@ -244,18 +269,24 @@
                         </div>
                     @endif
                 </div>
+                @endif {{-- end @if($isGuruTidakHadirJurnal) --}}
             </section>
 
-            {{-- 6. FOTO LIVE BUKTI MENGAJAR DI KELAS --}}
+            {{-- 6. FOTO LIVE BUKTI MENGAJAR / LAMPIRAN TUGAS --}}
             <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                 <div class="flex items-center justify-between">
                     <div class="flex items-center gap-2">
-                        <i class="bi bi-camera-fill text-emerald-600 text-lg"></i>
-                        <h2 class="text-sm font-extrabold uppercase tracking-wide text-slate-800">Foto Live Bukti Kehadiran di Kelas</h2>
+                        @if($isGuruTidakHadirJurnal)
+                            <i class="bi bi-paperclip text-blue-600 text-lg"></i>
+                            <h2 class="text-sm font-extrabold uppercase tracking-wide text-slate-800">Lampiran Berkas Tugas</h2>
+                        @else
+                            <i class="bi bi-camera-fill text-emerald-600 text-lg"></i>
+                            <h2 class="text-sm font-extrabold uppercase tracking-wide text-slate-800">Foto Live Bukti Kehadiran di Kelas</h2>
+                        @endif
                     </div>
                     @if($jurnal->lampiran)
                         <span class="rounded-full bg-emerald-100 px-2.5 py-0.5 text-[10px] font-bold text-emerald-700">
-                            Foto Terverifikasi
+                            {{ $isGuruTidakHadirJurnal ? 'Terlampir' : 'Foto Terverifikasi' }}
                         </span>
                     @endif
                 </div>
@@ -264,12 +295,17 @@
                     @if($jurnal->lampiran)
                         @php
                             $fotoUrl = asset('storage/' . $jurnal->lampiran);
+                            $isImage = str_contains(strtolower($jurnal->lampiran), '.jpg')
+                                || str_contains(strtolower($jurnal->lampiran), '.jpeg')
+                                || str_contains(strtolower($jurnal->lampiran), '.png')
+                                || str_contains(strtolower($jurnal->lampiran), '.webp');
                         @endphp
+                        @if($isImage)
                         <div class="overflow-hidden rounded-xl border border-slate-200 bg-slate-100 shadow-2xs">
                             <a href="{{ $fotoUrl }}" target="_blank" title="Buka foto ukuran penuh" class="group block relative">
                                 <img
                                     src="{{ $fotoUrl }}"
-                                    alt="Foto Live Bukti Mengajar Guru"
+                                    alt="{{ $isGuruTidakHadirJurnal ? 'Lampiran Tugas Guru' : 'Foto Live Bukti Mengajar Guru' }}"
                                     class="max-h-96 w-full object-contain rounded-xl transition duration-200 group-hover:opacity-95"
                                 >
                                 <div class="absolute bottom-2 right-2 rounded-lg bg-black/60 px-2.5 py-1 text-[10px] font-medium text-white backdrop-blur-xs flex items-center gap-1">
@@ -277,10 +313,22 @@
                                 </div>
                             </a>
                         </div>
+                        @else
+                        <a href="{{ $fotoUrl }}" target="_blank"
+                           class="inline-flex items-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-xs font-semibold text-blue-700 hover:bg-blue-100 transition">
+                            <i class="bi bi-file-earmark-arrow-down-fill text-base"></i>
+                            Unduh / Lihat Berkas Lampiran
+                        </a>
+                        @endif
                     @else
                         <div class="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-slate-200 bg-slate-50/70 p-6 text-center">
-                            <i class="bi bi-camera-video-off text-2xl text-slate-400"></i>
-                            <p class="mt-1 text-xs font-semibold text-slate-500">Tidak ada foto live bukti kehadiran yang dilampirkan.</p>
+                            @if($isGuruTidakHadirJurnal)
+                                <i class="bi bi-paperclip text-2xl text-slate-400"></i>
+                                <p class="mt-1 text-xs font-semibold text-slate-500">Tidak ada berkas tugas yang dilampirkan.</p>
+                            @else
+                                <i class="bi bi-camera-video-off text-2xl text-slate-400"></i>
+                                <p class="mt-1 text-xs font-semibold text-slate-500">Tidak ada foto live bukti kehadiran yang dilampirkan.</p>
+                            @endif
                         </div>
                     @endif
                 </div>

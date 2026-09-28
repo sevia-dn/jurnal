@@ -59,6 +59,13 @@ class GuruController extends Controller
             ->first();
         $sudahAbsen = $kehadiranHariIni !== null;
 
+        // Ketidakhadiran guru yang dilaporkan ke piket
+        $ketidakhadiranHariIni = KetidakhadiranGuru::where('user_id', $user->id)
+            ->whereDate('tanggal', $todayDate)
+            ->first();
+        $isGuruTidakHadirDisetujui = $ketidakhadiranHariIni !== null && $ketidakhadiranHariIni->status === 'disetujui';
+        $isGuruTidakHadirPending = $ketidakhadiranHariIni !== null && $ketidakhadiranHariIni->status === 'pending';
+
         $pendingDispensasis = collect();
         $approvalDispensasi = null;
         if ($isWaka) {
@@ -165,6 +172,9 @@ class GuruController extends Controller
             'currentTime',
             'currentFullTime',
             'logbookPolicy',
+            'ketidakhadiranHariIni',
+            'isGuruTidakHadirDisetujui',
+            'isGuruTidakHadirPending',
         ));
     }
 
@@ -392,6 +402,6 @@ class GuruController extends Controller
         }
 
         return redirect()->route('guru.utama')
-            ->with('success', 'Pengajuan ketidakhadiran ('.ucfirst($request->alasan).') untuk '.Carbon::parse($request->tanggal)->translatedFormat('l, d F Y').' telah dikirim ke Guru Piket untuk diproses.');
+            ->with('success', 'Laporan ketidakhadiran ('.ucfirst($request->alasan).') berhasil dikirim ke Guru Piket dan sedang menunggu validasi.');
     }
 }
