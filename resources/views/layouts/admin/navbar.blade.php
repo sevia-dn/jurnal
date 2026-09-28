@@ -274,7 +274,7 @@
 
       <!-- Info Pengguna yang Direset -->
       <div class="p-3.5 bg-emerald-50/70 border border-emerald-200/70 rounded-xl flex items-center gap-3">
-        <div class="w-10 h-10 rounded-full bg-emerald-600 text-white font-bold flex items-center justify-center text-sm shadow-2xs shrink-0" id="approveModalAvatar">
+        <div class="w-10 h-10 rounded-full bg-[#0D6B5A] text-white font-bold flex items-center justify-center text-sm shadow-2xs shrink-0" id="approveModalAvatar">
           US
         </div>
         <div class="min-w-0 flex-1">

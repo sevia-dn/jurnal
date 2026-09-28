@@ -113,7 +113,7 @@
                 $initials .= strtoupper(substr($namaParts[1], 0, 1));
             }
         @endphp
-        <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-xs font-bold text-emerald-800 border border-emerald-200">
+        <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#DFFAF3] text-xs font-bold text-[#0D6B5A] border border-[#AEE5D4]">
             {{ $initials }}
         </span>
         <div class="min-w-0 flex-1">
