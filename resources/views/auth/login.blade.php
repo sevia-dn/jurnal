@@ -25,8 +25,8 @@
               sans: ['Inter', 'sans-serif'],
             },
             colors: {
-              'jk-green': '#155d50',
-              'jk-btn': '#5fc29b',
+              'jk-green': '#0D6B5A',
+              'jk-btn': '#1BA886',
               'jk-dark': '#0b2b24',
             }
           }
@@ -75,7 +75,7 @@
             
             <!-- Logo Khusus Tampilan Mobile (Sembunyi di Desktop) -->
             <div class="flex md:hidden items-center gap-3 mb-8">
-                <img src="{{ asset('img/logo-rounded.png') }}" alt="Logo JurnalKita" class="w-12 h-12 rounded-xl shadow-md border border-emerald-100 object-cover">
+                <img src="{{ asset('img/logo-rounded.png') }}" alt="Logo JurnalKita" class="w-12 h-12 rounded-xl shadow-md border border-[#1BA886]/30 object-cover">
                 <span class="font-bold text-2xl text-jk-green tracking-tight">JurnalKita</span>
             </div>
 
@@ -133,7 +133,7 @@
                         </button>
                     </div>
 
-<button type="submit" class="w-full py-3 bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-sm rounded-lg shadow-sm transition duration-200">
+<button type="submit" class="w-full py-3 bg-jk-green hover:bg-[#0a5547] text-white font-semibold text-sm rounded-lg shadow-sm transition duration-200">
     Sign In
 </button>
                 </form>
