@@ -7,6 +7,7 @@ use App\Models\JadwalMengajar;
 use App\Models\JurnalMengajar;
 use App\Models\KehadiranGuru;
 use App\Models\Kelas;
+use App\Models\KetidakhadiranGuru;
 use App\Models\Mapel;
 use App\Models\Notifikasi;
 use App\Models\PiketKehadiranSiswa;
@@ -318,5 +319,62 @@ class GuruController extends Controller
                 'success',
                 'Presensi/Absen berhasil dicatat. '.($request->status_kehadiran_guru === 'Hadir' ? 'Silakan lanjutkan mengisi jurnal pembelajaran.' : 'Laporan ketidakhadiran Anda telah disimpan.')
             );
+    }
+
+    /**
+     * Form pengajuan ketidakhadiran guru (izin / sakit).
+     */
+    public function ketidakhadiranForm(Request $request): View
+    {
+        $tanggal = $request->query('tanggal', now('Asia/Jakarta')->toDateString());
+
+        /** @var User $guru */
+        $guru = auth()->user();
+
+        $existing = KetidakhadiranGuru::where('user_id', $guru->id)
+            ->where('tanggal', $tanggal)
+            ->first();
+
+        return view('dashboard.guru-pengajar.ketidakhadiran', compact('tanggal', 'existing'));
+    }
+
+    /**
+     * Simpan pengajuan ketidakhadiran guru.
+     */
+    public function ketidakhadiranStore(Request $request)
+    {
+        $request->validate([
+            'tanggal' => 'required|date',
+            'alasan' => 'required|in:izin,sakit',
+            'keterangan' => 'nullable|string|max:1000',
+            'lampiran' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:4096',
+        ], [
+            'alasan.in' => 'Alasan harus berupa Izin atau Sakit.',
+            'lampiran.max' => 'Ukuran lampiran maksimal 4 MB.',
+        ]);
+
+        /** @var User $guru */
+        $guru = auth()->user();
+
+        $lampiranPath = null;
+        if ($request->hasFile('lampiran')) {
+            $lampiranPath = $request->file('lampiran')->store('ketidakhadiran-guru', 'public');
+        }
+
+        KetidakhadiranGuru::updateOrCreate(
+            ['user_id' => $guru->id, 'tanggal' => $request->tanggal],
+            [
+                'alasan' => $request->alasan,
+                'keterangan' => $request->keterangan,
+                'lampiran' => $lampiranPath,
+                'status' => 'pending',
+                'handled_by' => null,
+                'handled_at' => null,
+                'catatan_piket' => null,
+            ]
+        );
+
+        return redirect()->route('guru.utama')
+            ->with('success', 'Pengajuan ketidakhadiran ('.ucfirst($request->alasan).') untuk '.Carbon::parse($request->tanggal)->translatedFormat('l, d F Y').' telah dikirim ke Guru Piket untuk diproses.');
     }
 }

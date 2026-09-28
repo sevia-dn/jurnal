@@ -8,6 +8,7 @@ use App\Models\JadwalMengajar;
 use App\Models\JurnalMengajar;
 use App\Models\Notifikasi;
 use App\Models\PiketKehadiranSiswa;
+use App\Models\Siswa;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Support\Str;
@@ -16,14 +17,22 @@ class DispensasiWorkflowService
 {
     public function approve(Dispensasi $dispensasi): void
     {
-        $dispensasi->loadMissing('siswa.kelas');
+        $dispensasi->loadMissing(['siswa.kelas', 'siswas.kelas']);
 
         if (blank($dispensasi->token_verifikasi)) {
             $dispensasi->update(['token_verifikasi' => Str::random(40)]);
         }
 
-        $this->markExistingAttendanceAsDispensasi($dispensasi);
-        $this->markPiketKehadiranAsDispensasi($dispensasi);
+        // Gunakan semua siswa dari pivot (multi-siswa), fallback ke siswa utama jika pivot kosong
+        $allSiswas = $dispensasi->siswas->isNotEmpty()
+            ? $dispensasi->siswas
+            : collect([$dispensasi->siswa])->filter();
+
+        foreach ($allSiswas as $siswa) {
+            $this->markExistingAttendanceAsDispensasiForSiswa($dispensasi, $siswa);
+            $this->markPiketKehadiranAsDispensasiForSiswa($dispensasi, $siswa);
+        }
+
         $this->notifyRelatedUsers($dispensasi);
     }
 
@@ -45,10 +54,10 @@ class DispensasiWorkflowService
             && $jamKe <= ($dispensasi->jam_ke_selesai ?? $dispensasi->jam_ke_mulai);
     }
 
-    private function markExistingAttendanceAsDispensasi(Dispensasi $dispensasi): void
+    private function markExistingAttendanceAsDispensasiForSiswa(Dispensasi $dispensasi, Siswa $siswa): void
     {
         $jurnals = JurnalMengajar::query()
-            ->where('id_kelas', $dispensasi->siswa->kelas_id)
+            ->where('id_kelas', $siswa->kelas_id)
             ->whereBetween('tanggal', [$dispensasi->tanggal->toDateString(), $dispensasi->tanggal_selesai->toDateString()])
             ->get();
 
@@ -58,13 +67,13 @@ class DispensasiWorkflowService
             }
 
             Absensi::updateOrCreate(
-                ['id_jurnal' => $jurnal->id_jurnal, 'id_siswa' => $dispensasi->siswa_id],
+                ['id_jurnal' => $jurnal->id_jurnal, 'id_siswa' => $siswa->id],
                 ['status' => 'D', 'catatan' => 'Dispensasi disetujui: '.$dispensasi->alasan],
             );
         }
     }
 
-    private function markPiketKehadiranAsDispensasi(Dispensasi $dispensasi): void
+    private function markPiketKehadiranAsDispensasiForSiswa(Dispensasi $dispensasi, Siswa $siswa): void
     {
         $startDate = Carbon::parse($dispensasi->tanggal);
         $endDate = Carbon::parse($dispensasi->tanggal_selesai);
@@ -72,11 +81,11 @@ class DispensasiWorkflowService
         for ($date = $startDate->copy(); $date->lte($endDate); $date->addDay()) {
             PiketKehadiranSiswa::updateOrCreate(
                 [
-                    'siswa_id' => $dispensasi->siswa_id,
+                    'siswa_id' => $siswa->id,
                     'tanggal' => $date->toDateString(),
                 ],
                 [
-                    'kelas_id' => $dispensasi->siswa->kelas_id,
+                    'kelas_id' => $siswa->kelas_id,
                     'status' => 'D',
                     'catatan' => 'Dispensasi disetujui: '.$dispensasi->alasan,
                     'dicatat_oleh' => $dispensasi->diproses_oleh ?? $dispensasi->dibuat_oleh,

@@ -82,6 +82,14 @@ class Dispensasi extends Model
         return $this->belongsTo(Siswa::class);
     }
 
+    /**
+     * Relasi many-to-many ke semua siswa yang disertakan dalam dispensasi ini.
+     */
+    public function siswas()
+    {
+        return $this->belongsToMany(Siswa::class, 'dispensasi_siswa');
+    }
+
     public function pembuat()
     {
         return $this->belongsTo(User::class, 'dibuat_oleh');

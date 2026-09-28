@@ -67,6 +67,7 @@
         }
     </script>
     <style>[x-cloak] { display: none !important; }</style>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.all.min.js"></script>
 </head>
 
 <!-- PERBAIKAN 1: Ganti h-screen menjadi h-[100dvh] -->
@@ -89,5 +90,29 @@
 
     </div>
 
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        document.querySelectorAll('form[action*="logout"]').forEach(function (form) {
+            form.addEventListener('submit', function (e) {
+                e.preventDefault();
+                Swal.fire({
+                    title: 'Keluar dari aplikasi?',
+                    text: 'Apakah Anda yakin ingin keluar dari sesi ini?',
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonColor: '#0D9488',
+                    cancelButtonColor: '#64748B',
+                    confirmButtonText: 'Ya, Keluar',
+                    cancelButtonText: 'Batal',
+                    reverseButtons: true,
+                }).then(function (result) {
+                    if (result.isConfirmed) {
+                        form.submit();
+                    }
+                });
+            });
+        });
+    });
+</script>
 </body>
 </html>

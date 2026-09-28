@@ -41,9 +41,22 @@
   <span>Pengajuan Dispensasi</span>
 </a>
 
+    <!-- Ketidakhadiran Guru -->
+    <a href="{{ route('piket.ketidakhadiran-guru.index') }}"
+       class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors !no-underline {{ request()->routeIs('piket.ketidakhadiran-guru.*') ? 'bg-[#1BA886] !text-white' : '!text-[#8EBEB2] hover:bg-[#1BA886]/10 hover:!text-white' }}">
+      <i class="bi bi-calendar-x-fill text-lg"></i>
+      <span>Ketidakhadiran Guru</span>
+    </a>
 
+    <!-- Rekap Jurnal -->
+    <a href="{{ route('piket.rekap-jurnal') }}"
+       class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors !no-underline {{ request()->routeIs('piket.rekap-jurnal*') ? 'bg-[#1BA886] !text-white' : '!text-[#8EBEB2] hover:bg-[#1BA886]/10 hover:!text-white' }}">
+      <i class="bi bi-bar-chart-fill text-lg"></i>
+      <span>Rekap Jurnal</span>
+    </a>
 
   </nav>
+
 
   <!-- Footer Area -->
   <div class="mt-auto px-5 pb-8 pt-4 flex flex-col">

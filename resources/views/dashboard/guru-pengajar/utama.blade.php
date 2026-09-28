@@ -425,6 +425,33 @@ function guruLogbookState(config) {
     </section>
 
     {{-- ========================================================= --}}
+    {{-- SECTION : PILIHAN GURU (ISI JURNAL / TIDAK HADIR) --}}
+    {{-- ========================================================= --}}
+    <section class="mt-4 flex flex-col sm:flex-row gap-3">
+        <div class="flex-1 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 flex items-center gap-3">
+            <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-white text-lg">
+                <i class="bi bi-pencil-square"></i>
+            </span>
+            <div>
+                <p class="text-sm font-bold text-emerald-900">Isi Jurnal Mengajar</p>
+                <p class="text-[11px] text-emerald-700">Isi form pengisian jurnal di bawah ini.</p>
+            </div>
+        </div>
+        <a
+            href="{{ route('guru.ketidakhadiran.form', ['tanggal' => now('Asia/Jakarta')->toDateString()]) }}"
+            class="flex-1 rounded-2xl border border-amber-200 bg-amber-50 p-4 flex items-center gap-3 hover:bg-amber-100 transition"
+        >
+            <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-500 text-white text-lg">
+                <i class="bi bi-calendar-x-fill"></i>
+            </span>
+            <div>
+                <p class="text-sm font-bold text-amber-900">Tidak Hadir (Izin / Sakit)</p>
+                <p class="text-[11px] text-amber-700">Ajukan izin atau sakit ke Guru Piket.</p>
+            </div>
+        </a>
+    </section>
+
+    {{-- ========================================================= --}}
     {{-- SECTION : FORM PENGISIAN JURNAL / LOGBOOK --}}
     {{-- ========================================================= --}}
     <section id="form-logbook-section" class="mt-6">
@@ -673,7 +700,6 @@ function guruLogbookState(config) {
                         >
                             <option value="Tidak">Tidak Ada Tugas</option>
                             <option value="Ya">Ada Tugas</option>
-                            <option value="Ya">Ada Tugas luar</option>
                         </select>
                     </label>
 

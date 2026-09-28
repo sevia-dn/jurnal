@@ -273,4 +273,37 @@ Route::middleware('auth')->group(function () {
         [LogbookController::class, 'history']
     )->name('guru.riwayat');
 
+    // ==========================================
+    // KETIDAKHADIRAN GURU (Feature 3)
+    // ==========================================
+
+    // Guru pengajar: ajukan ketidakhadiran
+    Route::get('/guru-pengajar/ketidakhadiran', [GuruController::class, 'ketidakhadiranForm'])
+        ->name('guru.ketidakhadiran.form');
+
+    Route::post('/guru-pengajar/ketidakhadiran', [GuruController::class, 'ketidakhadiranStore'])
+        ->name('guru.ketidakhadiran.store');
+
+    // Piket: lihat & proses ketidakhadiran guru
+    Route::prefix('dashboard')->group(function () {
+        Route::get('/piket/ketidakhadiran-guru', [PiketController::class, 'ketidakhadiranGuruIndex'])
+            ->name('piket.ketidakhadiran-guru.index');
+
+        Route::post('/piket/ketidakhadiran-guru/{ketidakhadiran}/approve', [PiketController::class, 'ketidakhadiranGuruApprove'])
+            ->name('piket.ketidakhadiran-guru.approve');
+
+        Route::post('/piket/ketidakhadiran-guru/{ketidakhadiran}/reject', [PiketController::class, 'ketidakhadiranGuruReject'])
+            ->name('piket.ketidakhadiran-guru.reject');
+
+        // ==========================================
+        // REKAP JURNAL DI PIKET (Feature 5)
+        // ==========================================
+
+        Route::get('/piket/rekap-jurnal', [PiketController::class, 'rekapJurnal'])
+            ->name('piket.rekap-jurnal');
+
+        Route::get('/piket/rekap-jurnal/unduh-pdf', [PiketController::class, 'downloadRekapJurnalPdf'])
+            ->name('piket.rekap-jurnal.download-pdf');
+    });
+
 });

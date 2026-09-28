@@ -152,7 +152,7 @@ class DispensasiDualRoleTest extends TestCase
 
         // 2. Guru Piket Login & Input Dispensasi Siswa
         $response = $this->actingAs($guruPiket)->post(route('piket.dispensasi.store'), [
-            'siswa_id' => $siswa->id,
+            'siswa_ids' => [$siswa->id],
             'jenis_dispensasi' => 'Lomba O2SN',
             'mode_waktu' => 'sepanjang_hari',
             'tanggal_mulai' => now()->format('Y-m-d'),
