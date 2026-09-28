@@ -429,7 +429,7 @@ function guruLogbookState(config) {
             </span>
             <div class="min-w-0 flex-1">
                 <p class="text-sm sm:text-base font-bold text-slate-900 group-hover:text-amber-800 transition">
-                    Guru Tidak Hadir (Izin / Sakit)
+                    Lapor Kehadiran
                 </p>
                 <p class="mt-0.5 text-xs text-slate-500">Ajukan surat izin atau sakit langsung ke Guru Piket</p>
             </div>
@@ -606,14 +606,6 @@ function guruLogbookState(config) {
             </span>
         </div>
 
-        {{-- Petunjuk Pemilihan Jadwal Saat Mode Isi Jurnal Aktif --}}
-        <div x-show="modePilihJurnal" x-cloak class="mb-3 rounded-xl border border-emerald-200 bg-emerald-50/90 p-3 text-xs text-emerald-900 flex items-center justify-between gap-2 shadow-2xs">
-            <div class="flex items-center gap-2">
-                <i class="bi bi-hand-index-thumb-fill text-emerald-600 text-base shrink-0 animate-bounce"></i>
-                <span class="font-semibold">Silakan klik atau pilih sesi jadwal di bawah ini yang ingin Anda isi jurnal pembelajarannya:</span>
-            </div>
-        </div>
-
         <div class="space-y-2">
             @forelse($jadwals ?? [] as $jadwal)
                 @php
@@ -711,7 +703,7 @@ function guruLogbookState(config) {
                                             class="inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 px-3 py-2 text-xs font-bold text-white transition shadow-xs"
                                         >
                                             <i class="bi bi-check2-circle text-sm"></i>
-                                            <span>Pilih Jadwal Ini</span>
+                                            <span>Isi Jurnal</span>
                                         </button>
                                     </template>
                                 </div>
