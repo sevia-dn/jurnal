@@ -36,13 +36,6 @@
             </a>
         @endif
 
-        @if(auth()->user()?->role !== 'admin' && auth()->user()?->isPiketActive())
-            <a href="{{ route('piket.jurnal-publik.index') }}"
-               class="flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors !no-underline {{ request()->routeIs('piket.jurnal-publik.*') ? 'bg-[#1BA886] !text-white shadow-sm' : '!text-[#D9F7EE] hover:bg-[#1BA886]/10 hover:!text-white' }}">
-                <i class="bi bi-journal-check text-lg" aria-hidden="true"></i>
-                <span>Kelola Jurnal Publik</span>
-            </a>
-        @endif
         <a href="{{ route('dashboard.piket') }}"
            class="flex items-center justify-between gap-3 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors !no-underline {{ request()->is('dashboard/piket*') || request()->is('piket*') || $activePage === 'piket' ? 'bg-[#1BA886] !text-white shadow-sm' : '!text-[#D9F7EE] hover:bg-[#1BA886]/10 hover:!text-white' }}">
             <div class="flex items-center gap-3">

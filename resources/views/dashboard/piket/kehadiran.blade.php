@@ -20,7 +20,7 @@
                 <a href="{{ route('dashboard.piket') }}" class="inline-flex items-center gap-2 text-sm font-semibold text-emerald-700 transition hover:text-emerald-800">
                     <i class="bi bi-arrow-left"></i>Kembali ke halaman utama piket
                 </a>
-                <p class="mt-0.5 text-xs text-slate-500">Daftar guru yang hadir atau tidak hadir pada hari ini berdasarkan jurnal dan laporan piket.</p>
+                <p class="mt-0.5 text-xs text-slate-500">Daftar guru yang hadir atau tidak hadir pada hari ini berdasarkan jurnal mengajar dan ketidakhadiran yang disetujui piket.</p>
             </div>
 
             {{-- DATE PICKER --}}

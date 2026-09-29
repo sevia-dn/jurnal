@@ -62,6 +62,9 @@
         @endif
 
         {{-- FORM PENCARIAN & FILTER --}}
+        <div class="mt-4 flex flex-wrap items-center gap-3">
+            <a href="{{ route('guru.riwayat-publik') }}" class="inline-flex items-center rounded-xl border border-emerald-200 bg-white px-4 py-2 text-xs font-bold text-emerald-700 transition hover:bg-emerald-50">Lihat Riwayat Jurnal Publik</a>
+        </div>
         <section class="mt-4 rounded-2xl bg-white p-3.5 shadow-sm border border-slate-100 sm:p-4">
             <form method="GET" action="{{ route('guru.riwayat') }}" id="riwayatForm" class="flex flex-col gap-2.5 lg:flex-row lg:items-center">
 

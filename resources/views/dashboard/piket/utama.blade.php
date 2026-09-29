@@ -21,11 +21,6 @@
                     <span class="min-w-0"><span class="block text-base font-extrabold">Pengajuan Dispensasi</span><span class="mt-1 block text-xs text-emerald-50">Buat dan kirim pengajuan dispensasi siswa ke Wakasek.</span></span>
                     <i class="bi bi-chevron-right ml-auto text-xl text-emerald-100 transition group-hover:translate-x-1"></i>
                 </a>
-                <a href="{{ route('piket.ketidakhadiran-guru.index') }}" class="group flex items-center gap-4 rounded-2xl border border-amber-300 bg-gradient-to-br from-amber-500 to-orange-600 p-5 text-white shadow-lg shadow-amber-600/25 transition hover:-translate-y-0.5 hover:shadow-xl">
-                    <span class="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white/20 text-2xl"><i class="bi bi-person-exclamation"></i></span>
-                    <span class="min-w-0"><span class="block text-base font-extrabold">Pengajuan Ketidakhadiran</span><span class="mt-1 block text-xs text-amber-50">Tinjau pengajuan izin atau sakit yang dikirim langsung oleh guru.</span></span>
-                    <i class="bi bi-chevron-right ml-auto text-xl text-amber-100 transition group-hover:translate-x-1"></i>
-                </a>
                 <a href="{{ route('piket.kehadiran-siswa') }}" class="group flex items-center gap-4 rounded-2xl border border-sky-300 bg-gradient-to-br from-sky-600 to-indigo-700 p-5 text-white shadow-lg shadow-sky-600/25 transition hover:-translate-y-0.5 hover:shadow-xl">
                     <span class="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white/20 text-2xl"><i class="bi bi-people-fill"></i></span>
                     <span class="min-w-0"><span class="block text-base font-extrabold">Kehadiran Siswa</span><span class="mt-1 block text-xs text-sky-50">Pilih kelas dan catat status izin, sakit, atau dispensasi siswa.</span></span>
@@ -33,8 +28,8 @@
                 </a>
             </section>
 
-            {{-- RINGKASAN: KEHADIRAN (KIRI) & LAPORAN JURNAL + RIWAYAT DISPENSASI (KANAN) --}}
-            <section aria-label="Ringkasan jurnal, kehadiran, dan dispensasi" class="mb-7 grid gap-4 lg:grid-cols-2 lg:items-start">
+            {{-- RINGKASAN: tetap bertumpuk di mobile, tiga kartu berjejer pada desktop. --}}
+            <section aria-label="Ringkasan jurnal, kehadiran, dan dispensasi" class="mb-7 grid gap-4 lg:grid-cols-3 lg:items-stretch">
 
                 {{-- CARD KEHADIRAN GURU — berisi ringkasan, dipencet mengarah ke halaman daftar guru yang hadir di hari itu --}}
                 <a href="{{ route('piket.kehadiran') }}"
@@ -55,17 +50,14 @@
                             <span class="rounded-full bg-rose-100 px-2.5 py-1 text-rose-800">{{ $sickTeacherCount }} Sakit</span>
                         </div>
                         <p class="mt-3 text-xs text-slate-500">
-                            Total guru tercatat hari ini (hadir dari jurnal KBM &amp; tidak hadir dari laporan piket).
+                            Total guru tercatat hari ini (hadir dari jurnal KBM &amp; tidak hadir dari pengajuan ketidakhadiran).
                         </p>
                     </div>
 
                 </a>
 
-                {{-- SISI KANAN: CARD LAPORAN JURNAL + CARD RIWAYAT DISPENSASI TEPAT DI BAWAHNYA --}}
-                <div class="flex flex-col gap-4">
-
-                    {{-- CARD LAPORAN JURNAL — dipencet langsung scroll ke bawah ke bagian tabel aktivitas jurnal --}}
-                    <div id="card-laporan-jurnal" class="group cursor-pointer rounded-2xl border border-sky-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus:ring-4 focus:ring-sky-100">
+                {{-- CARD LAPORAN JURNAL — dipencet langsung scroll ke bawah ke bagian tabel aktivitas jurnal --}}
+                <div id="card-laporan-jurnal" class="group cursor-pointer rounded-2xl border border-sky-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus:ring-4 focus:ring-sky-100">
                         <div class="flex items-start justify-between gap-4">
                             <div>
                                 <p class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Laporan Jurnal</p>
@@ -84,10 +76,10 @@
                             </button>
                         </div>
 
-                    </div>
+                </div>
 
-                    {{-- CARD RIWAYAT DISPENSASI (Mengarahkan ke halaman riwayat & pemantauan dispensasi) --}}
-                    <a href="{{ route('piket.dispensasi.history') }}" class="group flex items-center justify-between rounded-2xl border border-indigo-200 bg-white p-5 shadow-xs transition hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus:ring-4 focus:ring-indigo-100 !no-underline" aria-label="Riwayat & Pemantauan Dispensasi">
+                {{-- CARD RIWAYAT DISPENSASI (Mengarahkan ke halaman riwayat & pemantauan dispensasi) --}}
+                <a href="{{ route('piket.dispensasi.history') }}" class="group flex items-center justify-between rounded-2xl border border-indigo-200 bg-white p-5 shadow-xs transition hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus:ring-4 focus:ring-indigo-100 !no-underline" aria-label="Riwayat & Pemantauan Dispensasi">
                         <div class="flex items-center gap-3.5">
                             <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-indigo-100 text-lg text-indigo-700 transition group-hover:bg-indigo-200">
                                 <i class="bi bi-file-earmark-person-fill"></i>
@@ -104,8 +96,7 @@
                             </div>
                         </div>
                         <i class="bi bi-chevron-right text-slate-400 text-base transition group-hover:translate-x-1 group-hover:text-indigo-600"></i>
-                    </a>
-                </div>
+                </a>
             </section>
 
 {{-- DAFTAR AKTIVITAS & RIWAYAT LOGBOOK MENGAJAR --}}

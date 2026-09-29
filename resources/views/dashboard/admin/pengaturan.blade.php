@@ -308,21 +308,13 @@
     <form action="{{ route('admin.pengaturan.update') }}" method="POST" class="space-y-5 p-5 sm:p-6">
         @csrf
         <input type="hidden" name="action_type" value="publik">
-        <input type="hidden" name="publik_jurnal_aktif" value="0">
         <input type="hidden" name="publik_riwayat_aktif" value="0">
         <div class="space-y-3">
-            <label class="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 p-4">
-                <input type="checkbox" name="publik_jurnal_aktif" value="1" {{ old('publik_jurnal_aktif', $publikJurnalAktif) ? 'checked' : '' }} class="mt-1 h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500">
-                <span>
-                    <span class="block text-sm font-bold text-slate-800">Aktifkan jurnal publik di halaman awal</span>
-                    <span class="mt-1 block text-xs text-slate-500">Jika dimatikan, jurnal terbaru tidak ditampilkan untuk pengunjung tanpa login.</span>
-                </span>
-            </label>
             <label class="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 p-4">
                 <input type="checkbox" name="publik_riwayat_aktif" value="1" {{ old('publik_riwayat_aktif', $publikRiwayatAktif) ? 'checked' : '' }} class="mt-1 h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500">
                 <span>
                     <span class="block text-sm font-bold text-slate-800">Aktifkan riwayat jurnal publik</span>
-                    <span class="mt-1 block text-xs text-slate-500">Jika dimatikan, arsip riwayat jurnal hanya dapat dibuka setelah login.</span>
+                    <span class="mt-1 block text-xs text-slate-500">Jika dimatikan, jurnal hari ini dan riwayat keseluruhan tidak dapat dibuka secara publik.</span>
                 </span>
             </label>
         </div>

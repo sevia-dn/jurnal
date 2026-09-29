@@ -73,7 +73,7 @@ class DispensasiDualRoleTest extends TestCase
         config([
             'services.whatsapp.url' => 'https://gateway.test/send',
             'services.whatsapp.api_key' => 'test-api-key',
-            'services.whatsapp.approval_base_url' => 'https://properly-embark-lyrically.ngrok-free.dev',
+            'services.whatsapp.approval_base_url' => 'https://public-aeration-unleaded.ngrok-free.dev',
             'services.whatsapp.piket_confirmation_number' => '083838606396',
             'services.whatsapp.waka_recipients' => [
                 ['username' => 'wakatest', 'name' => 'Waka Test', 'number' => '081233334444'],
@@ -170,7 +170,7 @@ class DispensasiDualRoleTest extends TestCase
         Http::assertSent(function (ClientRequest $request) use ($dispensasi): bool {
             return $request->url() === 'https://gateway.test/send'
                 && $request['target'] === '081233334444'
-                && str_contains($request['message'], 'https://properly-embark-lyrically.ngrok-free.dev'.route('waka.dispensasi.show', ['token' => $dispensasi->token_approval], false).'?waka=wakatest')
+                && str_contains($request['message'], 'https://public-aeration-unleaded.ngrok-free.dev'.route('waka.dispensasi.show', ['token' => $dispensasi->token_approval], false).'?waka=wakatest')
                 && str_contains($request['message'], 'Guru Piket Test');
         });
         Http::assertSentCount(2);

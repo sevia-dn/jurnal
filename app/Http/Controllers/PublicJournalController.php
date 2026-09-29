@@ -11,25 +11,24 @@ class PublicJournalController extends Controller
 {
     public function index(Request $request): View
     {
-        return $this->show($request, false);
+        return $this->show($request, $request->query('tab', 'hari-ini'));
     }
 
     public function history(Request $request): View
     {
-        return $this->show($request, true);
+        return $this->show($request, 'keseluruhan');
     }
 
-    private function show(Request $request, bool $isHistory): View
+    private function show(Request $request, string $tab): View
     {
-        $request->validate([
-            'tanggal' => 'nullable|date_format:Y-m-d',
+        $filters = $request->validate([
+            'tanggal_mulai' => ['nullable', 'date_format:Y-m-d'],
+            'tanggal_selesai' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:tanggal_mulai'],
+            'search' => ['nullable', 'string', 'max:100'],
         ]);
 
-        $publicEnabled = (bool) Pengaturan::getValue(
-            $isHistory ? 'publik_riwayat_aktif' : 'publik_jurnal_aktif',
-            1
-        );
-        $historyEnabled = (bool) Pengaturan::getValue('publik_riwayat_aktif', 1);
+        $isHistory = $tab === 'keseluruhan';
+        $publicEnabled = (bool) Pengaturan::getValue('publik_riwayat_aktif', 1);
         $eventDate = (string) Pengaturan::getValue('event_sekolah_tanggal', '');
         $event = [
             'name' => (string) Pengaturan::getValue('event_sekolah', ''),
@@ -46,7 +45,18 @@ class PublicJournalController extends Controller
             $query = JurnalMengajar::query()
                 ->with(['user:id,name', 'kelas:id_kelas,nama_kelas', 'mapel:id,nama_mapel'])
                 ->where('status_validasi', 'disetujui')
-                ->when($request->filled('tanggal'), fn ($query) => $query->whereDate('tanggal', $request->string('tanggal')->toString()))
+                ->when(! $isHistory, fn ($query) => $query->whereDate('tanggal', now('Asia/Jakarta')->toDateString()))
+                ->when($isHistory && ! empty($filters['tanggal_mulai']), fn ($query) => $query->whereDate('tanggal', '>=', $filters['tanggal_mulai']))
+                ->when($isHistory && ! empty($filters['tanggal_selesai']), fn ($query) => $query->whereDate('tanggal', '<=', $filters['tanggal_selesai']))
+                ->when($isHistory && filled($filters['search'] ?? null), function ($query) use ($filters): void {
+                    $search = trim($filters['search']);
+
+                    $query->where(function ($journalQuery) use ($search): void {
+                        $journalQuery
+                            ->whereHas('kelas', fn ($kelasQuery) => $kelasQuery->where('nama_kelas', 'like', "%{$search}%"))
+                            ->orWhereHas('user', fn ($userQuery) => $userQuery->where('name', 'like', "%{$search}%"));
+                    });
+                })
                 ->orderByDesc('tanggal')
                 ->orderByDesc('jam_ke');
 
@@ -55,6 +65,6 @@ class PublicJournalController extends Controller
                 : $query->limit(5)->get();
         }
 
-        return view('public.jurnal', compact('publicEnabled', 'historyEnabled', 'journals', 'event', 'showEvent', 'isHistory'));
+        return view('public.jurnal', compact('publicEnabled', 'journals', 'event', 'showEvent', 'isHistory'));
     }
 }

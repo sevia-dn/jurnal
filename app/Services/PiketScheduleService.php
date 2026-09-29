@@ -11,9 +11,17 @@ class PiketScheduleService
 {
     public function isScheduled(User $user, CarbonInterface $date): bool
     {
+        $dayName = $this->dayName($date);
+
         return JadwalPiket::query()
             ->where('user_id', $user->id)
-            ->whereDate('tanggal', $date->toDateString())
+            ->where(function ($query) use ($date, $dayName): void {
+                $query->whereDate('tanggal', $date->toDateString())
+                    ->orWhere(function ($weeklyQuery) use ($dayName): void {
+                        $weeklyQuery->whereNull('tanggal')
+                            ->where('hari', $dayName);
+                    });
+            })
             ->exists();
     }
 
@@ -32,11 +40,32 @@ class PiketScheduleService
             return false;
         }
 
+        $dayName = $this->dayName($now);
+
         return JadwalPiket::query()
             ->where('user_id', $user->id)
-            ->whereDate('tanggal', $now->toDateString())
+            ->where(function ($query) use ($now, $dayName): void {
+                $query->whereDate('tanggal', $now->toDateString())
+                    ->orWhere(function ($weeklyQuery) use ($dayName): void {
+                        $weeklyQuery->whereNull('tanggal')
+                            ->where('hari', $dayName);
+                    });
+            })
             ->where('jam_mulai', '<=', $time)
             ->where('jam_selesai', '>', $time)
             ->exists();
+    }
+
+    private function dayName(CarbonInterface $date): string
+    {
+        return match ($date->dayOfWeek) {
+            Carbon::MONDAY => 'Senin',
+            Carbon::TUESDAY => 'Selasa',
+            Carbon::WEDNESDAY => 'Rabu',
+            Carbon::THURSDAY => 'Kamis',
+            Carbon::FRIDAY => 'Jumat',
+            Carbon::SATURDAY => 'Sabtu',
+            default => 'Minggu',
+        };
     }
 }

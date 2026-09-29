@@ -27,7 +27,7 @@
     $labelGuru = fn ($id): string => data_get($opsiGuru->firstWhere('value', (string) $id), 'label', '');
 @endphp
 
-<div x-data="{ scheduleQuery: '', viewDay: 'Semua' }" class="p-6 font-sans sm:p-10 lg:p-8 xl:p-10">
+<div x-data="{ scheduleQuery: '', viewDay: 'Semua', activeAssignmentDay: 'Senin' }" class="p-6 font-sans sm:p-10 lg:p-8 xl:p-10">
     @if(session('success'))
         <div class="mb-6 flex items-center justify-between rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800 shadow-xs">
             <span class="flex items-center gap-2"><i class="bi bi-check-circle-fill"></i>{{ session('success') }}</span>
@@ -43,11 +43,16 @@
                     <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-[#155d50] text-white shadow-sm"><i class="bi bi-person-gear text-lg"></i></div>
                     <div>
                         <h2 class="text-base font-bold text-slate-900">Atur Penugasan</h2>
-                        <p class="mt-0.5 text-xs text-slate-500">Dua sesi, masing-masing 3 guru dan 1 koordinator.</p>
+                        <p class="mt-0.5 text-xs text-slate-500">Pilih hari, isi petugas, lalu simpan sekali. Penugasan mingguan langsung berlaku pada hari terkait.</p>
                     </div>
                 </div>
                 <form action="{{ route('dashboard.rekap-jurnal.penugasan-piket') }}" method="POST" class="space-y-4">
-            @csrf
+                    @csrf
+                    <div class="flex flex-wrap gap-1.5" aria-label="Pilih hari penugasan">
+                        @foreach(['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'] as $hari)
+                            <button type="button" @click="activeAssignmentDay = '{{ $hari }}'" :class="activeAssignmentDay === '{{ $hari }}' ? 'bg-[#155d50] text-white shadow-sm' : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50'" class="rounded-lg px-3 py-1.5 text-xs font-semibold transition">{{ $hari }}</button>
+                        @endforeach
+                    </div>
                     @foreach(['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'] as $hari)
                         @php
                             $jadwalHari = $penugasanMingguan->get($hari, collect());
@@ -57,8 +62,8 @@
                             $koordinatorSiangId = $jadwalHari->where('tipe', 'koordinator')->where('shift', 2)->first()?->user_id;
                             $wakaTerpilih = $jadwalHari->firstWhere('tipe', 'waka')?->user_id;
                         @endphp
-                        <details class="rounded-xl border border-slate-200 bg-slate-50/60" @if($loop->first) open @endif>
-                            <summary class="flex cursor-pointer items-center justify-between px-3 py-3 text-sm font-bold text-slate-800"><span>{{ $hari }}</span><i class="bi bi-chevron-down text-xs text-slate-400"></i></summary>
+                        <section x-cloak x-show="activeAssignmentDay === '{{ $hari }}'" class="rounded-xl border border-slate-200 bg-slate-50/60">
+                            <div class="flex items-center justify-between px-3 py-3 text-sm font-bold text-slate-800"><span>Penugasan {{ $hari }}</span><i class="bi bi-calendar-check text-base text-emerald-600"></i></div>
                             <div class="space-y-3 border-t border-slate-200 p-3">
                                 <section class="rounded-lg border border-amber-100 bg-amber-50/60 p-3">
                                     <p class="mb-3 text-xs font-bold text-amber-800"><i class="bi bi-sun mr-1"></i>Sesi pagi · 07.00–11.00</p>
@@ -82,7 +87,7 @@
                                     @include('dashboard.admin.partials.searchable-assignment-field', ['fieldName' => "penugasan[{$hari}][waka]", 'label' => 'Piket Waka · 07.00–15.00', 'selectedId' => $wakaTerpilih, 'selectedLabel' => $labelGuru($wakaTerpilih), 'options' => $opsiGuru])
                                 </section>
                             </div>
-                        </details>
+                        </section>
                     @endforeach
                     <button type="submit" class="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-3 text-xs font-bold text-white transition hover:bg-emerald-700"><i class="bi bi-check2"></i>Simpan Penugasan Mingguan</button>
                 </form>

@@ -79,7 +79,7 @@
 
     <div class="flex-1 flex flex-col h-full w-full overflow-hidden relative">
         
-        <header class="shrink-0 w-full z-10 bg-white">
+        <header class="sticky top-0 z-30 w-full shrink-0 bg-white shadow-sm">
             @yield('navbar')
         </header>
 

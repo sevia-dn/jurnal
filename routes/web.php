@@ -103,9 +103,6 @@ Route::middleware('auth')->group(function () {
         Route::delete('/piket/jurnal-publik/{jurnal}', [PiketController::class, 'destroyPublicJournal'])
             ->name('piket.jurnal-publik.destroy');
 
-        Route::post('/piket/kehadiran/{kehadiran}/verifikasi', [PiketController::class, 'verifikasiKehadiran'])
-            ->name('piket.kehadiran.verifikasi');
-
         Route::get('/piket/dispensasi', [PiketController::class, 'dispensasiForm'])
             ->name('piket.dispensasi.form');
 
@@ -276,6 +273,11 @@ Route::middleware('auth')->group(function () {
         '/guru-pengajar/riwayat',
         [LogbookController::class, 'history']
     )->name('guru.riwayat');
+
+    Route::get(
+        '/guru-pengajar/riwayat-publik',
+        [PublicJournalController::class, 'history']
+    )->name('guru.riwayat-publik');
 
     // ==========================================
     // KETIDAKHADIRAN GURU (Feature 3)

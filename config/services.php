@@ -38,7 +38,7 @@ return [
     'whatsapp' => [
         'url' => env('WHATSAPP_URL'),
         'api_key' => env('WHATSAPP_API_KEY'),
-        'approval_base_url' => env('WHATSAPP_APPROVAL_BASE_URL', 'https://properly-embark-lyrically.ngrok-free.dev'),
+        'approval_base_url' => env('WHATSAPP_APPROVAL_BASE_URL', 'https://public-aeration-unleaded.ngrok-free.dev'),
         'piket_confirmation_number' => env('WHATSAPP_PIKET_CONFIRMATION_NUMBER', '083838606396'),
         'admin_number' => env('WHATSAPP_ADMIN_NUMBER', env('WHATSAPP_PIKET_CONFIRMATION_NUMBER', '083838606396')),
         'waka_recipients' => [

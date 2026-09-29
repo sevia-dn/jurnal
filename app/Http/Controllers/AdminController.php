@@ -905,7 +905,7 @@ class AdminController extends Controller
         $bulan = min(12, max(1, $request->integer('bulan', now('Asia/Jakarta')->month)));
         $tahun = min(2100, max(2026, $request->integer('tahun', now('Asia/Jakarta')->year)));
 
-        $penugasanPiket = JadwalPiket::with('user')
+        $penugasanTanggal = JadwalPiket::with('user')
             ->whereYear('tanggal', $tahun)
             ->whereMonth('tanggal', $bulan)
             ->orderBy('tanggal')
@@ -926,6 +926,34 @@ class AdminController extends Controller
             ->whereNull('tanggal')
             ->get()
             ->groupBy('hari');
+
+        $penugasanPiket = collect();
+        $tanggalMulai = Carbon::create($tahun, $bulan, 1)->startOfMonth();
+        $tanggalSelesai = $tanggalMulai->copy()->endOfMonth();
+
+        for ($tanggal = $tanggalMulai->copy(); $tanggal->lte($tanggalSelesai); $tanggal->addDay()) {
+            $penugasanKhusus = $penugasanTanggal->get($tanggal->toDateString(), collect());
+            if ($penugasanKhusus->isNotEmpty()) {
+                $penugasanPiket->put($tanggal->toDateString(), $penugasanKhusus);
+
+                continue;
+            }
+
+            $hari = match ($tanggal->dayOfWeek) {
+                Carbon::MONDAY => 'Senin',
+                Carbon::TUESDAY => 'Selasa',
+                Carbon::WEDNESDAY => 'Rabu',
+                Carbon::THURSDAY => 'Kamis',
+                Carbon::FRIDAY => 'Jumat',
+                Carbon::SATURDAY => 'Sabtu',
+                default => null,
+            };
+            $penugasanMingguanHari = $hari ? $penugasanMingguan->get($hari, collect()) : collect();
+
+            if ($penugasanMingguanHari->isNotEmpty()) {
+                $penugasanPiket->put($tanggal->toDateString(), $penugasanMingguanHari);
+            }
+        }
 
         return view('dashboard.admin.jadwal-penugasan', compact(
             'bulan',
@@ -1057,7 +1085,7 @@ class AdminController extends Controller
             'hari.required' => 'Pilih hari pelaksanaan.',
         ]);
 
-        JadwalPelajaran::create($validated);
+        JadwalPelajaran::create($this->normalizeScheduleTimes($validated));
 
         return redirect()->route('dashboard.jadwal', ['kelas_id' => $kelasId, 'hari' => $validated['hari']])
             ->with('success', 'Jadwal pelajaran berhasil ditambahkan!');
@@ -1101,10 +1129,36 @@ class AdminController extends Controller
             'mapel' => 'required|string|max:100',
         ]);
 
-        $jadwal->update($validated);
+        $jadwal->update($this->normalizeScheduleTimes($validated));
 
         return redirect()->route('dashboard.jadwal', ['kelas_id' => $kelasId, 'hari' => $validated['hari']])
             ->with('success', 'Jadwal pelajaran berhasil diperbarui!');
+    }
+
+    /**
+     * Pastikan sesi pelajaran tidak tersimpan sebelum slot jam ke-nya.
+     * Kegiatan khusus (jam ke-0) tetap dapat menggunakan waktu kustom.
+     *
+     * @param  array{id_user: int|string, id_kelas: int|string, id_mapel: int|string|null, hari: string, jam_ke: int|string, jam_mulai: string, jam_selesai: string, mapel: string}  $schedule
+     * @return array{id_user: int|string, id_kelas: int|string, id_mapel: int|string|null, hari: string, jam_ke: int|string, jam_mulai: string, jam_selesai: string, mapel: string}
+     */
+    private function normalizeScheduleTimes(array $schedule): array
+    {
+        $jamKe = (int) $schedule['jam_ke'];
+        if ($jamKe === 0) {
+            return $schedule;
+        }
+
+        $slot = app(ScheduleTimeService::class)->slot($schedule['hari'], $jamKe);
+        $jamMulai = substr((string) $schedule['jam_mulai'], 0, 5);
+        $jamSelesai = substr((string) $schedule['jam_selesai'], 0, 5);
+
+        if ($jamMulai < $slot['start'] || $jamSelesai < $slot['end'] || $jamSelesai <= $jamMulai) {
+            $schedule['jam_mulai'] = $slot['start'];
+            $schedule['jam_selesai'] = $slot['end'];
+        }
+
+        return $schedule;
     }
 
     public function destroyJadwal($id)
@@ -1243,7 +1297,6 @@ class AdminController extends Controller
         $jumatShiftedMinutes = (int) Pengaturan::getValue('jumat_shifted_minutes', $shiftJumat);
 
         $tenggatOpsi = (string) Pengaturan::getValue('tenggat_opsi', 'terbatas_jam');
-        $publikJurnalAktif = (bool) Pengaturan::getValue('publik_jurnal_aktif', 1);
         $publikRiwayatAktif = (bool) Pengaturan::getValue('publik_riwayat_aktif', 1);
         $eventSekolah = (string) Pengaturan::getValue('event_sekolah', '');
         $eventSekolahTanggal = (string) Pengaturan::getValue('event_sekolah_tanggal', '');
@@ -1259,7 +1312,6 @@ class AdminController extends Controller
             'isJumatMaju',
             'jumatShiftedMinutes',
             'tenggatOpsi',
-            'publikJurnalAktif',
             'publikRiwayatAktif',
             'eventSekolah',
             'eventSekolahTanggal',
@@ -1274,14 +1326,12 @@ class AdminController extends Controller
 
         if ($request->input('action_type') === 'publik') {
             $validated = $request->validate([
-                'publik_jurnal_aktif' => 'required|boolean',
                 'publik_riwayat_aktif' => 'required|boolean',
             ]);
 
-            Pengaturan::setValue('publik_jurnal_aktif', (int) $validated['publik_jurnal_aktif']);
             Pengaturan::setValue('publik_riwayat_aktif', (int) $validated['publik_riwayat_aktif']);
 
-            return redirect()->to(route('admin.pengaturan').'#jurnal-publik')->with('success', 'Pengaturan jurnal publik dan riwayat berhasil diperbarui.');
+            return redirect()->to(route('admin.pengaturan').'#jurnal-publik')->with('success', 'Pengaturan riwayat jurnal publik berhasil diperbarui.');
         }
 
         if ($request->input('action_type') === 'event') {
@@ -1515,7 +1565,7 @@ class AdminController extends Controller
         $gurus = User::where('role', 'guru')->orderBy('name', 'asc')->get();
 
         // Jadwal yang melewati jam pulang event pada tanggal tertentu tidak dihitung.
-        $jadwalQuery = JadwalPelajaran::query();
+        $jadwalQuery = JadwalPelajaran::query()->where('jam_ke', '>', 0);
         if ($guruId && $guruId !== 'all') {
             $jadwalQuery->where('id_user', $guruId);
         }
@@ -1629,6 +1679,7 @@ class AdminController extends Controller
         $jadwalKelasList = JadwalPelajaran::with(['guru', 'mapelItem'])
             ->whereIn('id_kelas', $classesToInspect->pluck('id_kelas'))
             ->where('hari', $namaHari)
+            ->where('jam_ke', '>', 0)
             ->orderBy('jam_ke')
             ->get()
             ->groupBy('id_kelas');

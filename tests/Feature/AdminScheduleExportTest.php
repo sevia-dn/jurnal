@@ -3,6 +3,8 @@
 namespace Tests\Feature;
 
 use App\Models\JadwalPiket;
+use App\Models\Kelas;
+use App\Models\Mapel;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -100,5 +102,32 @@ class AdminScheduleExportTest extends TestCase
         $this->assertDatabaseHas('jadwal_pikets', ['user_id' => $petugasMingguan[6]->id, 'tanggal' => null, 'hari' => 'Senin', 'tipe' => 'guru', 'shift' => 2]);
         $this->assertDatabaseHas('jadwal_pikets', ['user_id' => $petugasMingguan[7]->id, 'tanggal' => null, 'hari' => 'Senin', 'tipe' => 'koordinator', 'shift' => 2]);
         $this->assertDatabaseHas('jadwal_pikets', ['user_id' => $petugasMingguan[8]->id, 'tanggal' => null, 'hari' => 'Senin', 'tipe' => 'waka', 'shift' => 1]);
+    }
+
+    public function test_schedule_for_a_later_lesson_uses_its_standard_time_slot(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $teacher = User::factory()->create(['role' => 'guru']);
+        $class = Kelas::create(['nama_kelas' => 'X RPL 1', 'jumlah_siswa' => 0]);
+        $subject = Mapel::create(['kode_mapel' => 'INF-01', 'nama_mapel' => 'Informatika']);
+
+        $this->actingAs($admin)
+            ->post(route('dashboard.jadwal.store'), [
+                'guru_id' => $teacher->id,
+                'kelas_id' => $class->id_kelas,
+                'mapel_id' => $subject->id,
+                'hari' => 'Jumat',
+                'jam_ke' => 11,
+                'jam_mulai' => '07:30',
+                'jam_selesai' => '09:00',
+            ])
+            ->assertRedirect(route('dashboard.jadwal', ['kelas_id' => $class->id_kelas, 'hari' => 'Jumat']));
+
+        $this->assertDatabaseHas('jadwal_pelajarans', [
+            'id_kelas' => $class->id_kelas,
+            'jam_ke' => 11,
+            'jam_mulai' => '14:00',
+            'jam_selesai' => '14:30',
+        ]);
     }
 }

@@ -34,6 +34,24 @@ class PiketLoginWorkflowTest extends TestCase
             ->assertOk();
     }
 
+    public function test_weekly_piket_assignment_is_active_on_its_matching_day(): void
+    {
+        $this->travelTo(Carbon::parse('2026-09-21 08:00:00', 'Asia/Jakarta'));
+        $guru = $this->teacher('petugas-piket-mingguan');
+
+        JadwalPiket::create([
+            'user_id' => $guru->id,
+            'hari' => 'Senin',
+            'tipe' => 'guru',
+            'shift' => 1,
+            'jam_mulai' => '07:00:00',
+            'jam_selesai' => '11:00:00',
+        ]);
+
+        $this->assertTrue($guru->isPiketActive());
+        $this->actingAs($guru)->get(route('dashboard.piket'))->assertOk();
+    }
+
     public function test_unscheduled_teacher_lands_on_teaching_dashboard(): void
     {
         $this->travelTo(Carbon::parse('2026-09-22 08:00:00', 'Asia/Jakarta'));

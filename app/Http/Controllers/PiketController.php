@@ -274,35 +274,6 @@ class PiketController extends Controller
         return view('dashboard.piket.jurnal-detail', compact('jurnal'));
     }
 
-    // Verifikasi kehadiran guru (dipanggil dari tombol "Verifikasi")
-    public function verifikasiKehadiran(Request $request, $id)
-    {
-        $this->ensurePiketAccess();
-        $kehadiran = KehadiranGuru::find($id);
-
-        if (! $kehadiran) {
-            // Jika belum ada record tapi piket ingin verifikasi hadir langsung
-            $userId = $request->input('user_id');
-            $tanggal = $request->input('tanggal', now()->format('Y-m-d'));
-
-            $kehadiran = KehadiranGuru::create([
-                'user_id' => $userId,
-                'tanggal' => $tanggal,
-                'jam_masuk' => now()->format('H:i:s'),
-                'status' => 'Hadir',
-                'diverifikasi_oleh' => auth()->id(),
-                'diverifikasi_at' => now(),
-            ]);
-        } else {
-            $kehadiran->update([
-                'diverifikasi_oleh' => auth()->id(),
-                'diverifikasi_at' => now(),
-            ]);
-        }
-
-        return back()->with('success', 'Kehadiran guru berhasil diverifikasi.');
-    }
-
     // Halaman Rekap Kehadiran Siswa
     public function kehadiranSiswa(Request $request)
     {
@@ -1001,7 +972,7 @@ class PiketController extends Controller
         $totalKelas = $kelases->count();
         $gurus = User::where('role', 'guru')->orderBy('name', 'asc')->get();
 
-        $jadwalQuery = JadwalPelajaran::query();
+        $jadwalQuery = JadwalPelajaran::query()->where('jam_ke', '>', 0);
         if ($guruId && $guruId !== 'all') {
             $jadwalQuery->where('id_user', $guruId);
         }
@@ -1030,7 +1001,9 @@ class PiketController extends Controller
         $guruAbsen = 0;
 
         // 1. Jurnal lengkap per guru
-        $jadwalGuruGrouped = JadwalPelajaran::selectRaw('id_user, hari, count(*) as count')
+        $jadwalGuruGrouped = JadwalPelajaran::query()
+            ->where('jam_ke', '>', 0)
+            ->selectRaw('id_user, hari, count(*) as count')
             ->groupBy('id_user', 'hari')
             ->get()
             ->groupBy('id_user');
@@ -1112,6 +1085,7 @@ class PiketController extends Controller
         $jadwalKelasList = JadwalPelajaran::with(['guru', 'mapelItem'])
             ->whereIn('id_kelas', $classesToInspect->pluck('id_kelas'))
             ->where('hari', $namaHari)
+            ->where('jam_ke', '>', 0)
             ->orderBy('jam_ke')
             ->get()
             ->groupBy('id_kelas');

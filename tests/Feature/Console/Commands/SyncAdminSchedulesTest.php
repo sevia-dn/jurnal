@@ -60,7 +60,7 @@ class SyncAdminSchedulesTest extends TestCase
         ]);
 
         $this->artisan('jadwal:sync-admin')
-            ->expectsOutput('2 jadwal kelas X dan XI berhasil diselaraskan ke Admin.')
+            ->expectsOutput('30 jadwal kelas X dan XI berhasil diselaraskan ke Admin.')
             ->assertSuccessful();
 
         $this->assertDatabaseMissing('jadwal_pelajarans', ['id_jadwal' => $staleAdminSchedule->id_jadwal]);
@@ -87,6 +87,30 @@ class SyncAdminSchedulesTest extends TestCase
 
         $this->artisan('jadwal:sync-admin')->assertSuccessful();
 
-        $this->assertSame(2, JadwalPelajaran::query()->whereIn('id_kelas', [$classX->id_kelas, $classXi->id_kelas])->count());
+        $this->assertDatabaseHas('jadwal_pelajarans', [
+            'id_kelas' => $classX->id_kelas,
+            'hari' => 'Senin',
+            'mapel' => 'Upacara / Apel',
+            'jam_ke' => 0,
+            'jam_mulai' => '07:00:00',
+            'jam_selesai' => '07:40:00',
+        ]);
+        $this->assertDatabaseHas('jadwal_pelajarans', [
+            'id_kelas' => $classXi->id_kelas,
+            'hari' => 'Jumat',
+            'mapel' => 'Pembiasaan Jumat',
+            'jam_ke' => 0,
+            'jam_mulai' => '07:00:00',
+            'jam_selesai' => '07:30:00',
+        ]);
+        $this->assertDatabaseHas('jadwal_pelajarans', [
+            'id_kelas' => $classX->id_kelas,
+            'hari' => 'Jumat',
+            'mapel' => 'Istirahat 2',
+            'jam_ke' => 0,
+            'jam_mulai' => '11:20:00',
+            'jam_selesai' => '13:00:00',
+        ]);
+        $this->assertSame(30, JadwalPelajaran::query()->whereIn('id_kelas', [$classX->id_kelas, $classXi->id_kelas])->count());
     }
 }
