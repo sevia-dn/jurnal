@@ -9,7 +9,7 @@
         ->orWhere('nama_kelas', $rawName)
         ->first();
 
-    // Notifikasi pengurus kelas: hanya notifikasi jurnal baru yang dikirim dan notifikasi dispensasi siswa
+    // Hanya notifikasi belum dibaca yang tampil agar notifikasi yang sudah diperiksa langsung hilang.
     $notifNavbarPengurus = \App\Models\Notifikasi::where(function ($query) use ($user, $kelasPengurusNavbar) {
             $query->where('id_user', $user?->id);
             if ($kelasPengurusNavbar) {
@@ -17,6 +17,7 @@
             }
         })
         ->whereIn('tipe', ['jurnal_baru', 'dispensasi'])
+        ->where('is_read', false)
         ->latest()
         ->take(10)
         ->get();
@@ -98,7 +99,9 @@
                                 ? 'bi-journal-plus'
                                 : 'bi-patch-check-fill';
                         @endphp
-                        <div class="rounded-xl border p-3 mb-2 {{ $borderColor }}">
+                        <form method="POST" action="{{ route('pengurus-kelas.notifikasi.read', $notif) }}" class="mb-2">
+                            @csrf
+                            <button type="submit" class="w-full rounded-xl border p-3 text-left transition hover:shadow-sm {{ $borderColor }}">
                             <div class="flex items-start gap-3">
                                 <span class="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full {{ $badgeColor }}">
                                     <i class="bi {{ $iconClass }} text-base" aria-hidden="true"></i>
@@ -114,7 +117,8 @@
                                     <p class="mt-1 text-[10px] text-slate-400">{{ $notif->created_at->diffForHumans() }}</p>
                                 </div>
                             </div>
-                        </div>
+                            </button>
+                        </form>
                     @empty
                         <div class="rounded-xl border border-slate-100 bg-slate-50 p-5 text-center">
                             <i class="bi bi-bell-slash text-2xl text-slate-300"></i>

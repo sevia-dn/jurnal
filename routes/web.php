@@ -29,6 +29,8 @@ Route::get('/waka/dispensasi/{token}', [DispensasiApprovalController::class, 'sh
     ->name('waka.dispensasi.show');
 Route::post('/waka/dispensasi/{token}', [DispensasiApprovalController::class, 'processFromWhatsApp'])
     ->name('waka.dispensasi.process');
+Route::get('/waka/dispensasi/{token}/cetak', [DispensasiApprovalController::class, 'cetakSuratFromWhatsApp'])
+    ->name('waka.dispensasi.cetak');
 
 // Retain any guest‑only routes in a separate group (currently none).
 Route::middleware('guest')->group(function () {
@@ -229,6 +231,11 @@ Route::middleware('auth')->group(function () {
         )->name('pengurus-kelas.kehadiran-siswa');
 
         Route::post(
+            '/notifikasi/{notifikasi}/read',
+            [PengurusKelasController::class, 'markNotificationRead']
+        )->name('pengurus-kelas.notifikasi.read');
+
+        Route::post(
             '/notifikasi/read-all',
             [PengurusKelasController::class, 'markAllNotificationsRead']
         )->name('pengurus-kelas.notifikasi.read-all');
@@ -295,6 +302,9 @@ Route::middleware('auth')->group(function () {
         Route::get('/piket/ketidakhadiran-guru', [PiketController::class, 'ketidakhadiranGuruIndex'])
             ->name('piket.ketidakhadiran-guru.index');
 
+        Route::get('/piket/ketidakhadiran-guru/{ketidakhadiran}', [PiketController::class, 'ketidakhadiranGuruShow'])
+            ->name('piket.ketidakhadiran-guru.show');
+
         Route::post('/piket/ketidakhadiran-guru/{ketidakhadiran}/approve', [PiketController::class, 'ketidakhadiranGuruApprove'])
             ->name('piket.ketidakhadiran-guru.approve');
 
@@ -308,8 +318,14 @@ Route::middleware('auth')->group(function () {
         Route::get('/piket/rekap-jurnal', [PiketController::class, 'rekapJurnal'])
             ->name('piket.rekap-jurnal');
 
+        Route::get('/piket/jurnal-kelas/{kelas}', [PiketController::class, 'classJournalSessions'])
+            ->name('piket.jurnal-kelas.sessions');
+
         Route::get('/piket/rekap-jurnal/detail/{id}', [PiketController::class, 'rekapJurnalDetail'])
             ->name('piket.rekap-jurnal.detail');
+
+        Route::post('/piket/rekap-jurnal/kelas/{kelas}/approve', [PiketController::class, 'approveClassJournal'])
+            ->name('piket.rekap-jurnal.kelas.approve');
 
         Route::get('/piket/rekap-jurnal/unduh-pdf', [PiketController::class, 'downloadRekapJurnalPdf'])
             ->name('piket.rekap-jurnal.download-pdf');

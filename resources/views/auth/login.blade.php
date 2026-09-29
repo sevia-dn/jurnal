@@ -151,8 +151,6 @@
             <div class="mt-5 flex flex-wrap justify-center gap-x-4 gap-y-2 text-xs">
                 @if (\App\Models\Pengaturan::getValue('publik_riwayat_aktif', 1))
                     <a href="{{ route('public.jurnal') }}" class="font-semibold text-jk-green hover:underline"><i class="bi bi-clock-history mr-1"></i>Riwayat jurnal</a>
-                @else
-                    <span class="text-slate-400"><i class="bi bi-lock-fill mr-1"></i>Riwayat jurnal dikunci</span>
                 @endif
             </div>
 

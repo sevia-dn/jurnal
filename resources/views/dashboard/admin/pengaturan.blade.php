@@ -260,12 +260,57 @@
             </div>
 
         </div>
+        <section id="jam-kosong-seharian" class="scroll-mt-20 mt-7 border-t border-slate-100 pt-6">
+            <div class="mb-5 flex items-center gap-3">
+                <span class="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-100 text-lg text-orange-700"><i class="bi bi-calendar-x-fill"></i></span>
+                <div>
+                    <h3 class="text-base font-bold text-slate-900">Jam Kosong Seharian</h3>
+                    <p class="mt-0.5 text-xs text-slate-500">Atur tanggal event (misal Classmeet) di mana sekolah masuk tapi tidak ada KBM — guru tidak perlu mengisi jurnal selama rentang tanggal ini.</p>
+                </div>
+            </div>
+            <form action="{{ route('admin.pengaturan.update') }}" method="POST" class="space-y-5 rounded-xl border border-slate-200 bg-slate-50/60 p-4 sm:p-5">
+                @csrf
+                <input type="hidden" name="action_type" value="jam_kosong">
+                <div class="grid gap-4 sm:grid-cols-3">
+                    <label class="block">
+                        <span class="text-xs font-bold text-slate-700">Nama kegiatan</span>
+                        <input type="text" name="jam_kosong_nama" value="{{ old('jam_kosong_nama', $jamKosongNama) }}" maxlength="120" placeholder="Contoh: Classmeet Semester Ganjil" class="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm focus:border-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-100">
+                    </label>
+                    <label class="block">
+                        <span class="text-xs font-bold text-slate-700">Tanggal mulai</span>
+                        <input type="date" name="jam_kosong_tanggal_mulai" value="{{ old('jam_kosong_tanggal_mulai', $jamKosongTanggalMulai) }}" class="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm focus:border-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-100">
+                    </label>
+                    <label class="block">
+                        <span class="text-xs font-bold text-slate-700">Tanggal selesai</span>
+                        <input type="date" name="jam_kosong_tanggal_selesai" value="{{ old('jam_kosong_tanggal_selesai', $jamKosongTanggalSelesai) }}" class="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm focus:border-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-100">
+                    </label>
+                </div>
+                @if($jamKosongNama)
+                    <p class="text-xs text-orange-700 font-medium">
+                        <i class="bi bi-info-circle-fill"></i>
+                        Jam kosong aktif: <strong>{{ $jamKosongNama }}</strong>
+                        @if($jamKosongTanggalMulai && $jamKosongTanggalSelesai)
+                            ({{ \Carbon\Carbon::parse($jamKosongTanggalMulai)->translatedFormat('d M Y') }}
+                            &ndash;
+                            {{ \Carbon\Carbon::parse($jamKosongTanggalSelesai)->translatedFormat('d M Y') }})
+                        @endif
+                        &mdash; kosongkan semua field dan simpan untuk menonaktifkan.
+                    </p>
+                @else
+                    <p class="text-xs text-slate-500">Kosongkan semua field untuk menonaktifkan jam kosong. Selama rentang tanggal ini aktif, semua guru tidak dapat mengisi jurnal.</p>
+                @endif
+                <div class="flex justify-end border-t border-slate-200 pt-4">
+                    <button type="submit" class="inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl bg-emerald-600 px-6 py-2.5 text-sm font-bold text-white transition hover:bg-emerald-700"><i class="bi bi-floppy-fill"></i><span>Simpan Jam Kosong</span></button>
+                </div>
+            </form>
+        </section>
+
         <section id="event-pulang-cepat" class="scroll-mt-20 mt-7 border-t border-slate-100 pt-6">
             <div class="mb-5 flex items-center gap-3">
                 <span class="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-100 text-lg text-amber-700"><i class="bi bi-sun"></i></span>
                 <div>
-                    <h3 class="text-base font-bold text-slate-900">Event Sekolah dan Pulang Cepat</h3>
-                    <p class="mt-0.5 text-xs text-slate-500">Catat kegiatan dan jam pulang khusus untuk diumumkan pada halaman jurnal publik.</p>
+                    <h3 class="text-base font-bold text-slate-900">Jam Pulang Khusus</h3>
+                    <p class="mt-0.5 text-xs text-slate-500">Atur jam pulang dadakan untuk satu hari tertentu — sesi yang berakhir setelah jam ini tidak perlu diisi jurnal.</p>
                 </div>
             </div>
             <form action="{{ route('admin.pengaturan.update') }}" method="POST" class="space-y-5 rounded-xl border border-slate-200 bg-slate-50/60 p-4 sm:p-5">
@@ -273,11 +318,11 @@
                 <input type="hidden" name="action_type" value="event">
                 <div class="grid gap-4 sm:grid-cols-3">
                     <label class="block">
-                        <span class="text-xs font-bold text-slate-700">Nama kegiatan sekolah</span>
-                        <input type="text" name="event_sekolah" value="{{ old('event_sekolah', $eventSekolah) }}" maxlength="120" placeholder="Contoh: Jam kosong / kegiatan sekolah" class="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm focus:border-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-100">
+                        <span class="text-xs font-bold text-slate-700">Keterangan kegiatan</span>
+                        <input type="text" name="event_sekolah" value="{{ old('event_sekolah', $eventSekolah) }}" maxlength="120" placeholder="Contoh: Upacara / Rapat Dinas" class="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm focus:border-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-100">
                     </label>
                     <label class="block">
-                        <span class="text-xs font-bold text-slate-700">Tanggal kegiatan</span>
+                        <span class="text-xs font-bold text-slate-700">Tanggal pulang cepat</span>
                         <input type="date" name="event_sekolah_tanggal" value="{{ old('event_sekolah_tanggal', $eventSekolahTanggal) }}" class="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm focus:border-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-100">
                     </label>
                     <label class="block">
@@ -285,12 +330,24 @@
                         <input type="text" name="event_sekolah_jam_pulang" value="{{ old('event_sekolah_jam_pulang', $eventSekolahJamPulang) }}" inputmode="numeric" pattern="(?:[01][0-9]|2[0-3])[:.][0-5][0-9]" maxlength="5" placeholder="HH.MM" autocomplete="off" class="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm focus:border-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-100">
                     </label>
                 </div>
-                <p class="text-xs text-slate-500">Masukkan jam dalam format 24 jam, contoh 09.00. Pengaturan ini menyimpan pengumuman; jadwal pelajaran dan piket tidak berubah otomatis.</p>
+                @if($eventSekolah || $eventSekolahTanggal)
+                    <p class="text-xs text-amber-700 font-medium">
+                        <i class="bi bi-info-circle-fill"></i>
+                        Jam pulang khusus aktif
+                        @if($eventSekolahTanggal) pada {{ \Carbon\Carbon::parse($eventSekolahTanggal)->translatedFormat('d M Y') }}@endif
+                        @if($eventSekolah) &mdash; <strong>{{ $eventSekolah }}</strong>@endif
+                        @if($eventSekolahJamPulang), pulang pukul {{ str_replace(':', '.', substr($eventSekolahJamPulang, 0, 5)) }}@endif.
+                        Kosongkan semua field dan simpan untuk menonaktifkan.
+                    </p>
+                @else
+                    <p class="text-xs text-slate-500">Masukkan jam dalam format 24 jam, contoh 09.00. Kosongkan semua field untuk menonaktifkan. Sesi yang berakhir setelah jam ini ditutup untuk pengisian jurnal.</p>
+                @endif
                 <div class="flex justify-end border-t border-slate-200 pt-4">
-                    <button type="submit" class="inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl bg-emerald-600 px-6 py-2.5 text-sm font-bold text-white transition hover:bg-emerald-700"><i class="bi bi-floppy-fill"></i><span>Simpan Event / Jam Pulang</span></button>
+                    <button type="submit" class="inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl bg-emerald-600 px-6 py-2.5 text-sm font-bold text-white transition hover:bg-emerald-700"><i class="bi bi-floppy-fill"></i><span>Simpan Jam Pulang</span></button>
                 </div>
             </form>
         </section>
+
 
     </div>
 </div>

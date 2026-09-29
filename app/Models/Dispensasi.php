@@ -99,4 +99,16 @@ class Dispensasi extends Model
     {
         return $this->belongsTo(User::class, 'diproses_oleh');
     }
+
+    /**
+     * Accessor untuk URL verifikasi publik yang valid dan dinamis.
+     */
+    public function getVerificationUrlAttribute(): ?string
+    {
+        if (blank($this->token_verifikasi)) {
+            return null;
+        }
+
+        return route('dispensasi.verify', ['token' => $this->token_verifikasi]);
+    }
 }

@@ -17,9 +17,9 @@
         {{-- BACK & NAVIGATION TABS --}}
         <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-                <a href="{{ route('dashboard.piket') }}" class="inline-flex items-center gap-2 text-sm font-semibold text-emerald-700 transition hover:text-emerald-800">
+                <a href="{{ route('dashboard.piket') }}" class="inline-flex items-center gap-2 rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs font-bold text-indigo-700 transition hover:bg-indigo-100">
                     <i class="bi bi-arrow-left"></i>
-                    Kembali ke Dashboard Piket
+                    Kembali
                 </a>
                 <h1 class="mt-2 text-2xl font-extrabold text-slate-900">Riwayat Dispensasi</h1>
             </div>
@@ -161,14 +161,10 @@
                                             <i class="bi bi-printer-fill"></i>
                                             Cetak
                                         </a>
-                                        @if($dispensasi->token_verifikasi)
-                                            @php
-                                                $verificationBaseUrl = rtrim((string) config('services.whatsapp.approval_base_url'), '/');
-                                                $verificationUrl = $verificationBaseUrl.route('dispensasi.verify', $dispensasi->token_verifikasi, false);
-                                            @endphp
+                                        @if($dispensasi->verification_url)
                                             <button
                                                 type="button"
-                                                data-qr-url="{{ $verificationUrl }}"
+                                                data-qr-url="{{ $dispensasi->verification_url }}"
                                                 data-qr-name="{{ $dispensasi->siswa?->nama ?? 'Siswa' }}"
                                                 data-qr-kelas="{{ $dispensasi->siswa?->kelas?->nama_kelas ?? '-' }}"
                                                 data-qr-alasan="{{ $dispensasi->alasan }}"
@@ -232,6 +228,7 @@
         <img id="dispensasi-qr-image" class="mx-auto mt-5 h-52 w-52 rounded-xl border border-slate-200 p-2" alt="QR verifikasi dispensasi">
         <p class="mt-4 text-xs leading-relaxed text-slate-500">Siswa dapat memperlihatkan kode QR ini kepada petugas keamanan/satpam saat meninggalkan atau kembali ke sekolah.</p>
         <a id="dispensasi-qr-link" target="_blank" class="mt-4 inline-flex items-center gap-2 text-xs font-bold text-emerald-700 hover:text-emerald-800"><i class="bi bi-box-arrow-up-right"></i> Buka halaman verifikasi</a>
+        <p id="dispensasi-qr-domain" class="mt-2 break-all text-center text-[10px] text-slate-400"></p>
     </div>
 </div>
 
@@ -251,14 +248,22 @@ document.addEventListener('DOMContentLoaded', () => {
     const qrLink = document.getElementById('dispensasi-qr-link');
     const qrName = document.getElementById('dispensasi-qr-name');
     const qrInfo = document.getElementById('dispensasi-qr-info');
+    const qrDomain = document.getElementById('dispensasi-qr-domain');
 
     document.querySelectorAll('[data-qr-url]').forEach((button) => {
         button.addEventListener('click', () => {
-            const verificationUrl = button.dataset.qrUrl;
-            qrImage.src = `https://api.qrserver.com/v1/create-qr-code/?size=512x512&margin=1&format=png&data=${encodeURIComponent(verificationUrl)}`;
+            let verificationUrl = button.dataset.qrUrl;
+            if (!verificationUrl) return;
+
+            if (verificationUrl.startsWith('/')) {
+                verificationUrl = window.location.origin + verificationUrl;
+            }
+
+            qrImage.src = `https://api.qrserver.com/v1/create-qr-code/?size=512x512&margin=1&format=png&data=${encodeURIComponent(verificationUrl)}&cache=${Date.now()}`;
             qrLink.href = verificationUrl;
             qrName.textContent = button.dataset.qrName;
             qrInfo.textContent = `${button.dataset.qrKelas} · ${button.dataset.qrWaktu}`;
+            qrDomain.textContent = verificationUrl;
             qrModal.classList.remove('hidden');
             qrModal.classList.add('flex');
         });

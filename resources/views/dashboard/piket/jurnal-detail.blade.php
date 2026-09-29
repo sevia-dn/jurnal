@@ -28,10 +28,17 @@
         $jamText = $jurnal->jam_selesai && $jurnal->jam_selesai !== $jurnal->jam_ke ? "Jam ke-{$jurnal->jam_ke} s/d {$jurnal->jam_selesai}" : "Jam ke-{$jurnal->jam_ke}";
         $lampiranUrl = $jurnal->lampiran ? asset('storage/'.$jurnal->lampiran) : null;
         $lampiranExtension = $jurnal->lampiran ? strtolower(pathinfo($jurnal->lampiran, PATHINFO_EXTENSION)) : null;
+        $referer = request()->header('referer');
+        $backUrl = route('dashboard.piket');
+        if (request()->filled('back_url')) {
+            $backUrl = request('back_url');
+        } elseif ($referer && (str_contains($referer, 'rekap-jurnal') || str_contains($referer, 'jurnal-kelas'))) {
+            $backUrl = $referer;
+        }
     @endphp
 
     <div class="mx-auto w-full max-w-5xl px-4 py-5 pb-24 sm:px-6 lg:px-8">
-        <a href="{{ route('dashboard.piket') }}" class="mb-4 inline-flex items-center gap-2 text-sm font-semibold text-emerald-700 transition hover:text-emerald-800"><i class="bi bi-arrow-left"></i>Kembali ke aktivitas jurnal</a>
+        <a href="{{ $backUrl }}" class="mb-4 inline-flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-700 transition hover:bg-emerald-100"><i class="bi bi-arrow-left"></i>Kembali</a>
 
         <header class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
             <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">

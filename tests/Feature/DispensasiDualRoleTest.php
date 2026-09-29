@@ -79,7 +79,9 @@ class DispensasiDualRoleTest extends TestCase
                 ['username' => 'wakatest', 'name' => 'Waka Test', 'number' => '081233334444'],
             ],
         ]);
-        Http::fake();
+        Http::fake([
+            'https://gateway.test/send' => Http::response(['status' => true]),
+        ]);
 
         // 1. Buat User Guru Piket & User Waka
         $guruPiket = User::create([
@@ -169,11 +171,11 @@ class DispensasiDualRoleTest extends TestCase
         $this->assertNotNull($dispensasi->token_approval);
         Http::assertSent(function (ClientRequest $request) use ($dispensasi): bool {
             return $request->url() === 'https://gateway.test/send'
-                && $request['target'] === '081233334444'
+                && $request['target'] === '6281233334444'
                 && str_contains($request['message'], 'https://public-aeration-unleaded.ngrok-free.dev'.route('waka.dispensasi.show', ['token' => $dispensasi->token_approval], false).'?waka=wakatest')
                 && str_contains($request['message'], 'Guru Piket Test');
         });
-        Http::assertSentCount(2);
+        Http::assertSentCount(1);
 
         // Logout guru piket untuk menguji kondisi Guest
         auth()->logout();
@@ -246,6 +248,10 @@ class DispensasiDualRoleTest extends TestCase
             'id_dispensasi' => $dispensasi->id,
             'tipe' => 'dispensasi',
         ]);
+
+        $this->get(route('waka.dispensasi.cetak', ['token' => $dispensasi->token_approval]))
+            ->assertOk()
+            ->assertSee('SURAT KETERANGAN DISPENSASI');
 
         $verificationResponse = $this->get(route('dispensasi.verify', $dispensasi->token_verifikasi));
         $verificationResponse->assertOk();

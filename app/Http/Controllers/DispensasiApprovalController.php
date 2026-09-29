@@ -184,9 +184,20 @@ class DispensasiApprovalController extends Controller
         return view('dashboard.dispensasi.cetak', compact('dispensasi'));
     }
 
+    /**
+     * Cetak surat dari tautan persetujuan Waka tanpa memerlukan sesi login.
+     */
+    public function cetakSuratFromWhatsApp(string $token)
+    {
+        $dispensasi = $this->findByApprovalToken($token);
+        abort_unless(in_array($dispensasi->status_waka, ['disetujui', 'approved'], true), 404);
+
+        return view('dashboard.dispensasi.cetak', compact('dispensasi'));
+    }
+
     public function verify(string $token)
     {
-        $dispensasi = Dispensasi::with(['siswa.kelas', 'pembuat', 'pemroses'])
+        $dispensasi = Dispensasi::with(['siswa.kelas', 'siswas.kelas', 'pembuat', 'pemroses'])
             ->where('token_verifikasi', $token)
             ->where('status_akhir', 'disetujui')
             ->firstOrFail();

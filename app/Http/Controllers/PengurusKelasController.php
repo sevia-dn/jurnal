@@ -9,8 +9,10 @@ use App\Models\JurnalMengajar;
 use App\Models\Kelas;
 use App\Models\KetidakhadiranGuru;
 use App\Models\Notifikasi;
+use App\Models\Pengaturan;
 use App\Models\PiketKehadiranSiswa;
 use App\Models\Siswa;
+use App\Services\ScheduleTimeService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -38,7 +40,7 @@ class PengurusKelasController extends Controller
     /**
      * Dashboard Utama Pengurus Kelas
      */
-    public function dashboard()
+    public function dashboard(ScheduleTimeService $scheduleTimeService)
     {
         Carbon::setLocale('id');
         $now = Carbon::now('Asia/Jakarta');
@@ -48,6 +50,11 @@ class PengurusKelasController extends Controller
         $kelas = $this->getKelasPengurus();
         $kelasId = $kelas?->id_kelas;
 
+        $eventDismissalTime = $scheduleTimeService->dismissalTimeForDate($now->toDateString());
+        $eventSchoolName = (string) Pengaturan::getValue('event_sekolah', '');
+        $isJamKosong = $scheduleTimeService->isAllDayEmptyForDate($now->toDateString());
+        $jamKosongNama = (string) Pengaturan::getValue('jam_kosong_nama', '');
+
         // 1. Total Sesi Hari Ini & Jadwal Pembelajaran Hari Ini
         $totalSesi = 0;
         $jadwals = collect();
@@ -56,7 +63,14 @@ class PengurusKelasController extends Controller
                 ->where('id_kelas', $kelasId)
                 ->where('hari', $hariIni)
                 ->orderBy('jam_mulai')
-                ->get();
+                ->get()
+                ->filter(fn (JadwalMengajar $j): bool => $scheduleTimeService->isLessonRangeApplicableOnDate(
+                    $now->toDateString(),
+                    $hariIni,
+                    (int) $j->jam_mulai,
+                    (int) $j->jam_selesai,
+                ))
+                ->values();
             $totalSesi = $jadwals->count();
         }
 
@@ -195,7 +209,11 @@ class PengurusKelasController extends Controller
             'jurnalAntrean',
             'jadwals',
             'jurnalHariIni',
-            'ketidakhadiranGuruHariIni'
+            'ketidakhadiranGuruHariIni',
+            'eventDismissalTime',
+            'eventSchoolName',
+            'isJamKosong',
+            'jamKosongNama'
         ));
     }
 
@@ -290,6 +308,11 @@ class PengurusKelasController extends Controller
             'divalidasi_pada' => Carbon::now('Asia/Jakarta'),
         ]);
 
+        Notifikasi::query()
+            ->where('id_user', Auth::id())
+            ->where('id_jurnal', $jurnal->id_jurnal)
+            ->update(['is_read' => true]);
+
         Notifikasi::create([
             'id_user' => $jurnal->id_user,
             'id_kelas' => null,
@@ -307,7 +330,7 @@ class PengurusKelasController extends Controller
     /**
      * Status Kehadiran Guru Hari Ini
      */
-    public function kehadiranGuru()
+    public function kehadiranGuru(ScheduleTimeService $scheduleTimeService)
     {
         Carbon::setLocale('id');
         $now = Carbon::now('Asia/Jakarta');
@@ -317,13 +340,25 @@ class PengurusKelasController extends Controller
         $kelas = $this->getKelasPengurus();
         $kelasId = $kelas?->id_kelas;
 
+        $eventDismissalTime = $scheduleTimeService->dismissalTimeForDate($now->toDateString());
+        $eventSchoolName = (string) Pengaturan::getValue('event_sekolah', '');
+        $isJamKosong = $scheduleTimeService->isAllDayEmptyForDate($now->toDateString());
+        $jamKosongNama = (string) Pengaturan::getValue('jam_kosong_nama', '');
+
         $jadwals = collect();
         if ($kelasId) {
             $jadwals = JadwalMengajar::with(['user', 'mapel'])
                 ->where('id_kelas', $kelasId)
                 ->where('hari', $hariIni)
                 ->orderBy('jam_mulai')
-                ->get();
+                ->get()
+                ->filter(fn (JadwalMengajar $j): bool => $scheduleTimeService->isLessonRangeApplicableOnDate(
+                    $now->toDateString(),
+                    $hariIni,
+                    (int) $j->jam_mulai,
+                    (int) $j->jam_selesai,
+                ))
+                ->values();
         }
 
         $jurnalHariIni = collect();
@@ -345,7 +380,11 @@ class PengurusKelasController extends Controller
             'hariIni',
             'jadwals',
             'jurnalHariIni',
-            'ketidakhadiranGuruHariIni'
+            'ketidakhadiranGuruHariIni',
+            'eventDismissalTime',
+            'eventSchoolName',
+            'isJamKosong',
+            'jamKosongNama'
         ));
     }
 
@@ -368,36 +407,53 @@ class PengurusKelasController extends Controller
                 ->get();
         }
 
-        // 1. Ambil absensi dari JURNAL PERTAMA hari ini (jam_ke terkecil)
-        //    sebagai status dasar siswa untuk hari ini.
+        // 1. Ambil absensi dari SELURUH JURNAL hari ini (diupdate berkelanjutan)
+        //    Prioritas status: Dispensasi > Sakit > Izin > Alpa > Hadir
         $absensiTerakhir = collect();
         $jurnalPertama = null;
+        $totalJurnalHariIni = 0;
 
         if ($kelasId) {
-            // Ambil semua jurnal hari ini urut jam_ke ASC, ambil yang pertama
-            $jurnalPertama = JurnalMengajar::with(['mapel', 'user'])
+            $jurnalsHariIni = JurnalMengajar::with(['mapel', 'user'])
                 ->where('id_kelas', $kelasId)
                 ->whereDate('tanggal', $now->toDateString())
                 ->orderBy('jam_ke')
-                ->first();
+                ->get();
 
-            if ($jurnalPertama) {
-                // Absensi dari jurnal pertama = status dasar
-                $absensiTerakhir = Absensi::where('id_jurnal', $jurnalPertama->id_jurnal)
+            $totalJurnalHariIni = $jurnalsHariIni->count();
+            $jurnalPertama = $jurnalsHariIni->last() ?? $jurnalsHariIni->first();
+
+            if ($jurnalsHariIni->isNotEmpty()) {
+                $priority = [
+                    'D' => 5, 'DISPENSASI' => 5,
+                    'SAKIT' => 4, 'S' => 4,
+                    'IZIN' => 3, 'I' => 3,
+                    'ALPA' => 2, 'ALFA' => 2, 'A' => 2,
+                    'HADIR' => 1, 'H' => 1,
+                ];
+
+                $absensiTerakhir = Absensi::whereIn('id_jurnal', $jurnalsHariIni->pluck('id_jurnal'))
                     ->get()
-                    ->keyBy('id_siswa');
+                    ->groupBy('id_siswa')
+                    ->map(fn ($records) => $records->sortByDesc(fn ($r) => $priority[strtoupper(trim((string) $r->status))] ?? 0)->first());
             }
         }
 
         // 2. Overlay dispensasi yang sudah disetujui hari ini
         //    Dispensasi yang disetujui menimpa status apapun dari jurnal pertama.
         $dispensasiAktifHariIni = collect();
+        $piketKehadiranHariIni = collect();
         if ($kelasId) {
             $dispensasiAktifHariIni = Dispensasi::with('siswa')
                 ->whereHas('siswa', fn ($q) => $q->where('kelas_id', $kelasId))
                 ->whereDate('tanggal', '<=', $now->toDateString())
                 ->whereDate('tanggal_selesai', '>=', $now->toDateString())
                 ->where('status_akhir', 'disetujui')
+                ->get()
+                ->keyBy('siswa_id');
+            $piketKehadiranHariIni = PiketKehadiranSiswa::query()
+                ->where('kelas_id', $kelasId)
+                ->whereDate('tanggal', $now->toDateString())
                 ->get()
                 ->keyBy('siswa_id');
         }
@@ -408,7 +464,9 @@ class PengurusKelasController extends Controller
             'siswas',
             'absensiTerakhir',
             'dispensasiAktifHariIni',
-            'jurnalPertama'
+            'piketKehadiranHariIni',
+            'jurnalPertama',
+            'totalJurnalHariIni'
         ));
     }
 
@@ -425,5 +483,23 @@ class PengurusKelasController extends Controller
             ->update(['is_read' => true]);
 
         return redirect()->back()->with('success', 'Semua notifikasi telah ditandai sudah dibaca.');
+    }
+
+    public function markNotificationRead(Notifikasi $notifikasi)
+    {
+        $kelas = $this->getKelasPengurus();
+        abort_unless(
+            $notifikasi->id_user === Auth::id()
+                || ($kelas !== null && $notifikasi->id_kelas === $kelas->id_kelas),
+            404,
+        );
+
+        $notifikasi->update(['is_read' => true]);
+
+        if ($notifikasi->id_jurnal !== null) {
+            return redirect()->route('pengurus-kelas.jurnal-detail', ['id' => $notifikasi->id_jurnal]);
+        }
+
+        return redirect()->route('pengurus-kelas.dashboard');
     }
 }

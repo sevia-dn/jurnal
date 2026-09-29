@@ -1301,6 +1301,9 @@ class AdminController extends Controller
         $eventSekolah = (string) Pengaturan::getValue('event_sekolah', '');
         $eventSekolahTanggal = (string) Pengaturan::getValue('event_sekolah_tanggal', '');
         $eventSekolahJamPulang = (string) Pengaturan::getValue('event_sekolah_jam_pulang', '');
+        $jamKosongNama = (string) Pengaturan::getValue('jam_kosong_nama', '');
+        $jamKosongTanggalMulai = (string) Pengaturan::getValue('jam_kosong_tanggal_mulai', '');
+        $jamKosongTanggalSelesai = (string) Pengaturan::getValue('jam_kosong_tanggal_selesai', '');
 
         $totalKelas = Kelas::count();
 
@@ -1316,6 +1319,9 @@ class AdminController extends Controller
             'eventSekolah',
             'eventSekolahTanggal',
             'eventSekolahJamPulang',
+            'jamKosongNama',
+            'jamKosongTanggalMulai',
+            'jamKosongTanggalSelesai',
             'totalKelas'
         ));
     }
@@ -1350,7 +1356,26 @@ class AdminController extends Controller
             $dismissalTime = str_replace('.', ':', (string) ($validated['event_sekolah_jam_pulang'] ?? ''));
             Pengaturan::setValue('event_sekolah_jam_pulang', $dismissalTime);
 
-            return redirect()->to(route('admin.pengaturan').'#pemajuan-jam')->with('success', 'Pengaturan event sekolah dan jam pulang berhasil diperbarui.');
+            return redirect()->to(route('admin.pengaturan').'#pemajuan-jam')->with('success', 'Pengaturan jam pulang khusus berhasil diperbarui.');
+        }
+
+        if ($request->input('action_type') === 'jam_kosong') {
+            $validated = $request->validate([
+                'jam_kosong_nama' => 'nullable|string|max:120|required_with:jam_kosong_tanggal_mulai,jam_kosong_tanggal_selesai',
+                'jam_kosong_tanggal_mulai' => 'nullable|date|required_with:jam_kosong_tanggal_selesai',
+                'jam_kosong_tanggal_selesai' => 'nullable|date|after_or_equal:jam_kosong_tanggal_mulai|required_with:jam_kosong_tanggal_mulai',
+            ], [
+                'jam_kosong_nama.required_with' => 'Nama kegiatan wajib diisi.',
+                'jam_kosong_tanggal_mulai.required_with' => 'Tanggal mulai wajib diisi.',
+                'jam_kosong_tanggal_selesai.required_with' => 'Tanggal selesai wajib diisi.',
+                'jam_kosong_tanggal_selesai.after_or_equal' => 'Tanggal selesai harus sama dengan atau setelah tanggal mulai.',
+            ]);
+
+            Pengaturan::setValue('jam_kosong_nama', trim((string) ($validated['jam_kosong_nama'] ?? '')));
+            Pengaturan::setValue('jam_kosong_tanggal_mulai', (string) ($validated['jam_kosong_tanggal_mulai'] ?? ''));
+            Pengaturan::setValue('jam_kosong_tanggal_selesai', (string) ($validated['jam_kosong_tanggal_selesai'] ?? ''));
+
+            return redirect()->to(route('admin.pengaturan').'#pemajuan-jam')->with('success', 'Pengaturan jam kosong seharian berhasil diperbarui.');
         }
 
         // Pengaturan Kebijakan Tenggat Waktu Pengisian Jurnal
@@ -1690,11 +1715,15 @@ class AdminController extends Controller
             ->get()
             ->groupBy('id_kelas');
 
-        $rekapJadwalKelas = $classesToInspect->map(function ($kelas) use ($jadwalKelasList, $jurnalKelasList) {
+        $rekapJadwalKelas = $classesToInspect->map(function ($kelas) use ($jadwalKelasList, $jurnalKelasList, $scheduleTimeService, $tanggal) {
             $jadwals = $jadwalKelasList->get($kelas->id_kelas, collect());
             $jurnals = $jurnalKelasList->get($kelas->id_kelas, collect());
 
-            $sesiItems = $jadwals->map(function ($jadwal) use ($jurnals) {
+            $applicableJadwals = $jadwals->filter(function ($jadwal) use ($scheduleTimeService, $tanggal) {
+                return $scheduleTimeService->isScheduleEndApplicableOnDate($tanggal, (string) $jadwal->jam_selesai);
+            });
+
+            $sesiItems = $applicableJadwals->map(function ($jadwal) use ($jurnals) {
                 $jurnal = $jurnals->first(function ($j) use ($jadwal) {
                     return $j->jam_ke == $jadwal->jam_ke
                         || ($jadwal->id_mapel && $j->id_mapel == $jadwal->id_mapel && $j->jam_ke <= $jadwal->jam_ke && ($j->jam_selesai ?? $j->jam_ke) >= $jadwal->jam_ke);
@@ -1742,6 +1771,11 @@ class AdminController extends Controller
         $countBelumValidasi = 0;
         $menungguValidasi = 0;
 
+        $eventDismissalTime = $scheduleTimeService->dismissalTimeForDate($tanggal);
+        $eventSchoolName = (string) Pengaturan::getValue('event_sekolah', '');
+        $isJamKosong = $scheduleTimeService->isAllDayEmptyForDate($tanggal);
+        $jamKosongNama = (string) Pengaturan::getValue('jam_kosong_nama', '');
+
         return view('dashboard.admin.rekap-jurnal', compact(
             'jurnals',
             'kelases',
@@ -1774,7 +1808,11 @@ class AdminController extends Controller
             'countBelumValidasi',
             'countGuruAbsen',
             'namaHari',
-            'requestDispensasi'
+            'requestDispensasi',
+            'eventDismissalTime',
+            'eventSchoolName',
+            'isJamKosong',
+            'jamKosongNama'
         ));
     }
 

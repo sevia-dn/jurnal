@@ -3,6 +3,9 @@
 namespace App\Services;
 
 use App\Models\Dispensasi;
+use App\Models\User;
+use Illuminate\Http\Client\Response;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -25,10 +28,7 @@ class WhatsAppService
 
         $gatewayUrl = config('services.whatsapp.url');
         $gatewayApiKey = config('services.whatsapp.api_key');
-        $wakaRecipients = collect(config('services.whatsapp.waka_recipients', []))
-            ->filter(fn (array $recipient): bool => filled($recipient['number'] ?? null))
-            ->values();
-        $piketConfirmationNumber = config('services.whatsapp.piket_confirmation_number');
+        $wakaRecipients = $this->wakaRecipients();
 
         $recipients = $wakaRecipients->map(function (array $recipient) use ($approvalBaseUrl, $approvalPath, $namaSiswa, $kelasSiswa, $waktuStr, $pembuat, $dispensasi): array {
             $approvalUrl = $approvalBaseUrl.$approvalPath.'?'.http_build_query([
@@ -50,15 +50,11 @@ class WhatsAppService
                 'approval_url' => $approvalUrl,
                 'message' => $message,
             ];
-        });
-        if (filled($piketConfirmationNumber)) {
-            $recipients->prepend([
-                'name' => 'Guru Piket (konfirmasi pengajuan)',
-                'number' => $piketConfirmationNumber,
-                'message' => "Pengajuan dispensasi untuk {$namaSiswa} telah diteruskan kepada Wakasek Kesiswaan. "
-                    .'Status saat ini: menunggu validasi Wakasek.',
-            ]);
-        }
+        })->map(function (array $recipient): array {
+            $recipient['target'] = $this->normalizeIndonesianWhatsAppNumber((string) $recipient['number']);
+
+            return $recipient;
+        })->filter(fn (array $recipient): bool => $recipient['target'] !== null)->values();
 
         if (blank($gatewayUrl) || blank($gatewayApiKey)) {
             Log::warning('WhatsAppService: Pengajuan dispensasi tersimpan, tetapi gateway WhatsApp belum dikonfigurasi.', [
@@ -84,19 +80,19 @@ class WhatsAppService
             ]);
 
             try {
-                $response = Http::withHeaders([
+                $response = Http::asForm()->withHeaders([
                     'Authorization' => $gatewayApiKey,
                 ])->post($gatewayUrl, [
-                    'target' => $recipient['number'],
+                    'target' => $recipient['target'],
                     'message' => $recipient['message'],
                 ]);
 
-                if ($response->successful()) {
+                if ($this->wasAcceptedByGateway($response)) {
                     $delivered++;
                 } else {
                     Log::error('WhatsAppService: Gateway menolak notifikasi dispensasi.', [
                         'dispensasi_id' => $dispensasi->id,
-                        'number' => $recipient['number'],
+                        'number' => $recipient['target'],
                         'status' => $response->status(),
                         'body' => $response->body(),
                     ]);
@@ -104,7 +100,7 @@ class WhatsAppService
             } catch (\Throwable $exception) {
                 Log::error('WhatsAppService Error: '.$exception->getMessage(), [
                     'dispensasi_id' => $dispensasi->id,
-                    'number' => $recipient['number'],
+                    'number' => $recipient['target'],
                 ]);
             }
         }
@@ -197,15 +193,24 @@ class WhatsAppService
         }
 
         try {
-            $response = Http::withHeaders([
+            $normalizedTarget = $this->normalizeIndonesianWhatsAppNumber($targetNumber);
+            if ($normalizedTarget === null) {
+                Log::warning('WhatsAppService: Nomor tujuan WhatsApp tidak valid.', [
+                    'target' => $targetNumber,
+                ]);
+
+                return false;
+            }
+
+            $response = Http::asForm()->withHeaders([
                 'Authorization' => $gatewayApiKey,
             ])->post($gatewayUrl, [
-                'target' => $targetNumber,
+                'target' => $normalizedTarget,
                 'message' => $message,
             ]);
 
-            if ($response->successful()) {
-                Log::info('WhatsAppService: Pesan WhatsApp berhasil dikirim ke '.$targetNumber);
+            if ($this->wasAcceptedByGateway($response)) {
+                Log::info('WhatsAppService: Pesan WhatsApp berhasil dikirim ke '.$normalizedTarget);
 
                 return true;
             }
@@ -218,10 +223,71 @@ class WhatsAppService
             return false;
         } catch (\Throwable $e) {
             Log::error('WhatsAppService Error saat mengirim pesan: '.$e->getMessage(), [
-                'target' => $targetNumber,
+                'target' => $normalizedTarget,
             ]);
 
             return false;
         }
+    }
+
+    private function normalizeIndonesianWhatsAppNumber(string $number): ?string
+    {
+        $normalized = preg_replace('/\D+/', '', $number) ?? '';
+
+        if (str_starts_with($normalized, '00')) {
+            $normalized = substr($normalized, 2);
+        }
+
+        if (str_starts_with($normalized, '0')) {
+            $normalized = '62'.substr($normalized, 1);
+        } elseif (! str_starts_with($normalized, '62')) {
+            $normalized = '62'.$normalized;
+        }
+
+        return preg_match('/^62\d{8,13}$/', $normalized) === 1 ? $normalized : null;
+    }
+
+    private function wasAcceptedByGateway(Response $response): bool
+    {
+        if (! $response->successful()) {
+            return false;
+        }
+
+        $payload = $response->json();
+        $status = $payload['status'] ?? $payload['Status'] ?? null;
+
+        return $status !== null && filter_var($status, FILTER_VALIDATE_BOOLEAN);
+    }
+
+    /**
+     * Ambil empat Waka tujuan dari konfigurasi, dengan nomor terbaru diambil
+     * dari data pengguna apabila tersedia.
+     *
+     * @return Collection<int, array{username: string, name: string, number: string}>
+     */
+    private function wakaRecipients(): Collection
+    {
+        $configuredRecipients = collect(config('services.whatsapp.waka_recipients', []))
+            ->filter(fn (array $recipient): bool => filled($recipient['username'] ?? null))
+            ->values();
+
+        $phoneNumbersByUsername = User::query()
+            ->whereIn('username', $configuredRecipients->pluck('username'))
+            ->pluck('no_hp', 'username')
+            ->mapWithKeys(fn (?string $number, string $username): array => [mb_strtolower($username) => $number]);
+
+        return $configuredRecipients
+            ->map(function (array $recipient) use ($phoneNumbersByUsername): array {
+                $username = (string) $recipient['username'];
+                $databaseNumber = $phoneNumbersByUsername->get(mb_strtolower($username));
+
+                return [
+                    'username' => $username,
+                    'name' => (string) ($recipient['name'] ?? $username),
+                    'number' => filled($databaseNumber) ? $databaseNumber : (string) ($recipient['number'] ?? ''),
+                ];
+            })
+            ->filter(fn (array $recipient): bool => $this->normalizeIndonesianWhatsAppNumber($recipient['number']) !== null)
+            ->values();
     }
 }

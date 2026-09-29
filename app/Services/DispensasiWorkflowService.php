@@ -2,10 +2,8 @@
 
 namespace App\Services;
 
-use App\Models\Absensi;
 use App\Models\Dispensasi;
 use App\Models\JadwalMengajar;
-use App\Models\JurnalMengajar;
 use App\Models\Notifikasi;
 use App\Models\PiketKehadiranSiswa;
 use App\Models\Siswa;
@@ -15,6 +13,8 @@ use Illuminate\Support\Str;
 
 class DispensasiWorkflowService
 {
+    public function __construct(private StudentAttendanceSynchronizationService $attendanceSynchronizationService) {}
+
     public function approve(Dispensasi $dispensasi): void
     {
         $dispensasi->loadMissing(['siswa.kelas', 'siswas.kelas']);
@@ -29,8 +29,13 @@ class DispensasiWorkflowService
             : collect([$dispensasi->siswa])->filter();
 
         foreach ($allSiswas as $siswa) {
-            $this->markExistingAttendanceAsDispensasiForSiswa($dispensasi, $siswa);
-            $this->markPiketKehadiranAsDispensasiForSiswa($dispensasi, $siswa);
+            foreach ($this->markPiketKehadiranAsDispensasiForSiswa($dispensasi, $siswa) as $attendance) {
+                $this->attendanceSynchronizationService->synchronize(
+                    $attendance,
+                    $dispensasi->jam_ke_mulai,
+                    $dispensasi->jam_ke_selesai,
+                );
+            }
         }
 
         $this->notifyRelatedUsers($dispensasi);
@@ -54,32 +59,17 @@ class DispensasiWorkflowService
             && $jamKe <= ($dispensasi->jam_ke_selesai ?? $dispensasi->jam_ke_mulai);
     }
 
-    private function markExistingAttendanceAsDispensasiForSiswa(Dispensasi $dispensasi, Siswa $siswa): void
-    {
-        $jurnals = JurnalMengajar::query()
-            ->where('id_kelas', $siswa->kelas_id)
-            ->whereBetween('tanggal', [$dispensasi->tanggal->toDateString(), $dispensasi->tanggal_selesai->toDateString()])
-            ->get();
-
-        foreach ($jurnals as $jurnal) {
-            if (! $this->isActiveForStudentAt($dispensasi, Carbon::parse($jurnal->tanggal)->toDateString(), $jurnal->jam_ke)) {
-                continue;
-            }
-
-            Absensi::updateOrCreate(
-                ['id_jurnal' => $jurnal->id_jurnal, 'id_siswa' => $siswa->id],
-                ['status' => 'D', 'catatan' => 'Dispensasi disetujui: '.$dispensasi->alasan],
-            );
-        }
-    }
-
-    private function markPiketKehadiranAsDispensasiForSiswa(Dispensasi $dispensasi, Siswa $siswa): void
+    /**
+     * @return array<int, PiketKehadiranSiswa>
+     */
+    private function markPiketKehadiranAsDispensasiForSiswa(Dispensasi $dispensasi, Siswa $siswa): array
     {
         $startDate = Carbon::parse($dispensasi->tanggal);
         $endDate = Carbon::parse($dispensasi->tanggal_selesai);
 
+        $attendances = [];
         for ($date = $startDate->copy(); $date->lte($endDate); $date->addDay()) {
-            PiketKehadiranSiswa::updateOrCreate(
+            $attendances[] = PiketKehadiranSiswa::updateOrCreate(
                 [
                     'siswa_id' => $siswa->id,
                     'tanggal' => $date->toDateString(),
@@ -87,11 +77,14 @@ class DispensasiWorkflowService
                 [
                     'kelas_id' => $siswa->kelas_id,
                     'status' => 'D',
+                    'sumber' => PiketKehadiranSiswa::SumberDispensasiWaka,
                     'catatan' => 'Dispensasi disetujui: '.$dispensasi->alasan,
                     'dicatat_oleh' => $dispensasi->diproses_oleh ?? $dispensasi->dibuat_oleh,
                 ]
             );
         }
+
+        return $attendances;
     }
 
     private function notifyRelatedUsers(Dispensasi $dispensasi): void

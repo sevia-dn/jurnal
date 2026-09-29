@@ -23,6 +23,10 @@ class Pengaturan
             'event_sekolah' => '',
             'event_sekolah_tanggal' => '',
             'event_sekolah_jam_pulang' => '',
+            // Jam kosong seharian (event berhari-hari, guru tidak perlu isi jurnal)
+            'jam_kosong_nama' => '',
+            'jam_kosong_tanggal_mulai' => '',
+            'jam_kosong_tanggal_selesai' => '',
         ];
     }
 

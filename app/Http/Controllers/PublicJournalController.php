@@ -40,6 +40,21 @@ class PublicJournalController extends Controller
             && $eventDate === now('Asia/Jakarta')->toDateString()
             && $event['dismissal_time'] !== '';
 
+        $todayString = now('Asia/Jakarta')->toDateString();
+        $jamKosongMulai = (string) Pengaturan::getValue('jam_kosong_tanggal_mulai', '');
+        $jamKosongSelesai = (string) Pengaturan::getValue('jam_kosong_tanggal_selesai', '');
+        $jamKosong = [
+            'nama' => (string) Pengaturan::getValue('jam_kosong_nama', ''),
+            'tanggal_mulai' => $jamKosongMulai,
+            'tanggal_selesai' => $jamKosongSelesai,
+        ];
+        $showJamKosong = ! $isHistory
+            && $jamKosong['nama'] !== ''
+            && $jamKosongMulai !== ''
+            && $jamKosongSelesai !== ''
+            && $todayString >= $jamKosongMulai
+            && $todayString <= $jamKosongSelesai;
+
         $journals = collect();
         if ($publicEnabled) {
             $query = JurnalMengajar::query()
@@ -65,6 +80,6 @@ class PublicJournalController extends Controller
                 : $query->limit(5)->get();
         }
 
-        return view('public.jurnal', compact('publicEnabled', 'journals', 'event', 'showEvent', 'isHistory'));
+        return view('public.jurnal', compact('publicEnabled', 'journals', 'event', 'showEvent', 'isHistory', 'jamKosong', 'showJamKosong'));
     }
 }

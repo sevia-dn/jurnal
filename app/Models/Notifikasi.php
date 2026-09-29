@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Notifikasi extends Model
 {
@@ -15,6 +16,8 @@ class Notifikasi extends Model
         'id_user',
         'id_kelas',
         'id_dispensasi',
+        'id_jurnal',
+        'id_ketidakhadiran_guru',
         'judul',
         'pesan',
         'tipe',
@@ -38,5 +41,15 @@ class Notifikasi extends Model
     public function dispensasi()
     {
         return $this->belongsTo(Dispensasi::class, 'id_dispensasi');
+    }
+
+    public function jurnal(): BelongsTo
+    {
+        return $this->belongsTo(JurnalMengajar::class, 'id_jurnal', 'id_jurnal');
+    }
+
+    public function ketidakhadiranGuru(): BelongsTo
+    {
+        return $this->belongsTo(KetidakhadiranGuru::class, 'id_ketidakhadiran_guru');
     }
 }

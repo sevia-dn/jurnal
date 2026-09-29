@@ -14,7 +14,7 @@
 <div class="mx-auto max-w-6xl space-y-5 p-4 pb-24 font-sans sm:p-6 lg:p-8">
     <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-            <a href="{{ route('dashboard.piket') }}" class="text-xs font-bold text-emerald-700 hover:underline"><i class="bi bi-arrow-left mr-1"></i>Kembali ke Piket</a>
+            <a href="{{ route('dashboard.piket') }}" class="inline-flex items-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-700 transition hover:bg-emerald-100"><i class="bi bi-arrow-left"></i>Kembali</a>
             <h1 class="mt-2 text-2xl font-extrabold text-slate-900">Kelola Jurnal Publik &amp; Riwayat</h1>
             <p class="mt-1 text-sm text-slate-500">Edit atau hapus jurnal yang telah disetujui. Perubahan langsung terlihat di halaman publik.</p>
         </div>

@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\JurnalMengajar;
 use App\Models\Kelas;
 use App\Models\Mapel;
+use App\Models\Pengaturan;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -12,6 +13,21 @@ use Tests\TestCase;
 class PublicJournalHistoryFilterTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected mixed $originalPublikRiwayatAktif;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->originalPublikRiwayatAktif = Pengaturan::getValue('publik_riwayat_aktif', 1);
+        Pengaturan::setValue('publik_riwayat_aktif', 1);
+    }
+
+    protected function tearDown(): void
+    {
+        Pengaturan::setValue('publik_riwayat_aktif', $this->originalPublikRiwayatAktif);
+        parent::tearDown();
+    }
 
     public function test_teacher_can_open_public_journal_history_without_logging_out(): void
     {

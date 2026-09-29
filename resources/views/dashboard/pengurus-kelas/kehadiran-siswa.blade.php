@@ -43,14 +43,14 @@
             <div class="flex items-center gap-2 text-emerald-900">
                 <i class="bi bi-info-circle-fill text-emerald-600 text-sm"></i>
                 <span>
-                    Absensi mengacu pada <strong>Guru Pertama</strong>:
-                    <span class="font-bold text-emerald-800">{{ $jurnalPertama->user->name ?? 'Guru' }}</span>
+                    Absensi terupdate dari <strong>seluruh jurnal hari ini ({{ $totalJurnalHariIni ?? 1 }} sesi terisi)</strong>.
+                    Pembaruan terakhir: <span class="font-bold text-emerald-800">{{ $jurnalPertama->user->name ?? 'Guru' }}</span>
                     &bull; {{ $jurnalPertama->mapel->nama_mapel ?? 'Mapel' }}
                     (Jam ke-{{ $jurnalPertama->jam_ke }}{{ $jurnalPertama->jam_selesai && $jurnalPertama->jam_selesai > $jurnalPertama->jam_ke ? " s/d {$jurnalPertama->jam_selesai}" : '' }})
                 </span>
             </div>
             <span class="inline-flex items-center gap-1 rounded-md bg-white border border-emerald-200 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
-                <i class="bi bi-check2-circle"></i> Basis Absensi Kelas
+                <i class="bi bi-check2-circle"></i> Basis Absensi Terkini
             </span>
         </div>
     @else
@@ -93,6 +93,18 @@
                         default => 'Hadir',
                     };
                     $catatanAbsen = is_object($rawRecord) ? $rawRecord->catatan : null;
+
+                    $catatanPiket = $piketKehadiranHariIni->get($siswa->id);
+                    if ($catatanPiket) {
+                        $status = match(strtoupper(trim((string) $catatanPiket->status))) {
+                            'S', 'SAKIT' => 'Sakit',
+                            'I', 'IZIN' => 'Izin',
+                            'A', 'ALPA', 'ALFA' => 'Alpa',
+                            'D', 'DISPENSASI' => 'Dispensasi',
+                            default => 'Hadir',
+                        };
+                        $catatanAbsen = 'Otomatis dari Guru Piket'.($catatanPiket->catatan ? ': '.$catatanPiket->catatan : '.');
+                    }
 
                     // Override: jika ada dispensasi aktif & disetujui hari ini → paksa status Dispensasi
                     // Override: jika ada dispensasi aktif & disetujui hari ini → otomatis berganti status Dispensasi

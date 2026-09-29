@@ -11,13 +11,19 @@ use App\Models\KehadiranGuru;
 use App\Models\Kelas;
 use App\Models\KetidakhadiranGuru;
 use App\Models\Notifikasi;
+use App\Models\Pengaturan;
 use App\Models\PiketKehadiranSiswa;
 use App\Models\Siswa;
 use App\Models\User;
+use App\Services\ClassJournalApprovalService;
 use App\Services\PiketScheduleService;
+use App\Services\ScheduleTimeService;
+use App\Services\StudentAttendanceSynchronizationService;
 use App\Services\WhatsAppService;
 use App\SimplePdfDocument;
 use Carbon\Carbon;
+use DomainException;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -37,8 +43,11 @@ class PiketController extends Controller
         $this->piketScheduleService = $piketScheduleService;
     }
 
-    public function utama(Request $request)
-    {
+    public function utama(
+        Request $request,
+        ScheduleTimeService $scheduleTimeService,
+        ClassJournalApprovalService $classJournalApprovalService,
+    ) {
         if (! $this->canAccessPiket()) {
             return $this->notScheduledResponse();
         }
@@ -49,7 +58,7 @@ class PiketController extends Controller
         $filterDate = $request->query('tanggal');
         $filterStart = $request->query('tanggal_mulai');
         $filterEnd = $request->query('tanggal_selesai');
-        $filterPreset = $request->query('preset', 'semua');
+        $filterPreset = $request->query('preset', 'hari_ini');
         $search = trim((string) $request->query('search', ''));
         $statusValidasi = $request->query('status_validasi');
 
@@ -104,6 +113,7 @@ class PiketController extends Controller
             ->get()
             ->unique('id_user')
             ->map(fn ($j) => [
+                'id_user' => $j->id_user,
                 'nama' => $j->guru?->name ?? 'Guru',
                 'status' => 'Hadir',
                 'keterangan' => 'Jurnal terisi',
@@ -114,20 +124,67 @@ class PiketController extends Controller
             ->whereDate('tanggal', $targetDate)
             ->where('status', 'disetujui')
             ->get();
+        $approvedAbsentTeacherIds = $teacherAbsenceReports->pluck('user_id')->unique();
+        $presentTeacherIds = $submittedTeacherIds->diff($approvedAbsentTeacherIds);
+        $guruHadir = $guruHadir
+            ->filter(fn (array $teacher): bool => ! $approvedAbsentTeacherIds->contains(
+                $teacher['id_user'],
+            ))
+            ->values();
+        $pendingTeacherAbsenceCount = KetidakhadiranGuru::query()
+            ->whereDate('tanggal', $targetDate)
+            ->where('status', 'pending')
+            ->count();
+        $classJournalSummaries = $classJournalApprovalService->summariesForDate(
+            $today,
+            Kelas::query()->orderBy('nama_kelas')->get(),
+        )->sort(function ($a, $b) {
+            // Urutan:
+            // 1. Siap disetujui piket (semua terisi & tervalidasi tapi belum disetujui piket) -> prioritas utama
+            $aSiap = ($a->siap_disetujui_piket && ! $a->persetujuan) ? 1 : 0;
+            $bSiap = ($b->siap_disetujui_piket && ! $b->persetujuan) ? 1 : 0;
+            if ($aSiap !== $bSiap) {
+                return $bSiap <=> $aSiap;
+            }
+
+            // 2. Sudah lengkap terisi (total_terisi === total_sesi dan total_sesi > 0)
+            $aLengkap = ($a->total_sesi > 0 && $a->total_terisi >= $a->total_sesi) ? 1 : 0;
+            $bLengkap = ($b->total_sesi > 0 && $b->total_terisi >= $b->total_sesi) ? 1 : 0;
+            if ($aLengkap !== $bLengkap) {
+                return $bLengkap <=> $aLengkap;
+            }
+
+            // 3. Rasio terisi (paling banyak terisi)
+            $aRatio = $a->total_sesi > 0 ? ($a->total_terisi / $a->total_sesi) : -1;
+            $bRatio = $b->total_sesi > 0 ? ($b->total_terisi / $b->total_sesi) : -1;
+            if ($aRatio !== $bRatio) {
+                return $bRatio <=> $aRatio;
+            }
+
+            // 4. Nama kelas
+            return strnatcasecmp($a->nama_kelas, $b->nama_kelas);
+        })->values();
 
         $dispensasiCount = Dispensasi::count();
         $dispensasiPendingCount = Dispensasi::where(fn ($q) => $q->whereNull('status_waka')->orWhereIn('status_waka', ['menunggu', 'pending']))->count();
 
+        $eventDismissalTime = $scheduleTimeService->dismissalTimeForDate($targetDate);
+        $eventSchoolName = (string) Pengaturan::getValue('event_sekolah', '');
+        $isJamKosong = $scheduleTimeService->isAllDayEmptyForDate($targetDate);
+        $jamKosongNama = (string) Pengaturan::getValue('jam_kosong_nama', '');
+
         return view('dashboard.piket.utama', [
             'journals' => $journals,
             'journalCount' => $journals->count(),
-            'presentTeacherCount' => $submittedTeacherIds->count(),
+            'presentTeacherCount' => $presentTeacherIds->count(),
             'validatedJournalCount' => $journals->where('status_validasi', 'disetujui')->count(),
             'pendingJournalCount' => $journals->where('status_validasi', 'belum_divalidasi')->count(),
             'sickTeacherCount' => $teacherAbsenceReports->where('alasan', 'sakit')->count(),
             'permissionTeacherCount' => $teacherAbsenceReports->where('alasan', 'izin')->count(),
             'guruHadir' => $guruHadir,
             'teacherAbsenceReports' => $teacherAbsenceReports,
+            'pendingTeacherAbsenceCount' => $pendingTeacherAbsenceCount,
+            'classJournalSummaries' => $classJournalSummaries,
             'dispensasiCount' => $dispensasiCount,
             'dispensasiPendingCount' => $dispensasiPendingCount,
             'today' => $today,
@@ -138,6 +195,10 @@ class PiketController extends Controller
             'filterPreset' => $filterPreset,
             'search' => $search,
             'statusValidasi' => $statusValidasi,
+            'eventDismissalTime' => $eventDismissalTime,
+            'eventSchoolName' => $eventSchoolName,
+            'isJamKosong' => $isJamKosong,
+            'jamKosongNama' => $jamKosongNama,
         ]);
     }
 
@@ -155,24 +216,28 @@ class PiketController extends Controller
         $kehadiranRecords = KehadiranGuru::whereDate('tanggal', $tanggal)
             ->get()
             ->keyBy('user_id');
-        $approvedAbsenceReports = KetidakhadiranGuru::query()
+        $absenceReports = KetidakhadiranGuru::query()
             ->whereDate('tanggal', $tanggal)
-            ->where('status', 'disetujui')
             ->get()
             ->keyBy('user_id');
+        $pendingAbsenceReports = KetidakhadiranGuru::with('guru')
+            ->whereDate('tanggal', $tanggal)
+            ->where('status', 'pending')
+            ->orderBy('created_at')
+            ->get();
 
         $journalTeacherIds = JurnalMengajar::query()
             ->whereDate('tanggal', $tanggal)
             ->pluck('id_user')
             ->unique();
 
-        $teachersData = $gurus->map(function ($guru) use ($approvedAbsenceReports, $kehadiranRecords, $journalTeacherIds) {
+        $teachersData = $gurus->map(function ($guru) use ($absenceReports, $kehadiranRecords, $journalTeacherIds) {
             $record = $kehadiranRecords->get($guru->id);
-            $absenceReport = $approvedAbsenceReports->get($guru->id);
+            $absenceReport = $absenceReports->get($guru->id);
 
             $status = $absenceReport?->label_alasan
                 ?? (in_array($record?->status, ['Sakit', 'Izin'], true) ? $record->status : null);
-            if ($journalTeacherIds->contains($guru->id)) {
+            if ($absenceReport === null && $journalTeacherIds->contains($guru->id)) {
                 $status = 'Hadir';
             }
 
@@ -182,9 +247,12 @@ class PiketController extends Controller
                 'name' => $guru->name,
                 'nip' => $guru->nip ?? '-',
                 'no_hp' => $guru->no_hp ?? '-',
-                'checkIn' => $status === 'Hadir' ? 'Jurnal terisi' : ($status ? 'Pengajuan guru disetujui' : 'Belum ada catatan'),
+                'checkIn' => $status === 'Hadir'
+                    ? 'Jurnal terisi'
+                    : ($absenceReport?->status === 'pending' ? 'Pengajuan guru menunggu persetujuan piket' : ($status ? 'Pengajuan guru disetujui' : 'Belum ada catatan')),
                 'status' => $status ?? 'Belum Hadir',
                 'keterangan' => $absenceReport?->keterangan ?? $record?->keterangan,
+                'absence_status' => $absenceReport?->status,
                 'verified' => $record && $record->diverifikasi_at !== null,
             ];
         })->values();
@@ -204,7 +272,8 @@ class PiketController extends Controller
             'totalHadir',
             'totalIzin',
             'totalSakit',
-            'totalBelumHadir'
+            'totalBelumHadir',
+            'pendingAbsenceReports',
         ));
     }
 
@@ -395,12 +464,12 @@ class PiketController extends Controller
     }
 
     // Update Status Kehadiran Siswa oleh Guru Piket
-    public function updateKehadiranSiswa(Request $request)
+    public function updateKehadiranSiswa(Request $request, StudentAttendanceSynchronizationService $synchronizationService)
     {
         $this->ensurePiketAccess();
 
         if ($request->boolean('bulk_attendance')) {
-            return $this->updateBulkKehadiranSiswa($request);
+            return $this->updateBulkKehadiranSiswa($request, $synchronizationService);
         }
 
         $request->validate([
@@ -423,22 +492,24 @@ class PiketController extends Controller
         }
 
         $status = $request->status === 'Alfa' ? 'Alpa' : $request->status;
-        PiketKehadiranSiswa::updateOrCreate(
+        $attendance = PiketKehadiranSiswa::updateOrCreate(
             ['siswa_id' => $siswa->id, 'tanggal' => $request->tanggal],
             [
                 'kelas_id' => $siswa->kelas_id,
                 'status' => $status,
+                'sumber' => PiketKehadiranSiswa::SumberGuruPiket,
                 'catatan' => $request->catatan,
                 'dicatat_oleh' => auth()->id(),
             ],
         );
 
+        $synchronizationService->synchronize($attendance);
         $this->notifyStudentAttendanceChange($siswa, $request->tanggal, $status, $request->catatan);
 
         return back()->with('success', "Status kehadiran untuk {$siswa->nama} berhasil diperbarui.");
     }
 
-    private function updateBulkKehadiranSiswa(Request $request)
+    private function updateBulkKehadiranSiswa(Request $request, StudentAttendanceSynchronizationService $synchronizationService)
     {
         $validated = $request->validate([
             'absensi' => ['nullable', 'array'],
@@ -500,21 +571,23 @@ class PiketController extends Controller
                     continue;
                 }
 
-                PiketKehadiranSiswa::updateOrCreate(
+                $attendanceRecord = PiketKehadiranSiswa::updateOrCreate(
                     ['siswa_id' => $student->id, 'tanggal' => $validated['tanggal']],
                     [
                         'kelas_id' => $student->kelas_id,
                         'status' => $status,
+                        'sumber' => PiketKehadiranSiswa::SumberGuruPiket,
                         'catatan' => $note,
                         'dicatat_oleh' => auth()->id(),
                     ],
                 );
 
-                $changedAttendances[] = [$student, $status, $note];
+                $changedAttendances[] = [$student, $status, $note, $attendanceRecord];
             }
         });
 
-        foreach ($changedAttendances as [$student, $status, $note]) {
+        foreach ($changedAttendances as [$student, $status, $note, $attendanceRecord]) {
+            $synchronizationService->synchronize($attendanceRecord);
             $this->notifyStudentAttendanceChange($student, $validated['tanggal'], $status, $note);
         }
 
@@ -716,13 +789,19 @@ class PiketController extends Controller
 
         $dispensasis = $query->latest('id')->paginate(15)->withQueryString();
 
-        return view('dashboard.piket.dispensasi-history', compact(
+        $dispensasis->getCollection()->transform(function (Dispensasi $dispensasi): Dispensasi {
+            $dispensasi->verification_url = $dispensasi->verification_url;
+
+            return $dispensasi;
+        });
+
+        return response()->view('dashboard.piket.dispensasi-history', compact(
             'dispensasis',
             'search',
             'status',
             'startDate',
             'endDate'
-        ));
+        ))->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
     }
 
     private function notScheduledResponse()
@@ -832,6 +911,15 @@ class PiketController extends Controller
         ));
     }
 
+    public function ketidakhadiranGuruShow(KetidakhadiranGuru $ketidakhadiran)
+    {
+        $this->ensurePiketAccess();
+
+        $ketidakhadiran->load(['guru', 'handler']);
+
+        return view('dashboard.piket.ketidakhadiran-guru-detail', compact('ketidakhadiran'));
+    }
+
     /**
      * Setujui pengajuan ketidakhadiran guru.
      */
@@ -873,12 +961,17 @@ class PiketController extends Controller
     /**
      * Halaman rekap jurnal untuk Guru Piket (sama dengan Admin).
      */
-    public function rekapJurnal(Request $request)
-    {
+    public function rekapJurnal(
+        Request $request,
+        ScheduleTimeService $scheduleTimeService,
+        ClassJournalApprovalService $classJournalApprovalService,
+    ) {
         $this->ensurePiketAccess();
 
         $periode = $request->query('periode', 'harian');
         $tanggal = $request->query('tanggal', now('Asia/Jakarta')->toDateString());
+        $tanggalMulai = $request->query('tanggal_mulai', $tanggal);
+        $tanggalSelesai = $request->query('tanggal_selesai', $tanggalMulai ?: $tanggal);
         $bulan = min(12, max(1, (int) $request->query('bulan', now()->month)));
         $tahun = min(2100, max(2026, (int) $request->query('tahun', max(2026, now()->year))));
         $guruId = $request->query('guru_id');
@@ -893,18 +986,9 @@ class PiketController extends Controller
             $periode = 'bulanan';
         }
 
-        $daysCount = ['Senin' => 0, 'Selasa' => 0, 'Rabu' => 0, 'Kamis' => 0, 'Jumat' => 0, 'Sabtu' => 0];
         try {
             $startOfMonth = Carbon::createFromDate($tahun, $bulan, 1)->startOfMonth();
             $endOfMonth = $startOfMonth->copy()->endOfMonth();
-            for ($d = $startOfMonth->copy(); $d->lte($endOfMonth); $d->addDay()) {
-                $h = match ($d->dayOfWeek) {
-                    1 => 'Senin', 2 => 'Selasa', 3 => 'Rabu', 4 => 'Kamis', 5 => 'Jumat', 6 => 'Sabtu', default => null
-                };
-                if ($h && isset($daysCount[$h])) {
-                    $daysCount[$h]++;
-                }
-            }
         } catch (\Exception $e) {
             $startOfMonth = now()->startOfMonth();
             $endOfMonth = now()->endOfMonth();
@@ -930,14 +1014,23 @@ class PiketController extends Controller
         $query = JurnalMengajar::with(['kelas', 'guru', 'mapel']);
 
         $hasExplicitTanggal = $request->filled('tanggal');
+        $hasDateRange = $request->filled('tanggal_mulai') || $request->filled('tanggal_selesai');
         $hasSearch = $request->filled('search');
 
-        if ($periode === 'bulanan') {
-            $query->whereYear('tanggal', $tahun)->whereMonth('tanggal', $bulan);
-        } elseif ($hasExplicitTanggal) {
-            $query->whereDate('tanggal', $tanggal);
-        } elseif (! $hasSearch) {
-            $query->whereDate('tanggal', $tanggal);
+        if ($tab === 'rekap_kelas' || $tab === 'rekap_guru') {
+            if ($hasDateRange) {
+                $query->whereBetween('tanggal', [$tanggalMulai, $tanggalSelesai]);
+            } elseif ($hasExplicitTanggal) {
+                $query->whereDate('tanggal', $tanggal);
+            }
+        } else {
+            if ($periode === 'bulanan') {
+                $query->whereYear('tanggal', $tahun)->whereMonth('tanggal', $bulan);
+            } elseif ($hasExplicitTanggal) {
+                $query->whereDate('tanggal', $tanggal);
+            } elseif (! $hasSearch) {
+                $query->whereDate('tanggal', $tanggal);
+            }
         }
 
         if ($guruId && $guruId !== 'all') {
@@ -946,6 +1039,10 @@ class PiketController extends Controller
 
         if ($kelasId && $kelasId !== 'all') {
             $query->where('id_kelas', $kelasId);
+        }
+
+        if (in_array($validasi, ['disetujui', 'belum_divalidasi', 'ditolak'], true)) {
+            $query->where('status_validasi', $validasi);
         }
 
         if ($keterlambatan === 'terlambat') {
@@ -980,19 +1077,50 @@ class PiketController extends Controller
             $jadwalQuery->where('id_kelas', $kelasId);
         }
 
-        if ($periode === 'bulanan') {
-            $jadwalsPerHari = $jadwalQuery->selectRaw('hari, count(*) as count')->groupBy('hari')->pluck('count', 'hari');
-            $totalTerjadwal = 0;
-            foreach ($daysCount as $h => $c) {
-                $totalTerjadwal += $c * ($jadwalsPerHari[$h] ?? 0);
+        $jadwalRows = $jadwalQuery->get();
+        $reportDates = [];
+        if ($tab === 'rekap_kelas' || $tab === 'rekap_guru') {
+            try {
+                $startRange = Carbon::parse($tanggalMulai);
+                $endRange = Carbon::parse($tanggalSelesai);
+                if ($startRange->gt($endRange)) {
+                    [$startRange, $endRange] = [$endRange, $startRange];
+                }
+                for ($day = $startRange->copy(); $day->lte($endRange); $day->addDay()) {
+                    $reportDates[] = $day->toDateString();
+                }
+            } catch (\Exception $e) {
+                $reportDates[] = $tanggal;
             }
-            $kelasLapor = JurnalMengajar::whereYear('tanggal', $tahun)->whereMonth('tanggal', $bulan)->distinct('id_kelas')->count('id_kelas');
-            $guruTerlambat = JurnalMengajar::whereYear('tanggal', $tahun)->whereMonth('tanggal', $bulan)->where('menit_keterlambatan', '>', 0)->count();
+        } elseif ($periode === 'bulanan') {
+            for ($day = $startOfMonth->copy(); $day->lte($endOfMonth); $day->addDay()) {
+                $reportDates[] = $day->toDateString();
+            }
         } else {
-            $totalTerjadwal = $namaHari ? $jadwalQuery->where('hari', $namaHari)->count() : 0;
-            $kelasLapor = JurnalMengajar::whereDate('tanggal', $tanggal)->distinct('id_kelas')->count('id_kelas');
-            $guruTerlambat = JurnalMengajar::whereDate('tanggal', $tanggal)->where('menit_keterlambatan', '>', 0)->count();
+            $reportDates[] = $tanggal;
         }
+
+        $namaHariByNumber = [0 => 'Minggu', 1 => 'Senin', 2 => 'Selasa', 3 => 'Rabu', 4 => 'Kamis', 5 => 'Jumat', 6 => 'Sabtu'];
+        $scheduledByTeacher = [];
+        $totalTerjadwal = 0;
+        foreach ($reportDates as $reportDate) {
+            $reportDay = $namaHariByNumber[Carbon::parse($reportDate)->dayOfWeek];
+            foreach ($jadwalRows->where('hari', $reportDay) as $jadwal) {
+                if (! $scheduleTimeService->isScheduleEndApplicableOnDate($reportDate, (string) $jadwal->jam_selesai)) {
+                    continue;
+                }
+
+                $totalTerjadwal++;
+                $scheduledByTeacher[$jadwal->id_user] = ($scheduledByTeacher[$jadwal->id_user] ?? 0) + 1;
+            }
+        }
+
+        $kelasLapor = $periode === 'bulanan'
+            ? JurnalMengajar::whereYear('tanggal', $tahun)->whereMonth('tanggal', $bulan)->distinct('id_kelas')->count('id_kelas')
+            : JurnalMengajar::whereDate('tanggal', $tanggal)->distinct('id_kelas')->count('id_kelas');
+        $guruTerlambat = $periode === 'bulanan'
+            ? JurnalMengajar::whereYear('tanggal', $tahun)->whereMonth('tanggal', $bulan)->where('menit_keterlambatan', '>', 0)->count()
+            : JurnalMengajar::whereDate('tanggal', $tanggal)->where('menit_keterlambatan', '>', 0)->count();
 
         $totalTerisi = $allJurnals->count();
         $totalKosong = max(0, $totalTerjadwal - $totalTerisi);
@@ -1001,15 +1129,14 @@ class PiketController extends Controller
         $guruAbsen = 0;
 
         // 1. Jurnal lengkap per guru
-        $jadwalGuruGrouped = JadwalPelajaran::query()
-            ->where('jam_ke', '>', 0)
-            ->selectRaw('id_user, hari, count(*) as count')
-            ->groupBy('id_user', 'hari')
-            ->get()
-            ->groupBy('id_user');
-
         $guruJurnalsQuery = JurnalMengajar::with(['kelas', 'mapel', 'guru']);
-        if ($periode === 'bulanan') {
+        if ($tab === 'rekap_guru') {
+            if ($hasDateRange) {
+                $guruJurnalsQuery->whereBetween('tanggal', [$tanggalMulai, $tanggalSelesai]);
+            } elseif ($hasExplicitTanggal) {
+                $guruJurnalsQuery->whereDate('tanggal', $tanggal);
+            }
+        } elseif ($periode === 'bulanan') {
             $guruJurnalsQuery->whereYear('tanggal', $tahun)->whereMonth('tanggal', $bulan);
         } elseif ($hasExplicitTanggal) {
             $guruJurnalsQuery->whereDate('tanggal', $tanggal);
@@ -1019,6 +1146,10 @@ class PiketController extends Controller
 
         if ($guruId && $guruId !== 'all') {
             $guruJurnalsQuery->where('id_user', $guruId);
+        }
+
+        if ($kelasId && $kelasId !== 'all') {
+            $guruJurnalsQuery->where('id_kelas', $kelasId);
         }
 
         if ($request->filled('search')) {
@@ -1033,18 +1164,8 @@ class PiketController extends Controller
 
         $allGuruJurnalsGrouped = $guruJurnalsQuery->orderBy('tanggal', 'desc')->orderBy('jam_ke', 'asc')->get()->groupBy('id_user');
 
-        $rekapGuru = $gurus->map(function ($g) use ($jadwalGuruGrouped, $allGuruJurnalsGrouped, $periode, $daysCount, $namaHari) {
-            $jadwals = $jadwalGuruGrouped->get($g->id, collect());
-            $terjadwal = 0;
-            if ($periode === 'bulanan') {
-                foreach ($jadwals as $j) {
-                    $terjadwal += ($daysCount[$j->hari] ?? 0) * $j->count;
-                }
-            } else {
-                $jHari = $jadwals->firstWhere('hari', $namaHari);
-                $terjadwal = $jHari ? $jHari->count : 0;
-            }
-
+        $rekapGuru = $gurus->map(function ($g) use ($allGuruJurnalsGrouped, $scheduledByTeacher) {
+            $terjadwal = $scheduledByTeacher[$g->id] ?? 0;
             $daftarJurnal = $allGuruJurnalsGrouped->get($g->id, collect());
             $terisi = $daftarJurnal->count();
             $terakhir = $daftarJurnal->first()?->tanggal;
@@ -1076,64 +1197,41 @@ class PiketController extends Controller
             });
         }
 
-        // 2. Rekapitulasi Per Kelas: jadwal pelajaran harian + status jurnal per sesi
+        // 2. Rekapitulasi per kelas dan kesiapan tanda tangan guru piket.
         $classesToInspect = Kelas::query()
             ->when($kelasId && $kelasId !== 'all', fn ($q) => $q->where('id_kelas', $kelasId))
             ->orderBy('nama_kelas')
             ->get();
+        $targetTanggalKelas = ($tab === 'rekap_kelas' && $tanggalMulai) ? $tanggalMulai : $tanggal;
+        $rekapJadwalKelas = $classJournalApprovalService->summariesForDate($targetTanggalKelas, $classesToInspect)
+            ->sort(function ($a, $b) {
+                // Urutan:
+                // 1. Lengkap & siap disetujui piket tapi belum disetujui
+                $aSiap = ($a->siap_disetujui_piket && ! $a->persetujuan) ? 1 : 0;
+                $bSiap = ($b->siap_disetujui_piket && ! $b->persetujuan) ? 1 : 0;
+                if ($aSiap !== $bSiap) {
+                    return $bSiap <=> $aSiap;
+                }
 
-        $jadwalKelasList = JadwalPelajaran::with(['guru', 'mapelItem'])
-            ->whereIn('id_kelas', $classesToInspect->pluck('id_kelas'))
-            ->where('hari', $namaHari)
-            ->where('jam_ke', '>', 0)
-            ->orderBy('jam_ke')
-            ->get()
-            ->groupBy('id_kelas');
+                // 2. Lengkap terisi seluruh sesi
+                $aLengkap = ($a->total_sesi > 0 && $a->total_terisi >= $a->total_sesi) ? 1 : 0;
+                $bLengkap = ($b->total_sesi > 0 && $b->total_terisi >= $b->total_sesi) ? 1 : 0;
+                if ($aLengkap !== $bLengkap) {
+                    return $bLengkap <=> $aLengkap;
+                }
 
-        $jurnalKelasList = JurnalMengajar::with(['guru', 'mapel'])
-            ->whereIn('id_kelas', $classesToInspect->pluck('id_kelas'))
-            ->whereDate('tanggal', $tanggal)
-            ->get()
-            ->groupBy('id_kelas');
+                // 3. Rasio terisi
+                $aRatio = $a->total_sesi > 0 ? ($a->total_terisi / $a->total_sesi) : -1;
+                $bRatio = $b->total_sesi > 0 ? ($b->total_terisi / $b->total_sesi) : -1;
+                if ($aRatio !== $bRatio) {
+                    return $bRatio <=> $aRatio;
+                }
 
-        $rekapJadwalKelas = $classesToInspect->map(function ($kelas) use ($jadwalKelasList, $jurnalKelasList) {
-            $jadwals = $jadwalKelasList->get($kelas->id_kelas, collect());
-            $jurnals = $jurnalKelasList->get($kelas->id_kelas, collect());
+                return strnatcasecmp($a->nama_kelas, $b->nama_kelas);
+            })->values();
 
-            $sesiItems = $jadwals->map(function ($jadwal) use ($jurnals) {
-                $jurnal = $jurnals->first(function ($j) use ($jadwal) {
-                    return $j->jam_ke == $jadwal->jam_ke
-                        || ($jadwal->id_mapel && $j->id_mapel == $jadwal->id_mapel && $j->jam_ke <= $jadwal->jam_ke && ($j->jam_selesai ?? $j->jam_ke) >= $jadwal->jam_ke);
-                });
-
-                return (object) [
-                    'jam_ke' => $jadwal->jam_ke,
-                    'jam_selesai' => $jadwal->jam_ke_selesai ?? $jadwal->jam_ke,
-                    'jam_ke_formatted' => $jadwal->jam_ke_formatted ?? "Jam ke-{$jadwal->jam_ke}",
-                    'waktu_mulai' => $jadwal->jam_mulai,
-                    'waktu_selesai' => $jadwal->jam_selesai,
-                    'mapel' => $jadwal->mapelItem?->nama_mapel ?? $jadwal->mapel ?? 'Mata Pelajaran',
-                    'guru' => $jadwal->guru?->name ?? 'Guru Pengampu',
-                    'guru_nip' => $jadwal->guru?->nip,
-                    'is_terisi' => $jurnal !== null,
-                    'jurnal' => $jurnal,
-                ];
-            });
-
-            $totalSesi = $sesiItems->count();
-            $totalTerisi = $sesiItems->where('is_terisi', true)->count();
-            $totalKosong = $totalSesi - $totalTerisi;
-
-            return (object) [
-                'id_kelas' => $kelas->id_kelas,
-                'nama_kelas' => $kelas->nama_kelas,
-                'wali_kelas' => $kelas->wali_kelas ?? '-',
-                'total_sesi' => $totalSesi,
-                'total_terisi' => $totalTerisi,
-                'total_kosong' => $totalKosong,
-                'sesi_items' => $sesiItems,
-            ];
-        });
+        $opsiGuruRekap = $gurus->map(fn ($guru) => ['value' => (string) $guru->id, 'label' => $guru->name.' ('.($guru->nip ?? 'Guru').')']);
+        $opsiKelasRekap = $kelases->map(fn ($kelas) => ['value' => (string) $kelas->id_kelas, 'label' => 'Kelas '.$kelas->nama_kelas]);
 
         $requestDispensasi = Dispensasi::with('siswa.kelas')
             ->whereDate('tanggal', $tanggal)
@@ -1145,6 +1243,11 @@ class PiketController extends Controller
         $countBelumValidasi = 0;
         $menungguValidasi = 0;
 
+        $eventDismissalTime = $scheduleTimeService->dismissalTimeForDate($tanggal);
+        $eventSchoolName = (string) Pengaturan::getValue('event_sekolah', '');
+        $isJamKosong = $scheduleTimeService->isAllDayEmptyForDate($tanggal);
+        $jamKosongNama = (string) Pengaturan::getValue('jam_kosong_nama', '');
+
         return view('dashboard.piket.rekap-jurnal', compact(
             'jurnals',
             'kelases',
@@ -1153,10 +1256,14 @@ class PiketController extends Controller
             'rekapJadwalKelas',
             'periode',
             'tanggal',
+            'tanggalMulai',
+            'tanggalSelesai',
             'bulan',
             'tahun',
             'guruId',
             'kelasId',
+            'opsiGuruRekap',
+            'opsiKelasRekap',
             'kehadiran',
             'validasi',
             'search',
@@ -1176,8 +1283,58 @@ class PiketController extends Controller
             'countBelumValidasi',
             'countGuruAbsen',
             'namaHari',
-            'requestDispensasi'
+            'requestDispensasi',
+            'eventDismissalTime',
+            'eventSchoolName',
+            'isJamKosong',
+            'jamKosongNama'
         ));
+    }
+
+    public function classJournalSessions(
+        Request $request,
+        Kelas $kelas,
+        ClassJournalApprovalService $classJournalApprovalService,
+    ) {
+        $this->ensurePiketAccess();
+
+        $validated = $request->validate([
+            'tanggal' => ['nullable', 'date'],
+        ]);
+        $tanggal = Carbon::parse($validated['tanggal'] ?? now('Asia/Jakarta')->toDateString())->toDateString();
+        $classSummary = $classJournalApprovalService
+            ->summariesForDate($tanggal, new Collection([$kelas]))
+            ->first();
+
+        abort_unless($classSummary !== null, 404);
+
+        return view('dashboard.piket.jurnal-kelas-sesi', compact('kelas', 'tanggal', 'classSummary'));
+    }
+
+    public function approveClassJournal(Request $request, Kelas $kelas, ClassJournalApprovalService $classJournalApprovalService)
+    {
+        $this->ensurePiketAccess();
+
+        $validated = $request->validate([
+            'tanggal' => ['required', 'date'],
+        ]);
+        $date = Carbon::parse($validated['tanggal'])->toDateString();
+        $user = Auth::user();
+        abort_unless(
+            $user !== null && $user->role !== 'admin' && $this->piketScheduleService->isScheduled($user, Carbon::parse($date)),
+            403,
+            'Persetujuan hanya dapat ditandatangani oleh guru piket yang dijadwalkan pada tanggal jurnal.'
+        );
+
+        try {
+            $approval = $classJournalApprovalService->approve($kelas, $date, $user);
+        } catch (DomainException $exception) {
+            return back()->with('error', $exception->getMessage());
+        }
+
+        $approverName = $approval->piket?->name ?? $user->name;
+
+        return redirect()->route('dashboard.piket')->with('success', "Jurnal kelas {$kelas->nama_kelas} telah disetujui oleh {$approverName}.");
     }
 
     /**

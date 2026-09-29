@@ -61,7 +61,7 @@
                     class="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-bold text-white shadow-xs transition hover:bg-emerald-700 active:scale-98 !no-underline"
                 >
                     <i class="bi bi-arrow-left"></i>
-                    <span>Kembali ke Halaman Utama Guru</span>
+                    <span>Kembali</span>
                 </a>
 
                 <a
@@ -115,4 +115,3 @@
     </div>
 </div>
 @endsection
-

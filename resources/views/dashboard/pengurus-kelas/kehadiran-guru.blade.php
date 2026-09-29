@@ -16,13 +16,41 @@
         <p class="mt-1 text-xs text-slate-500">Pantau kehadiran guru yang mengajar di kelas hari ini.</p>
     </header>
 
+    {{-- BANNER EVENT / JAM KOSONG / PULANG CEPAT --}}
+    @if($isJamKosong ?? false)
+        <div class="mb-5 rounded-xl border border-orange-200 bg-orange-50 p-4 text-orange-950" role="status">
+            <div class="flex items-start gap-3">
+                <i class="bi bi-calendar-x-fill mt-0.5 text-lg text-orange-600"></i>
+                <div>
+                    <p class="text-sm font-bold">{{ $jamKosongNama ?: 'Jam Kosong Seharian' }}</p>
+                    <p class="mt-0.5 text-xs text-orange-800">Hari ini tidak ada kegiatan belajar mengajar reguler. Guru tidak perlu mengisi jurnal mengajar.</p>
+                </div>
+            </div>
+        </div>
+    @elseif($eventDismissalTime ?? false)
+        <div class="mb-5 rounded-xl border border-amber-200 bg-amber-50 p-4 text-amber-950" role="status">
+            <div class="flex items-start gap-3">
+                <i class="bi bi-megaphone-fill mt-0.5 text-lg text-amber-700"></i>
+                <div>
+                    <p class="text-sm font-bold">{{ $eventSchoolName ?: 'Pulang Cepat' }}</p>
+                    <p class="mt-0.5 text-xs text-amber-800">KBM hari ini selesai pukul {{ str_replace(':', '.', $eventDismissalTime) }}. Sesi setelah jam pulang ditiadakan.</p>
+                </div>
+            </div>
+        </div>
+    @endif
+
     @if($jadwals->isEmpty())
         <div class="rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm">
             <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-slate-100 text-2xl text-slate-400">
                 <i class="bi bi-calendar-x"></i>
             </div>
-            <h3 class="mt-3 text-sm font-bold text-slate-700">Tidak ada jadwal KBM pada hari {{ $hariIni }}</h3>
-            <p class="mt-1 text-xs text-slate-400">Belum ada data kehadiran guru untuk hari ini.</p>
+            @if($isJamKosong ?? false)
+                <h3 class="mt-3 text-sm font-bold text-slate-700">Jam Kosong Seharian Aktif</h3>
+                <p class="mt-1 text-xs text-slate-400">Tidak ada jadwal KBM yang berlaku hari ini karena agenda {{ $jamKosongNama ?: 'khusus sekolah' }}.</p>
+            @else
+                <h3 class="mt-3 text-sm font-bold text-slate-700">Tidak ada jadwal KBM pada hari {{ $hariIni }}</h3>
+                <p class="mt-1 text-xs text-slate-400">Belum ada data kehadiran guru untuk hari ini.</p>
+            @endif
         </div>
     @else
         <div class="grid gap-3.5 sm:grid-cols-2" aria-label="Daftar kehadiran guru">

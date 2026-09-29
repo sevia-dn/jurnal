@@ -32,7 +32,7 @@
                 @auth
                     <div><a href="{{ route('guru.riwayat') }}" class="mt-5 inline-flex items-center gap-2 rounded-xl bg-[#0d6b5a] px-5 py-3 text-sm font-bold text-white hover:bg-[#0b5548]"><i class="bi bi-arrow-left"></i>Kembali ke Riwayat Saya</a></div>
                 @else
-                    <div><a href="{{ route('login') }}" class="mt-5 inline-flex items-center gap-2 rounded-xl bg-[#0d6b5a] px-5 py-3 text-sm font-bold text-white hover:bg-[#0b5548]"><i class="bi bi-box-arrow-in-right"></i>Kembali ke Login</a></div>
+                    <div><a href="{{ route('login') }}" class="mt-5 inline-flex items-center gap-2 rounded-xl bg-[#0d6b5a] px-5 py-3 text-sm font-bold text-white hover:bg-[#0b5548]"><i class="bi bi-box-arrow-in-right"></i> Login</a></div>
                 @endauth
             </section>
         @else
@@ -49,7 +49,16 @@
                 </div>
             </section>
 
-            @if ($showEvent)
+            @if ($showJamKosong ?? false)
+                <section class="flex items-start gap-4 rounded-2xl border border-orange-200 bg-orange-50 p-5 text-orange-950" role="status">
+                    <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-orange-100 text-xl text-orange-700"><i class="bi bi-calendar-x-fill"></i></span>
+                    <div>
+                        <p class="text-xs font-extrabold uppercase tracking-wide text-orange-700">Informasi kegiatan hari ini</p>
+                        <h2 class="mt-1 text-base font-extrabold">{{ $jamKosong['nama'] }}</h2>
+                        <p class="mt-1 text-sm">Hari ini tidak ada kegiatan belajar mengajar. Jurnal mengajar tidak diperlukan.</p>
+                    </div>
+                </section>
+            @elseif ($showEvent)
                 <section class="flex items-start gap-4 rounded-2xl border border-amber-200 bg-amber-50 p-5 text-amber-950" role="status">
                     <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-xl text-amber-700"><i class="bi bi-megaphone-fill"></i></span>
                     <div>
@@ -72,10 +81,16 @@
                                     <input type="search" name="search" value="{{ request('search') }}" placeholder="Cari kelas atau guru..." class="w-full rounded-lg border border-slate-200 py-2 pl-8 pr-3 text-sm focus:border-emerald-600 focus:outline-none">
                                 </label>
                                 <label class="block text-[11px] font-bold text-slate-500">Tanggal mulai
-                                    <input type="date" name="tanggal_mulai" value="{{ request('tanggal_mulai') }}" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm font-normal focus:border-emerald-600 focus:outline-none">
+                                    <div class="relative mt-1">
+                                        <i class="bi bi-calendar3 pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs text-slate-400"></i>
+                                        <input type="date" name="tanggal_mulai" value="{{ request('tanggal_mulai') }}" class="w-full rounded-lg border border-slate-200 py-2 pl-8 pr-3 text-sm font-normal focus:border-emerald-600 focus:outline-none">
+                                    </div>
                                 </label>
                                 <label class="block text-[11px] font-bold text-slate-500">Tanggal selesai
-                                    <input type="date" name="tanggal_selesai" value="{{ request('tanggal_selesai') }}" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm font-normal focus:border-emerald-600 focus:outline-none">
+                                    <div class="relative mt-1">
+                                        <i class="bi bi-calendar3 pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs text-slate-400"></i>
+                                        <input type="date" name="tanggal_selesai" value="{{ request('tanggal_selesai') }}" class="w-full rounded-lg border border-slate-200 py-2 pl-8 pr-3 text-sm font-normal focus:border-emerald-600 focus:outline-none">
+                                    </div>
                                 </label>
                                 <div class="flex items-end gap-2">
                                     <button class="w-full rounded-lg bg-emerald-700 px-4 py-2 text-sm font-bold text-white hover:bg-emerald-800">Terapkan</button>

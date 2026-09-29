@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Absensi;
 use App\Models\Dispensasi;
 use App\Models\JadwalMengajar;
 use App\Models\JurnalMengajar;
@@ -46,6 +47,8 @@ class GuruController extends Controller
         $logbookPolicy = $deadlinePolicy->configuration();
         $eventDismissalTime = $scheduleTimeService->dismissalTimeForDate($todayDate);
         $eventSchoolName = (string) Pengaturan::getValue('event_sekolah', '');
+        $isJamKosong = $scheduleTimeService->isAllDayEmptyForDate($todayDate);
+        $jamKosongNama = (string) Pengaturan::getValue('jam_kosong_nama', '');
 
         $isPiketActive = $piketScheduleService->isScheduledNow($user);
         $isWaka = $user->isWaka();
@@ -157,6 +160,22 @@ class GuruController extends Controller
             ->get()
             ->keyBy('siswa_id');
 
+        // Mengambil rekam absensi siswa dari jurnal sebelumnya hari ini agar otomatis mengikuti
+        $priority = [
+            'D' => 5, 'DISPENSASI' => 5,
+            'SAKIT' => 4, 'S' => 4,
+            'IZIN' => 3, 'I' => 3,
+            'ALPA' => 2, 'ALFA' => 2, 'A' => 2,
+            'HADIR' => 1, 'H' => 1,
+        ];
+        $existingAbsensiHariIni = Absensi::whereHas('jurnal', fn ($q) => $q->whereDate('tanggal', $todayDate))
+            ->with('jurnal')
+            ->get()
+            ->groupBy(fn ($a) => $a->jurnal?->id_kelas)
+            ->map(fn ($absensis) => $absensis->groupBy('id_siswa')
+                ->map(fn ($records) => $records->sortByDesc(fn ($r) => $priority[strtoupper(trim((string) $r->status))] ?? 0)->first())
+            );
+
         return view('dashboard.guru-pengajar.utama', compact(
             'user',
             'isPiketActive',
@@ -177,6 +196,7 @@ class GuruController extends Controller
             'siswas',
             'siswasByKelas',
             'piketKehadiranHariIni',
+            'existingAbsensiHariIni',
             'hariIni',
             'todayDate',
             'currentTime',
@@ -187,6 +207,8 @@ class GuruController extends Controller
             'isGuruTidakHadirPending',
             'eventDismissalTime',
             'eventSchoolName',
+            'isJamKosong',
+            'jamKosongNama',
         ));
     }
 
@@ -229,6 +251,16 @@ class GuruController extends Controller
 
         if ($notifikasi->id_dispensasi !== null || str_starts_with((string) $notifikasi->tipe, 'dispensasi')) {
             return redirect()->route('piket.dispensasi.history');
+        }
+
+        if ($notifikasi->id_ketidakhadiran_guru !== null || $notifikasi->tipe === 'guru_tidak_hadir') {
+            $ketidakhadiran = $notifikasi->ketidakhadiranGuru;
+
+            if ($ketidakhadiran !== null) {
+                return redirect()->route('piket.ketidakhadiran-guru.show', $ketidakhadiran);
+            }
+
+            return redirect()->route('piket.ketidakhadiran-guru.index');
         }
 
         return redirect()->route('guru.riwayat');
@@ -383,7 +415,7 @@ class GuruController extends Controller
             $lampiranPath = $request->file('lampiran')->store('ketidakhadiran-guru', 'public');
         }
 
-        KetidakhadiranGuru::updateOrCreate(
+        $ketidakhadiran = KetidakhadiranGuru::updateOrCreate(
             ['user_id' => $guru->id, 'tanggal' => $request->tanggal],
             [
                 'alasan' => $request->alasan,
@@ -406,6 +438,7 @@ class GuruController extends Controller
                 'id_user' => $piketUser->id,
                 'id_kelas' => null,
                 'id_dispensasi' => null,
+                'id_ketidakhadiran_guru' => $ketidakhadiran->id,
                 'judul' => 'Pengajuan Ketidakhadiran Guru',
                 'pesan' => "Guru {$guru->name} mengajukan ketidakhadiran (".ucfirst($request->alasan).') untuk tanggal '.Carbon::parse($request->tanggal)->translatedFormat('d F Y').'. Silakan diverifikasi.',
                 'tipe' => 'guru_tidak_hadir',

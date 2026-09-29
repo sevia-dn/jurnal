@@ -6,11 +6,16 @@ use Illuminate\Database\Eloquent\Model;
 
 class PiketKehadiranSiswa extends Model
 {
+    public const SumberGuruPiket = 'guru_piket';
+
+    public const SumberDispensasiWaka = 'dispensasi_waka';
+
     protected $fillable = [
         'siswa_id',
         'kelas_id',
         'tanggal',
         'status',
+        'sumber',
         'catatan',
         'dicatat_oleh',
     ];

@@ -13,8 +13,8 @@
 @section('content')
 <div id="student-attendance-page" class="min-h-full bg-slate-50 p-4 pb-24 font-sans sm:p-6 lg:p-8">
     <div class="mx-auto max-w-7xl">
-        <a href="{{ route('dashboard.piket') }}" class="mb-4 inline-flex items-center gap-2 text-sm font-semibold text-emerald-700 transition hover:text-emerald-800">
-            <i class="bi bi-arrow-left"></i>Kembali ke halaman utama piket
+        <a href="{{ route('dashboard.piket') }}" class="mb-4 inline-flex items-center gap-2 rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-xs font-bold text-sky-700 transition hover:bg-sky-100">
+            <i class="bi bi-arrow-left"></i>Kembali
         </a>
         
         <!-- Flash Message -->

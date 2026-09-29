@@ -41,8 +41,33 @@ class ScheduleTimeService
         return $dismissalTime !== '' ? substr($dismissalTime, 0, 5) : null;
     }
 
+    /**
+     * Cek apakah tanggal termasuk dalam rentang jam kosong seharian
+     * (misal saat classmeet / event yang tidak perlu isi jurnal).
+     */
+    public function isAllDayEmptyForDate(string $date): bool
+    {
+        $nama = trim((string) Pengaturan::getValue('jam_kosong_nama', ''));
+        if ($nama === '') {
+            return false;
+        }
+
+        $tanggalMulai = trim((string) Pengaturan::getValue('jam_kosong_tanggal_mulai', ''));
+        $tanggalSelesai = trim((string) Pengaturan::getValue('jam_kosong_tanggal_selesai', ''));
+
+        if ($tanggalMulai === '' || $tanggalSelesai === '') {
+            return false;
+        }
+
+        return $date >= $tanggalMulai && $date <= $tanggalSelesai;
+    }
+
     public function isSessionApplicableOnDate(string $date, string $hari, int $jamKe): bool
     {
+        if ($this->isAllDayEmptyForDate($date)) {
+            return false;
+        }
+
         $dismissalTime = $this->dismissalTimeForDate($date);
         if ($dismissalTime === null) {
             return true;
@@ -55,6 +80,10 @@ class ScheduleTimeService
 
     public function isScheduleEndApplicableOnDate(string $date, string $endTime): bool
     {
+        if ($this->isAllDayEmptyForDate($date)) {
+            return false;
+        }
+
         $dismissalTime = $this->dismissalTimeForDate($date);
         if ($dismissalTime === null) {
             return true;

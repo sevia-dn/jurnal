@@ -141,18 +141,76 @@
                 </div>
             </form>
         @else
-            <div class="pt-4 border-t border-slate-100 rounded-xl bg-slate-50 p-5 text-center">
-                <p class="text-xs text-slate-500 font-semibold uppercase">Status Keputusan Waka</p>
-                <p class="text-sm font-bold text-slate-800 mt-1">Dispensasi telah diproses oleh {{ $dispensasi->pemroses?->name ?? 'Waka' }} pada {{ $dispensasi->diproses_at ? $dispensasi->diproses_at->format('d/m/Y H:i') : '-' }}.</p>
-                @if($dispensasi->catatan_waka)
-                    <p class="text-xs text-slate-600 mt-1 italic">"{{ $dispensasi->catatan_waka }}"</p>
-                @endif
-                @if($dispensasi->status_waka === 'disetujui' && ! ($isPublicApproval ?? false))
-                    <div class="mt-4">
-                        <a href="{{ route('dispensasi.cetak', $dispensasi->id) }}" target="_blank" class="inline-flex items-center gap-2 rounded-xl bg-emerald-700 px-5 py-2.5 text-sm font-bold text-white shadow hover:bg-emerald-800 transition">
-                            <i class="bi bi-printer-fill"></i> Cetak Surat Dispensasi
-                        </a>
+            <div class="pt-4 border-t border-slate-100 rounded-2xl bg-slate-50/80 p-5 sm:p-6 text-center space-y-4">
+                @if($dispensasi->status_waka === 'disetujui')
+                    <div class="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-emerald-100 text-emerald-700 text-2xl mb-1 shadow-xs">
+                        <i class="bi bi-shield-fill-check"></i>
                     </div>
+                    <div>
+                        <span class="inline-block px-3 py-1 rounded-full text-xs font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-300 uppercase tracking-wide">
+                            Disetujui & Sah
+                        </span>
+                        <h3 class="text-base sm:text-lg font-bold text-slate-900 mt-2">Dispensasi Siswa Telah Disahkan</h3>
+                        <p class="text-xs text-slate-500 mt-0.5">
+                            Diproses oleh <strong class="text-slate-700">{{ $dispensasi->pemroses?->name ?? 'Wakasek Kesiswaan' }}</strong> pada {{ $dispensasi->diproses_at ? $dispensasi->diproses_at->translatedFormat('d F Y - H:i') : '-' }} WIB
+                        </p>
+                    </div>
+
+                    @if($dispensasi->catatan_waka)
+                        <div class="p-3 rounded-xl bg-white border border-slate-200 text-xs text-slate-700 italic max-w-md mx-auto text-left">
+                            <span class="font-bold not-italic text-slate-500 block text-[10px] uppercase mb-0.5">Catatan Waka:</span>
+                            "{{ $dispensasi->catatan_waka }}"
+                        </div>
+                    @endif
+
+                    @if($dispensasi->token_verifikasi)
+                        <div class="p-5 rounded-2xl bg-white border border-emerald-200 shadow-xs max-w-sm mx-auto space-y-3">
+                            <p class="text-xs font-bold uppercase tracking-wider text-emerald-800 flex items-center justify-center gap-1.5">
+                                <i class="bi bi-qr-code-scan"></i> QR Code Bukti Approval
+                            </p>
+                            
+                            @php
+                                $verifyUrl = route('dispensasi.verify', ['token' => $dispensasi->token_verifikasi]);
+                            @endphp
+                            <div class="relative flex justify-center">
+                                <img 
+                                    src="https://api.qrserver.com/v1/create-qr-code/?size=400x400&margin=1&format=png&data={{ urlencode($verifyUrl) }}" 
+                                    alt="QR Code Verifikasi Dispensasi"
+                                    class="h-44 w-44 rounded-xl border border-slate-200 p-2 shadow-2xs bg-white"
+                                >
+                            </div>
+                            <p class="text-[11px] text-slate-500 leading-tight">
+                                Scan QR code di atas menggunakan kamera ponsel untuk melihat bukti verifikasi approval resmi.
+                            </p>
+                            <div class="pt-2 flex flex-col gap-2">
+                                <a href="{{ $verifyUrl }}" target="_blank" class="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 px-4 py-2.5 text-xs font-bold text-white transition shadow-xs">
+                                    <i class="bi bi-box-arrow-up-right"></i> Buka Halaman Bukti Verifikasi
+                                </a>
+                                <a href="{{ ($isPublicApproval ?? false) ? route('waka.dispensasi.cetak', ['token' => $dispensasi->token_approval]) : route('dispensasi.cetak', $dispensasi->id) }}" target="_blank" class="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-800 hover:bg-slate-900 px-4 py-2.5 text-xs font-bold text-white transition shadow-xs">
+                                    <i class="bi bi-printer-fill"></i> Cetak Surat Dispensasi Resmi
+                                </a>
+                            </div>
+                        </div>
+                    @endif
+                @else
+                    <div class="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-rose-100 text-rose-700 text-2xl mb-1 shadow-xs">
+                        <i class="bi bi-x-circle-fill"></i>
+                    </div>
+                    <div>
+                        <span class="inline-block px-3 py-1 rounded-full text-xs font-extrabold bg-rose-100 text-rose-800 border border-rose-300 uppercase tracking-wide">
+                            Pengajuan Ditolak
+                        </span>
+                        <h3 class="text-base font-bold text-slate-900 mt-2">Dispensasi Tidak Disetujui</h3>
+                        <p class="text-xs text-slate-500 mt-0.5">
+                            Diproses oleh <strong class="text-slate-700">{{ $dispensasi->pemroses?->name ?? 'Wakasek Kesiswaan' }}</strong> pada {{ $dispensasi->diproses_at ? $dispensasi->diproses_at->translatedFormat('d F Y - H:i') : '-' }} WIB
+                        </p>
+                    </div>
+                    @if($dispensasi->catatan_waka)
+                        <div class="p-3 rounded-xl bg-white border border-slate-200 text-xs text-slate-700 italic max-w-md mx-auto text-left">
+                            <span class="font-bold not-italic text-slate-500 block text-[10px] uppercase mb-0.5">Alasan Penolakan:</span>
+                            "{{ $dispensasi->catatan_waka }}"
+                        </div>
+                    @endif
                 @endif
             </div>
         @endif

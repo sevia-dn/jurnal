@@ -43,6 +43,19 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Piket Test Mode
+    |--------------------------------------------------------------------------
+    |
+    | This temporarily lets a teacher with a piket assignment access piket
+    | features outside their configured shift hours. Keep this disabled in
+    | normal operation.
+    |
+    */
+
+    'piket_test_mode' => (bool) env('PIKET_TEST_MODE', false),
+
+    /*
+    |--------------------------------------------------------------------------
     | Application URL
     |--------------------------------------------------------------------------
     |

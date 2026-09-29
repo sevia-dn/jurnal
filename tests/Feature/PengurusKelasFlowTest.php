@@ -337,12 +337,12 @@ class PengurusKelasFlowTest extends TestCase
         Absensi::create(['id_jurnal' => $jurnal2->id_jurnal, 'id_siswa' => $siswa2->id, 'status' => 'Hadir']);
         Absensi::create(['id_jurnal' => $jurnal2->id_jurnal, 'id_siswa' => $siswa3->id, 'status' => 'Hadir']);
 
-        // Saat ini, halaman kehadiran siswa harus tetap mengacu pada jurnal pertama (Siswa 2 = Sakit)
+        // Saat ini, halaman kehadiran siswa harus menampilkan agregasi dari semua jurnal hari ini (Siswa 2 = Sakit)
         $res = $this->actingAs($pengurus)->get(route('pengurus-kelas.kehadiran-siswa'));
         $res->assertOk();
         $res->assertSee('Siswa Sakit Pagi');
         $res->assertSee('Flu berat');
-        $res->assertSee('Guru Pertama');
+        $res->assertSee('Basis Absensi Terkini');
 
         // Dan card kehadiran siswa di dashboard juga menghitung 2 hadir, 1 sakit
         $dashRes = $this->actingAs($pengurus)->get(route('pengurus-kelas.dashboard'));

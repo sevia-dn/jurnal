@@ -52,6 +52,26 @@ class PiketLoginWorkflowTest extends TestCase
         $this->actingAs($guru)->get(route('dashboard.piket'))->assertOk();
     }
 
+    public function test_test_mode_allows_an_assigned_piket_teacher_outside_shift_hours(): void
+    {
+        config()->set('app.piket_test_mode', true);
+        $this->travelTo(Carbon::parse('2026-09-22 08:00:00', 'Asia/Jakarta'));
+        $guru = $this->teacher('petugas-piket-uji');
+
+        JadwalPiket::create([
+            'user_id' => $guru->id,
+            'tanggal' => '2026-09-22',
+            'hari' => 'Selasa',
+            'tipe' => 'guru',
+            'shift' => 2,
+            'jam_mulai' => '12:00:00',
+            'jam_selesai' => '15:00:00',
+        ]);
+
+        $this->assertTrue($guru->isPiketActive());
+        $this->actingAs($guru)->get(route('dashboard.piket'))->assertOk();
+    }
+
     public function test_unscheduled_teacher_lands_on_teaching_dashboard(): void
     {
         $this->travelTo(Carbon::parse('2026-09-22 08:00:00', 'Asia/Jakarta'));
@@ -133,7 +153,7 @@ class PiketLoginWorkflowTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('Anda Tidak Sedang Piket');
-        $response->assertSee('Halaman Utama Guru');
+        $response->assertSee('Halaman Utama');
         $response->assertDontSee('Anda sedang tidak piket');
         $response->assertSee('Piket');
         $response->assertDontSee('Detail Logbook Mengajar');
@@ -146,7 +166,7 @@ class PiketLoginWorkflowTest extends TestCase
         $this->schedule($guru, '2026-09-22');
 
         $this->actingAs($guru)->get(route('dashboard.piket'))->assertOk()->assertSee('Pengajuan Dispensasi');
-        $this->actingAs($guru)->get(route('piket.kehadiran'))->assertOk()->assertSee('Daftar Kehadiran Guru');
+        $this->actingAs($guru)->get(route('piket.kehadiran'))->assertOk()->assertSee('Kehadiran & Persetujuan Izin Guru', false);
         $this->actingAs($guru)->get(route('piket.dispensasi.form'))->assertOk()->assertSee('Form Pengajuan Dispensasi');
         $this->actingAs($guru)->get('/dashboard/piket/kehadiran/lapor')->assertNotFound();
     }
@@ -226,10 +246,9 @@ class PiketLoginWorkflowTest extends TestCase
         $this->actingAs($petugas)
             ->get(route('dashboard.piket'))
             ->assertOk()
-            ->assertSee('Guru jurnal')
-            ->assertSee('Algoritma dasar')
-            ->assertSee('Sudah divalidasi')
-            ->assertSee(route('piket.jurnal.show', $jurnal));
+            ->assertSee('Kelas X RPL 1')
+            ->assertSee('Periksa Jurnal')
+            ->assertSee(route('piket.jurnal-kelas.sessions', ['kelas' => $kelas, 'tanggal' => '2026-09-22']));
 
         $this->actingAs($petugas)
             ->get(route('piket.jurnal.show', $jurnal))
@@ -400,7 +419,7 @@ class PiketLoginWorkflowTest extends TestCase
             ->assertSee('Acara keluarga');
     }
 
-    public function test_piket_utama_shows_logbook_history_and_supports_filters(): void
+    public function test_piket_utama_links_to_separate_logbook_history_and_recap(): void
     {
         $this->travelTo(Carbon::parse('2026-09-28 08:00:00', 'Asia/Jakarta'));
         $piket = $this->teacher('petugas-piket-history');
@@ -429,26 +448,18 @@ class PiketLoginWorkflowTest extends TestCase
             'status_validasi' => 'disetujui',
         ]);
 
-        // Default: semua riwayat logbook muncul (tidak kosong)
+        // Dashboard piket kini berfokus pada pemeriksaan jurnal kelas hari ini.
         $this->actingAs($piket)
             ->get(route('dashboard.piket'))
             ->assertOk()
-            ->assertSee('Integral Parsial dan Substitusi')
-            ->assertSee('XII RPL 1')
-            ->assertSee('Matematika')
-            ->assertSee('Riwayat &amp; Pemantauan Dispensasi', false);
+            ->assertSee('Aktivitas &amp; Riwayat Logbook Kelas', false)
+            ->assertSee('Lihat Riwayat &amp; Rekap', false);
 
-        // Filter pencarian berdasarkan materi
         $this->actingAs($piket)
-            ->get(route('dashboard.piket', ['search' => 'Integral']))
+            ->get(route('piket.rekap-jurnal', ['tanggal' => '2026-09-23', 'search' => 'Integral']))
             ->assertOk()
+            ->assertSee('Riwayat &amp; Rekap Jurnal', false)
             ->assertSee('Integral Parsial dan Substitusi');
-
-        // Filter pencarian yang tidak cocok
-        $this->actingAs($piket)
-            ->get(route('dashboard.piket', ['search' => 'Biologi Molekuler']))
-            ->assertOk()
-            ->assertDontSee('Integral Parsial dan Substitusi');
     }
 
     public function test_piket_dispensasi_history_page_loads_with_filters_and_search(): void

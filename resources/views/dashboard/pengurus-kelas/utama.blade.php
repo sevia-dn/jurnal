@@ -11,6 +11,28 @@
 @section('content')
 <div class="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
 
+    {{-- BANNER EVENT / JAM KOSONG / PULANG CEPAT --}}
+    @if($isJamKosong ?? false)
+        <div class="mb-5 rounded-xl border border-orange-200 bg-orange-50 p-4 text-orange-950" role="status">
+            <div class="flex items-start gap-3">
+                <i class="bi bi-calendar-x-fill mt-0.5 text-lg text-orange-600"></i>
+                <div>
+                    <p class="text-sm font-bold">{{ $jamKosongNama ?: 'Jam Kosong Seharian' }}</p>
+                    <p class="mt-0.5 text-xs text-orange-800">Hari ini tidak ada kegiatan belajar mengajar reguler (agenda khusus / classmeet). Guru tidak perlu mengisi jurnal untuk kelas ini.</p>
+                </div>
+            </div>
+        </div>
+    @elseif($eventDismissalTime ?? false)
+        <div class="mb-5 rounded-xl border border-amber-200 bg-amber-50 p-4 text-amber-950" role="status">
+            <div class="flex items-start gap-3">
+                <i class="bi bi-megaphone-fill mt-0.5 text-lg text-amber-700"></i>
+                <div>
+                    <p class="text-sm font-bold">{{ $eventSchoolName ?: 'Pulang Cepat' }}</p>
+                    <p class="mt-0.5 text-xs text-amber-800">KBM hari ini berakhir pukul {{ str_replace(':', '.', $eventDismissalTime) }}. Sesi pembelajaran setelah jam tersebut ditiadakan.</p>
+                </div>
+            </div>
+        </div>
+    @endif
 
     {{-- KARTU STATISTIK (3 CARD: KELAS HARI INI, PERLU PERSETUJUAN, KEHADIRAN SISWA) --}}
     <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">

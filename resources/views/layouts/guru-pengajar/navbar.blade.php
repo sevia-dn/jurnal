@@ -78,22 +78,24 @@
 
                 <div class="max-h-96 overflow-y-auto p-2">
                     @forelse($notifGuru as $notification)
-                        <div class="mb-2 rounded-xl border border-emerald-100 bg-emerald-50/40 p-3">
-                            <div class="flex items-start gap-3">
-                                <span class="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
-                                    <i class="bi bi-bell-fill text-base" aria-hidden="true"></i>
-                                </span>
-                                <div class="min-w-0 flex-1">
-                                    <p class="text-xs font-bold text-slate-800">{{ $notification->judul }}</p>
-                                    <p class="mt-1 text-xs leading-relaxed text-slate-600">{{ $notification->pesan }}</p>
-                                    <p class="mt-1 text-[10px] text-slate-400">{{ $notification->created_at?->diffForHumans() }}</p>
-                                    <form method="POST" action="{{ route('guru.notifikasi.read', $notification) }}" class="mt-2">
-                                        @csrf
-                                        <button type="submit" class="inline-flex items-center rounded-md border border-emerald-200 bg-white px-2.5 py-1.5 text-[11px] font-semibold text-emerald-700 transition hover:bg-emerald-50">Lihat</button>
-                                    </form>
+                        <form method="POST" action="{{ route('guru.notifikasi.read', $notification) }}" class="mb-2">
+                            @csrf
+                            <button type="submit" class="w-full text-left rounded-xl border border-emerald-100 bg-emerald-50/40 p-3 transition hover:bg-emerald-50 hover:shadow-xs group">
+                                <div class="flex items-start gap-3">
+                                    <span class="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 group-hover:bg-emerald-200">
+                                        <i class="bi bi-bell-fill text-base" aria-hidden="true"></i>
+                                    </span>
+                                    <div class="min-w-0 flex-1">
+                                        <div class="flex items-center justify-between gap-1">
+                                            <p class="text-xs font-bold text-slate-800">{{ $notification->judul }}</p>
+                                            <span class="text-[11px] font-semibold text-emerald-700 opacity-90 group-hover:underline">Lihat &rarr;</span>
+                                        </div>
+                                        <p class="mt-1 text-xs leading-relaxed text-slate-600">{{ $notification->pesan }}</p>
+                                        <p class="mt-1 text-[10px] text-slate-400">{{ $notification->created_at?->diffForHumans() }}</p>
+                                    </div>
                                 </div>
-                            </div>
-                        </div>
+                            </button>
+                        </form>
                     @empty
                         <div class="rounded-xl border border-slate-100 bg-slate-50 p-4 text-center text-xs text-slate-400">Belum ada notifikasi baru.</div>
                     @endforelse
@@ -170,18 +172,23 @@
 
             <div class="max-h-80 overflow-y-auto p-2">
                 @forelse($notifGuru as $notification)
-                    <div class="mb-2 rounded-lg border border-emerald-100 bg-emerald-50/40 p-2.5">
-                        <div class="flex items-start gap-2">
-                            <span class="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
-                                <i class="bi bi-bell-fill text-sm" aria-hidden="true"></i>
-                            </span>
-                            <div class="min-w-0 flex-1">
-                                <p class="text-xs font-bold text-slate-800">{{ $notification->judul }}</p>
-                                <p class="mt-1 text-[11px] leading-relaxed text-slate-600">{{ $notification->pesan }}</p>
-                                <form method="POST" action="{{ route('guru.notifikasi.read', $notification) }}" class="mt-2">@csrf <button type="submit" class="text-[11px] font-semibold text-emerald-700">Lihat</button></form>
+                    <form method="POST" action="{{ route('guru.notifikasi.read', $notification) }}" class="mb-2">
+                        @csrf
+                        <button type="submit" class="w-full text-left rounded-lg border border-emerald-100 bg-emerald-50/40 p-2.5 transition hover:bg-emerald-50 group">
+                            <div class="flex items-start gap-2">
+                                <span class="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 group-hover:bg-emerald-200">
+                                    <i class="bi bi-bell-fill text-sm" aria-hidden="true"></i>
+                                </span>
+                                <div class="min-w-0 flex-1">
+                                    <div class="flex items-center justify-between gap-1">
+                                        <p class="text-xs font-bold text-slate-800">{{ $notification->judul }}</p>
+                                        <span class="text-[10px] font-semibold text-emerald-700 opacity-90 group-hover:underline">Lihat &rarr;</span>
+                                    </div>
+                                    <p class="mt-1 text-[11px] leading-relaxed text-slate-600">{{ $notification->pesan }}</p>
+                                </div>
                             </div>
-                        </div>
-                    </div>
+                        </button>
+                    </form>
                 @empty
                     <div class="rounded-lg border border-slate-100 bg-slate-50 p-3 text-center text-[11px] text-slate-400">Belum ada notifikasi baru.</div>
                 @endforelse

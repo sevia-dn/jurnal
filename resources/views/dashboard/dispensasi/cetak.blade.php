@@ -123,35 +123,45 @@
         <!-- STATUS VALIDASI ELEKTRONIK -->
         <div class="mt-8 p-4 bg-slate-50 border border-slate-200 rounded-lg text-xs font-sans flex flex-col sm:flex-row items-center justify-between gap-4">
             <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-xl font-bold">
+                <div class="w-10 h-10 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-xl font-bold shrink-0">
                     <i class="bi bi-shield-check"></i>
                 </div>
                 <div>
-                    <p class="font-bold text-slate-800">DISAHKAN SECARA RESMI OLEH WAKA KESISWAAN</p>
-                    <p class="text-slate-500">Status: <span class="text-emerald-700 font-bold uppercase">{{ $dispensasi->status_akhir }}</span> | Token: <span class="font-mono">{{ substr($dispensasi->token_approval ?? 'DISP', 0, 16) }}...</span></p>
+                    <p class="font-bold text-slate-800 uppercase tracking-wide">DISAHKAN SECARA RESMI OLEH WAKASEK KESISWAAN</p>
+                    <p class="text-slate-500">Status: <span class="text-emerald-700 font-bold uppercase">{{ $dispensasi->status_akhir }}</span> | ID: <span class="font-mono">#DISP-{{ $dispensasi->id }}</span></p>
                 </div>
             </div>
-            <div class="text-right text-slate-500">
-                Tgl Pengesahan: {{ $dispensasi->diproses_at ? $dispensasi->diproses_at->format('d/m/Y H:i') : '-' }} WIB
+            <div class="text-right text-slate-500 text-[11px]">
+                <p>Tgl Pengesahan: <strong class="text-slate-700">{{ $dispensasi->diproses_at ? $dispensasi->diproses_at->format('d/m/Y H:i') : '-' }} WIB</strong></p>
+                <p class="text-slate-400">Verifikasi Sistem: <span class="font-mono">{{ substr($dispensasi->token_verifikasi ?? $dispensasi->token_approval ?? 'VALID', 0, 16) }}...</span></p>
             </div>
         </div>
 
-        <!-- TANDA TANGAN -->
-        <div class="mt-12 grid grid-cols-2 text-center text-sm font-sans gap-8">
+        <!-- TANDA TANGAN & QR VALIDASI -->
+        <div class="mt-10 grid grid-cols-2 text-center text-sm font-sans gap-8 items-end">
             <div>
-                <p class="text-slate-500">Guru Piket yang Mengajukan,</p>
-                <div class="h-20 flex items-center justify-center">
-                    <span class="text-xs text-emerald-700 font-mono italic">[ Diverifikasi Piket ]</span>
+                <p class="text-slate-500 text-xs">Guru Piket yang Mengajukan,</p>
+                <div class="h-24 flex items-center justify-center">
+                    <span class="text-xs text-emerald-700 font-mono italic px-3 py-1 bg-emerald-50 rounded border border-emerald-200">[ Diverifikasi Piket ]</span>
                 </div>
                 <p class="font-bold text-slate-900 underline">{{ $dispensasi->pembuat?->name ?? 'Guru Piket' }}</p>
                 <p class="text-xs text-slate-500">NIP: {{ $dispensasi->pembuat?->nip ?? '-' }}</p>
             </div>
 
             <div>
-                <p class="text-slate-500">Boyolangu, {{ ($dispensasi->diproses_at ?? now())->format('d F Y') }}</p>
-                <p class="text-slate-500">Waka Kesiswaan,</p>
-                <div class="h-20 flex items-center justify-center">
-                    <span class="text-xs text-purple-700 font-mono italic">[ Tervalidasi Sistem ]</span>
+                <p class="text-slate-500 text-xs">Boyolangu, {{ ($dispensasi->diproses_at ?? now())->format('d F Y') }}</p>
+                <p class="text-slate-500 text-xs">Wakasek Kesiswaan,</p>
+                <div class="h-24 flex flex-col items-center justify-center py-1">
+                    @if($dispensasi->token_verifikasi)
+                        <img 
+                            src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=0&format=png&data={{ urlencode(route('dispensasi.verify', ['token' => $dispensasi->token_verifikasi])) }}" 
+                            alt="QR Verifikasi Resmi"
+                            class="h-16 w-16 p-0.5 border border-slate-300 rounded bg-white"
+                        >
+                        <span class="text-[9px] text-slate-400 font-mono mt-0.5">Scan untuk Verifikasi</span>
+                    @else
+                        <span class="text-xs text-purple-700 font-mono italic px-3 py-1 bg-purple-50 rounded border border-purple-200">[ Tervalidasi Sistem ]</span>
+                    @endif
                 </div>
                 <p class="font-bold text-slate-900 underline">{{ $dispensasi->pemroses?->name ?? 'Fajar Siswanto, S.Pd' }}</p>
                 <p class="text-xs text-slate-500">NIP: {{ $dispensasi->pemroses?->nip ?? '198501012010011003' }}</p>

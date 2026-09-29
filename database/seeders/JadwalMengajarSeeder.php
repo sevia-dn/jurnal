@@ -961,6 +961,13 @@ class JadwalMengajarSeeder extends Seeder
                 ['XI AN 2', 'Jumat', 5, 6, 'Mapel Pilihan AN', 'Andika Christian Sasmita, S.ST'],
                 ['XI AN 2', 'Jumat', 9, 10, 'Pendidikan Pancasila', 'Wiwik Yuniarsih, S.Pd'],
                 ['XI AN 2', 'Jumat', 11, 13, 'Bahasa Inggris', 'Agus Muharyanto, M.Pd'],
+
+                // Jadwal demo akun fajarsiswanto (Pendidikan Pancasila - Mon-Fri)
+                ['X RPL 1', 'Senin', 3, 4, 'Pendidikan Pancasila', 'Fajar Siswanto S.Pd'],
+                ['X RPL 2', 'Selasa', 3, 4, 'Pendidikan Pancasila', 'Fajar Siswanto S.Pd'],
+                ['X TKJ 1', 'Rabu', 3, 4, 'Pendidikan Pancasila', 'Fajar Siswanto S.Pd'],
+                ['X BD 1', 'Kamis', 3, 4, 'Pendidikan Pancasila', 'Fajar Siswanto S.Pd'],
+                ['X AK 1', 'Jumat', 2, 3, 'Pendidikan Pancasila', 'Fajar Siswanto S.Pd'],
             ];
 
             $inserted = 0;

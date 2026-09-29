@@ -51,6 +51,29 @@
       $opsiKelasRekap = $kelases->map(fn ($kelas) => ['value' => (string) $kelas->id_kelas, 'label' => 'Kelas '.$kelas->nama_kelas]);
     @endphp
 
+    {{-- BANNER EVENT / JAM KOSONG / PULANG CEPAT --}}
+    @if($isJamKosong ?? false)
+        <div class="mb-5 rounded-xl border border-orange-200 bg-orange-50 p-4 text-orange-950" role="status">
+            <div class="flex items-start gap-3">
+                <i class="bi bi-calendar-x-fill mt-0.5 text-lg text-orange-600"></i>
+                <div>
+                    <p class="text-sm font-bold">{{ $jamKosongNama ?: 'Jam Kosong Seharian' }}</p>
+                    <p class="mt-0.5 text-xs text-orange-800">Tanggal ini diatur sebagai agenda khusus / classmeet (KBM reguler tidak dilaksanakan, sehingga tidak ada kewajiban pengisian jurnal mengajar).</p>
+                </div>
+            </div>
+        </div>
+    @elseif($eventDismissalTime ?? false)
+        <div class="mb-5 rounded-xl border border-amber-200 bg-amber-50 p-4 text-amber-950" role="status">
+            <div class="flex items-start gap-3">
+                <i class="bi bi-megaphone-fill mt-0.5 text-lg text-amber-700"></i>
+                <div>
+                    <p class="text-sm font-bold">{{ $eventSchoolName ?: 'Pulang Cepat' }} (Pukul {{ str_replace(':', '.', $eventDismissalTime) }})</p>
+                    <p class="mt-0.5 text-xs text-amber-800">Pada tanggal ini sekolah pulang lebih cepat. Sesi pembelajaran yang berakhir setelah jam pulang khusus tidak dihitung dalam target sesi wajib.</p>
+                </div>
+            </div>
+        </div>
+    @endif
+
     <!-- Header Halaman -->
     <div class="mb-6 flex flex-col items-start justify-between gap-4 border-b border-slate-200 pb-5 lg:flex-row lg:items-center lg:gap-6">
       <div class="flex flex-wrap items-center gap-2.5">

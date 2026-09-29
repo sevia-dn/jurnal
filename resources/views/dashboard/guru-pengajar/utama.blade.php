@@ -204,12 +204,25 @@ function guruLogbookState(config) {
             }
         },
 
+        handleFileInput(e) {
+            const file = e.target.files?.[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (ev) => {
+                    this.capturedPhoto = ev.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+        },
+
         capturePhoto() {
             const vid = this.$refs.cameraVideoLogbook;
             const canvas = this.$refs.cameraCanvasLogbook;
             if (!vid || !canvas) return;
             canvas.width = vid.videoWidth;
             canvas.height = vid.videoHeight;
+            canvas.width = vid.videoWidth || 640;
+            canvas.height = vid.videoHeight || 480;
             canvas.getContext('2d').drawImage(vid, 0, 0);
             this.capturedPhoto = canvas.toDataURL('image/jpeg', 0.85);
             this.$refs.lampiranInput.value = '';
@@ -221,6 +234,19 @@ function guruLogbookState(config) {
                     dt.items.add(file);
                     this.$refs.lampiranInput.files = dt.files;
                 });
+            if (this.$refs.lampiranInput) {
+                this.$refs.lampiranInput.value = '';
+                try {
+                    fetch(this.capturedPhoto)
+                        .then(r => r.blob())
+                        .then(blob => {
+                            const file = new File([blob], 'foto-bukti-mengajar-live.jpg', { type: 'image/jpeg' });
+                            const dt = new DataTransfer();
+                            dt.items.add(file);
+                            this.$refs.lampiranInput.files = dt.files;
+                        }).catch(() => {});
+                } catch(err) {}
+            }
             this.stopCamera();
         },
 
@@ -270,6 +296,8 @@ function guruLogbookState(config) {
             // Hanya wajib foto live jika guru hadir di kelas (bukan tidak hadir disetujui piket)
             if (!this.isGuruTidakHadir) {
                 if (!this.capturedPhoto || !this.$refs.lampiranInput.files || this.$refs.lampiranInput.files.length === 0) {
+                const hasPhoto = this.capturedPhoto || (this.$refs.lampiranInput && this.$refs.lampiranInput.files && this.$refs.lampiranInput.files.length > 0);
+                if (!hasPhoto) {
                     e.preventDefault();
                     alert('Wajib mengambil foto live bukti kehadiran di kelas sebelum mengirim logbook!');
                     const lampiranEl = document.getElementById('section-lampiran-logbook');
@@ -329,7 +357,17 @@ function guruLogbookState(config) {
         </div>
     @endif
 
-    @if($eventDismissalTime)
+    @if($isJamKosong ?? false)
+        <div class="mb-5 rounded-xl border border-orange-200 bg-orange-50 p-4 text-orange-950" role="status">
+            <div class="flex items-start gap-3">
+                <i class="bi bi-calendar-x-fill mt-0.5 text-lg text-orange-600"></i>
+                <div>
+                    <p class="text-sm font-bold">{{ $jamKosongNama ?: 'Jam Kosong Seharian' }}</p>
+                    <p class="mt-0.5 text-xs text-orange-800">Hari ini tidak ada kegiatan belajar mengajar. Pengisian jurnal tidak diperlukan.</p>
+                </div>
+            </div>
+        </div>
+    @elseif($eventDismissalTime)
         <div class="mb-5 rounded-xl border border-amber-200 bg-amber-50 p-4 text-amber-950" role="status">
             <div class="flex items-start gap-3">
                 <i class="bi bi-megaphone-fill mt-0.5 text-lg text-amber-700"></i>
@@ -1069,7 +1107,31 @@ function guruLogbookState(config) {
                                     @foreach($kelasSiswas as $idx => $siswa)
                                         @php
                                             $catatanPiket = $piketKehadiranHariIni->get($siswa->id);
-                                            $statusSiswa = $catatanPiket?->status ?? 'Hadir';
+                                            $absensiSebelumnya = ($existingAbsensiHariIni ?? collect())->get($kelasId, collect())->get($siswa->id);
+
+                                            if ($catatanPiket) {
+                                                $statusSiswa = $catatanPiket->status ?? 'Hadir';
+                                                $catatanSiswa = $catatanPiket->catatan ?? '';
+                                                $isStatusOtomatisPiket = in_array($statusSiswa, ['Sakit', 'Izin', 'D', 'Dispensasi'], true);
+                                                $isStatusDariJurnalSebelumnya = false;
+                                            } elseif ($absensiSebelumnya && in_array(strtoupper(trim((string)$absensiSebelumnya->status)), ['S', 'SAKIT', 'I', 'IZIN', 'A', 'ALPA', 'ALFA', 'D', 'DISPENSASI'])) {
+                                                $statusRaw = strtoupper(trim((string)$absensiSebelumnya->status));
+                                                $statusSiswa = match($statusRaw) {
+                                                    'S', 'SAKIT' => 'Sakit',
+                                                    'I', 'IZIN' => 'Izin',
+                                                    'A', 'ALPA', 'ALFA' => 'Alpa',
+                                                    'D', 'DISPENSASI' => 'Dispensasi',
+                                                    default => 'Hadir',
+                                                };
+                                                $catatanSiswa = $absensiSebelumnya->catatan ?? '';
+                                                $isStatusOtomatisPiket = false;
+                                                $isStatusDariJurnalSebelumnya = true;
+                                            } else {
+                                                $statusSiswa = 'Hadir';
+                                                $catatanSiswa = '';
+                                                $isStatusOtomatisPiket = false;
+                                                $isStatusDariJurnalSebelumnya = false;
+                                            }
                                         @endphp
                                         <div
                                             x-show="matchesSearch(@js($siswa->nama), @js($siswa->nis), @js($siswa->nisn))"
@@ -1090,11 +1152,16 @@ function guruLogbookState(config) {
                                                     <p class="text-[11px] text-slate-400 truncate">
                                                         NIS: {{ $siswa->nis ?? '-' }} &bull; {{ $siswa->jenis_kelamin }}
                                                     </p>
+                                                    @if($isStatusOtomatisPiket)
+                                                        <p class="mt-0.5 text-[11px] font-semibold text-indigo-600"><i class="bi bi-shield-check mr-0.5"></i>Otomatis dari Guru Piket</p>
+                                                    @elseif($isStatusDariJurnalSebelumnya)
+                                                        <p class="mt-0.5 text-[11px] font-semibold text-amber-600"><i class="bi bi-clock-history mr-0.5"></i>Tercatat dari Guru Sebelumnya</p>
+                                                    @endif
                                                 </div>
                                             </div>
 
                                             {{-- PILIHAN STATUS H, S, I, A, D (FULL WIDTH DI MOBILE) --}}
-                                        <fieldset class="flex w-full items-center justify-between gap-1 sm:w-auto sm:justify-end">
+                                        <fieldset @disabled($isStatusOtomatisPiket) class="flex w-full items-center justify-between gap-1 sm:w-auto sm:justify-end disabled:opacity-70">
                                             {{-- HADIR (H) --}}
                                             <div class="flex-1 sm:flex-none">
                                                 <input
@@ -1176,7 +1243,8 @@ function guruLogbookState(config) {
                                                 type="text"
                                                 name="absensi_catatan[{{ $siswa->id }}]"
                                                 maxlength="255"
-                                                value="{{ $catatanPiket?->catatan }}"
+                                                value="{{ $catatanSiswa }}"
+                                                @disabled($isStatusOtomatisPiket)
                                                 placeholder="Keterangan jika tidak hadir (opsional)"
                                                 class="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-xs text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100"
                                             >
@@ -1237,8 +1305,10 @@ function guruLogbookState(config) {
                         name="lampiran"
                         accept="image/*"
                         x-ref="lampiranInput"
+                        @change="handleFileInput($event)"
                         class="hidden"
                     >
+                    <input type="hidden" name="lampiran_base64" :value="capturedPhoto || ''">
 
                     {{-- Preview Foto Tersimpan --}}
                     <div x-show="capturedPhoto" class="mt-2">
@@ -1249,8 +1319,14 @@ function guruLogbookState(config) {
                             </span>
                         </div>
                         <div class="mt-1.5">
+                        <div class="mt-1.5 flex items-center gap-3">
                             <button type="button" @click="retakePhoto()" class="text-xs font-semibold text-emerald-600 hover:underline inline-flex items-center gap-1">
                                 <i class="bi bi-arrow-repeat"></i> Ambil Ulang Foto Live
+                                <i class="bi bi-camera"></i> Ambil Ulang Kamera
+                            </button>
+                            <span class="text-slate-300">|</span>
+                            <button type="button" @click="$refs.lampiranInput.click()" class="text-xs font-semibold text-slate-600 hover:underline inline-flex items-center gap-1">
+                                <i class="bi bi-image"></i> Ganti dari Berkas
                             </button>
                         </div>
                     </div>
@@ -1279,10 +1355,17 @@ function guruLogbookState(config) {
 
                     {{-- Tombol Buka Kamera Live --}}
                     <div x-show="!cameraActive && !capturedPhoto" class="mt-2">
+                    {{-- Tombol Buka Kamera Live & Pilih Berkas --}}
+                    <div x-show="!cameraActive && !capturedPhoto" class="mt-2 flex flex-wrap items-center gap-2">
                         <button type="button" @click="startCamera()"
                                 class="inline-flex items-center gap-2 rounded-xl border-2 border-dashed border-emerald-400 bg-emerald-50 px-4 py-3 text-xs font-bold text-emerald-700 transition hover:border-emerald-600 hover:bg-emerald-100">
                             <i class="bi bi-camera-fill text-lg"></i>
                             Buka Kamera Live
+                        </button>
+                        <button type="button" @click="$refs.lampiranInput.click()"
+                                class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-xs font-bold text-slate-700 transition hover:bg-slate-50">
+                            <i class="bi bi-image text-lg text-slate-500"></i>
+                            Pilih / Ambil Foto
                         </button>
                     </div>
                 </div>
@@ -1374,6 +1457,31 @@ function guruLogbookState(config) {
                                     Catatan Khusus / Hambatan (Opsional)
                                 </p>
                                 <p class="mt-1 text-xs leading-relaxed whitespace-pre-line" :class="catatanText && catatanText.trim() !== '' ? 'text-amber-950 font-medium' : 'text-slate-500 italic'" x-text="catatanText && catatanText.trim() !== '' ? catatanText : 'Tidak ada catatan khusus / hambatan'"></p>
+                            </div>
+
+                            {{-- Bukti Foto Live Kehadiran di Kelas --}}
+                            <div class="rounded-xl border border-slate-200 p-3.5 space-y-2 bg-slate-50/50">
+                                <p class="text-xs font-bold text-slate-700 flex items-center justify-between">
+                                    <span class="flex items-center gap-1.5">
+                                        <i class="bi bi-camera-fill text-emerald-600"></i>
+                                        <span>Bukti Foto Live Kehadiran di Kelas</span>
+                                    </span>
+                                    <template x-if="capturedPhoto">
+                                        <span class="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">Foto Live Siap Dikirim</span>
+                                    </template>
+                                </p>
+                                <template x-if="capturedPhoto">
+                                    <div class="overflow-hidden rounded-xl border border-slate-200 bg-black/5 flex justify-center p-1">
+                                        <img :src="capturedPhoto" alt="Bukti Foto Live Kehadiran di Kelas" class="max-h-64 w-full object-contain rounded-lg shadow-2xs">
+                                    </div>
+                                </template>
+                                <template x-if="!capturedPhoto">
+                                    <div class="flex h-24 flex-col items-center justify-center rounded-xl border border-dashed border-rose-200 bg-rose-50/50 text-rose-500 p-3 text-center">
+                                        <i class="bi bi-camera-video-off text-xl"></i>
+                                        <span class="mt-1 text-xs font-bold">Foto live belum diambil</span>
+                                        <span class="text-[10px] text-rose-400">Silakan ambil foto live sebelum mengirimkan logbook.</span>
+                                    </div>
+                                </template>
                             </div>
 
                             {{-- Ringkasan Absensi --}}
