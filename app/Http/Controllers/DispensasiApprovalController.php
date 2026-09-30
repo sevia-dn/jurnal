@@ -33,7 +33,7 @@ class DispensasiApprovalController extends Controller
      */
     public function show(string $token)
     {
-        $dispensasi = Dispensasi::with(['siswa.kelas', 'pembuat', 'pemroses'])
+        $dispensasi = Dispensasi::with(['siswa.kelas', 'siswas.kelas', 'pembuat', 'pemroses'])
             ->where('token_approval', $token)
             ->orWhere('id', $token)
             ->firstOrFail();
@@ -157,7 +157,7 @@ class DispensasiApprovalController extends Controller
 
     private function findByApprovalToken(string $token): Dispensasi
     {
-        return Dispensasi::with(['siswa.kelas', 'pembuat', 'pemroses'])
+        return Dispensasi::with(['siswa.kelas', 'siswas.kelas', 'pembuat', 'pemroses'])
             ->where('token_approval', $token)
             ->firstOrFail();
     }
@@ -179,7 +179,7 @@ class DispensasiApprovalController extends Controller
      */
     public function cetakSurat(Dispensasi $dispensasi)
     {
-        $dispensasi->load(['siswa.kelas', 'pembuat', 'pemroses']);
+        $dispensasi->load(['siswa.kelas', 'siswas.kelas', 'pembuat', 'pemroses']);
 
         return view('dashboard.dispensasi.cetak', compact('dispensasi'));
     }

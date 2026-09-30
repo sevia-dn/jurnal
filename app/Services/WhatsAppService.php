@@ -21,8 +21,10 @@ class WhatsAppService
     {
         $approvalPath = route('waka.dispensasi.show', ['token' => $dispensasi->token_approval], false);
         $approvalBaseUrl = rtrim((string) config('services.whatsapp.approval_base_url'), '/');
-        $namaSiswa = $dispensasi->siswa?->nama ?? $dispensasi->nama;
-        $kelasSiswa = $dispensasi->siswa?->kelas?->nama_kelas ?? '-';
+        $dispensasi->loadMissing(['siswa.kelas', 'siswas.kelas', 'pembuat']);
+        $siswas = $dispensasi->siswas->isNotEmpty() ? $dispensasi->siswas : collect([$dispensasi->siswa])->filter();
+        $namaSiswa = $siswas->pluck('nama')->join(', ');
+        $kelasSiswa = $siswas->pluck('kelas.nama_kelas')->filter()->unique()->join(', ') ?: '-';
         $pembuat = $dispensasi->pembuat?->name ?? 'Guru Piket';
         $waktuStr = $dispensasi->deskripsi_waktu;
 

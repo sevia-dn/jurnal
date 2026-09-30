@@ -219,21 +219,10 @@ function guruLogbookState(config) {
             const vid = this.$refs.cameraVideoLogbook;
             const canvas = this.$refs.cameraCanvasLogbook;
             if (!vid || !canvas) return;
-            canvas.width = vid.videoWidth;
-            canvas.height = vid.videoHeight;
             canvas.width = vid.videoWidth || 640;
             canvas.height = vid.videoHeight || 480;
             canvas.getContext('2d').drawImage(vid, 0, 0);
             this.capturedPhoto = canvas.toDataURL('image/jpeg', 0.85);
-            this.$refs.lampiranInput.value = '';
-            fetch(this.capturedPhoto)
-                .then(r => r.blob())
-                .then(blob => {
-                    const file = new File([blob], 'foto-bukti-mengajar-live.jpg', { type: 'image/jpeg' });
-                    const dt = new DataTransfer();
-                    dt.items.add(file);
-                    this.$refs.lampiranInput.files = dt.files;
-                });
             if (this.$refs.lampiranInput) {
                 this.$refs.lampiranInput.value = '';
                 try {
@@ -295,7 +284,6 @@ function guruLogbookState(config) {
 
             // Hanya wajib foto live jika guru hadir di kelas (bukan tidak hadir disetujui piket)
             if (!this.isGuruTidakHadir) {
-                if (!this.capturedPhoto || !this.$refs.lampiranInput.files || this.$refs.lampiranInput.files.length === 0) {
                 const hasPhoto = this.capturedPhoto || (this.$refs.lampiranInput && this.$refs.lampiranInput.files && this.$refs.lampiranInput.files.length > 0);
                 if (!hasPhoto) {
                     e.preventDefault();
@@ -436,15 +424,9 @@ function guruLogbookState(config) {
         <button
             type="button"
             @click="aktifkanIsiJurnal()"
-            class="flex-1 rounded-2xl border p-4 sm:p-5 flex items-center gap-4 text-left transition-all duration-200 cursor-pointer shadow-sm group"
-            :class="modePilihJurnal 
-                ? 'border-emerald-500 bg-emerald-50 ring-2 ring-emerald-500/20' 
-                : 'border-slate-200 bg-white hover:border-emerald-300 hover:bg-emerald-50/50'"
+            class="flex-1 rounded-2xl border border-emerald-200 bg-white p-4 sm:p-5 flex items-center gap-4 text-left transition-all duration-200 hover:border-emerald-400 hover:bg-emerald-50/50 shadow-sm group cursor-pointer"
         >
-            <span 
-                class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-xl text-white transition group-hover:scale-105"
-                :class="modePilihJurnal ? 'bg-emerald-600 shadow-md shadow-emerald-600/30' : 'bg-emerald-500'"
-            >
+            <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-white text-xl shadow-md shadow-emerald-600/20 transition group-hover:scale-105">
                 <i class="bi bi-pencil-square"></i>
             </span>
             <div class="min-w-0 flex-1">
@@ -452,17 +434,10 @@ function guruLogbookState(config) {
                     <p class="text-sm sm:text-base font-bold text-slate-900 group-hover:text-emerald-800 transition">
                         Isi Jurnal Mengajar
                     </p>
-                    <span 
-                        x-show="modePilihJurnal" 
-                        x-cloak 
-                        class="inline-flex items-center gap-1 rounded-full bg-emerald-600 px-2 py-0.5 text-[10px] font-bold text-white"
-                    >
-                        <i class="bi bi-check-circle-fill"></i> Aktif
-                    </span>
                 </div>
-                <p class="mt-0.5 text-xs text-slate-500" x-text="modePilihJurnal ? 'Silakan pilih sesi jadwal mengajar di bawah ini' : 'Klik untuk memilih jadwal dan mengisi jurnal mengajar'"></p>
+                <p class="mt-0.5 text-xs text-slate-500">Pilih jadwal mengajar di bawah untuk langsung mengisi logbook pembelajaran</p>
             </div>
-            <i class="bi bi-chevron-down text-sm text-slate-400 group-hover:text-emerald-600 transition-transform duration-200" :class="{ 'rotate-180 text-emerald-600': modePilihJurnal }"></i>
+            <i class="bi bi-arrow-down text-sm text-slate-400 group-hover:text-emerald-600 group-hover:translate-y-0.5 transition"></i>
         </button>
 
         {{-- Opsi B: Guru Tidak Hadir (Izin / Sakit) --}}
@@ -669,10 +644,10 @@ function guruLogbookState(config) {
                         'border-emerald-500 ring-2 ring-emerald-500 bg-emerald-50/40': selectedJadwalKey === '{{ $jadwalKey }}',
                         'border-emerald-400 bg-white shadow-2xs': selectedJadwalKey !== '{{ $jadwalKey }}' && {{ $isOngoing ? 'true' : 'false' }},
                         'border-slate-200 bg-white hover:border-slate-300': selectedJadwalKey !== '{{ $jadwalKey }}' && !{{ $isOngoing ? 'true' : 'false' }},
-                        'hover:border-emerald-400 hover:shadow-xs cursor-pointer': modePilihJurnal && !{{ $isFilled ? 'true' : 'false' }} && {{ $canFillSchedule ? 'true' : 'false' }}
+                        'hover:border-emerald-400 hover:shadow-xs cursor-pointer': !{{ $isFilled ? 'true' : 'false' }} && {{ $canFillSchedule ? 'true' : 'false' }}
                     }"
                     @if(! $isFilled && $canFillSchedule)
-                        @click="if (modePilihJurnal) { pilihJadwal('{{ $jadwal->id_kelas }}', '{{ $jadwal->id_mapel }}', '{{ $jadwal->jam_mulai }}', '{{ $jadwal->jam_selesai }}', '{{ $jadwalKey }}') }"
+                        @click="pilihJadwal('{{ $jadwal->id_kelas }}', '{{ $jadwal->id_mapel }}', '{{ $jadwal->jam_mulai }}', '{{ $jadwal->jam_selesai }}', '{{ $jadwalKey }}')"
                     @endif
                 >
                     
@@ -735,25 +710,16 @@ function guruLogbookState(config) {
                                     <i class="bi bi-lock-fill mr-1"></i>Tenggat Waktu Lewat
                                 </span>
                             @else
-                                {{-- Tombol Pemilihan Jadwal (Hanya tampil setelah user klik Isi Jurnal Mengajar di atas) --}}
-                                <div x-show="modePilihJurnal" x-cloak>
-                                    <template x-if="selectedJadwalKey === '{{ $jadwalKey }}'">
-                                        <div class="inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-2 text-xs font-bold text-white shadow-xs">
-                                            <i class="bi bi-check-circle-fill"></i>
-                                            <span>Jadwal Dipilih (Lanjutkan Mengisi di Bawah)</span>
-                                        </div>
-                                    </template>
-                                    <template x-if="selectedJadwalKey !== '{{ $jadwalKey }}'">
-                                        <button
-                                            type="button"
-                                            @click.stop="pilihJadwal('{{ $jadwal->id_kelas }}', '{{ $jadwal->id_mapel }}', '{{ $jadwal->jam_mulai }}', '{{ $jadwal->jam_selesai }}', '{{ $jadwalKey }}')"
-                                            class="inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 px-3 py-2 text-xs font-bold text-white transition shadow-xs"
-                                        >
-                                            <i class="bi bi-check2-circle text-sm"></i>
-                                            <span>Isi Jurnal</span>
-                                        </button>
-                                    </template>
-                                </div>
+                                {{-- Tombol Pemilihan Jadwal (Langsung aktif dan dapat diklik) --}}
+                                <button
+                                    type="button"
+                                    @click.stop="pilihJadwal('{{ $jadwal->id_kelas }}', '{{ $jadwal->id_mapel }}', '{{ $jadwal->jam_mulai }}', '{{ $jadwal->jam_selesai }}', '{{ $jadwalKey }}')"
+                                    class="inline-flex w-full items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-bold text-white transition shadow-xs cursor-pointer"
+                                    :class="selectedJadwalKey === '{{ $jadwalKey }}' ? 'bg-emerald-700 ring-2 ring-emerald-400' : 'bg-emerald-600 hover:bg-emerald-700'"
+                                >
+                                    <i class="bi text-sm" :class="selectedJadwalKey === '{{ $jadwalKey }}' ? 'bi-check-circle-fill' : 'bi-pencil-square'"></i>
+                                    <span x-text="selectedJadwalKey === '{{ $jadwalKey }}' ? 'Jadwal Dipilih (Lanjutkan Mengisi di Bawah)' : 'Isi Jurnal Mengajar'">Isi Jurnal Mengajar</span>
+                                </button>
                             @endif
                         </div>
                     </div>
@@ -1138,118 +1104,74 @@ function guruLogbookState(config) {
                                             data-siswa-row
                                             data-siswa-nama="{{ $siswa->nama }}"
                                             data-siswa-nis="{{ $siswa->nis ?? '-' }}"
-                                            class="grid gap-2.5 rounded-xl border border-slate-200/80 bg-white p-3 shadow-2xs transition hover:border-emerald-300 sm:grid-cols-[minmax(15rem,1fr)_auto] sm:items-center"
+                                            class="flex flex-col gap-2 rounded-xl border border-slate-200/80 bg-white p-3 shadow-2xs transition hover:border-emerald-300"
                                         >
-                                            {{-- NOMOR & NAMA SISWA (FULL WIDTH DI MOBILE) --}}
-                                            <div class="flex min-w-0 items-center gap-2.5">
-                                                <span class="flex h-6 min-w-6 px-1.5 items-center justify-center rounded-full bg-emerald-50 text-[11px] font-bold text-emerald-800 border border-emerald-200/80 shrink-0">
-                                                    {{ $idx + 1 }}
-                                                </span>
-                                                <div class="min-w-0 flex-1">
-                                                    <p class="text-xs font-bold text-slate-800 break-words">
-                                                        {{ $siswa->nama }}
-                                                    </p>
-                                                    <p class="text-[11px] text-slate-400 truncate">
-                                                        NIS: {{ $siswa->nis ?? '-' }} &bull; {{ $siswa->jenis_kelamin }}
-                                                    </p>
-                                                    @if($isStatusOtomatisPiket)
-                                                        <p class="mt-0.5 text-[11px] font-semibold text-indigo-600"><i class="bi bi-shield-check mr-0.5"></i>Otomatis dari Guru Piket</p>
-                                                    @elseif($isStatusDariJurnalSebelumnya)
-                                                        <p class="mt-0.5 text-[11px] font-semibold text-amber-600"><i class="bi bi-clock-history mr-0.5"></i>Tercatat dari Guru Sebelumnya</p>
-                                                    @endif
+                                            {{-- Baris atas: Nomor + Nama Siswa | Tombol Status --}}
+                                            <div class="flex items-center gap-2.5">
+                                                {{-- NOMOR & NAMA SISWA --}}
+                                                <div class="flex min-w-0 flex-1 items-center gap-2.5">
+                                                    <span class="flex h-6 min-w-6 px-1.5 items-center justify-center rounded-full bg-emerald-50 text-[11px] font-bold text-emerald-800 border border-emerald-200/80 shrink-0">
+                                                        {{ $idx + 1 }}
+                                                    </span>
+                                                    <div class="min-w-0 flex-1">
+                                                        <p class="text-xs font-bold text-slate-800 break-words">
+                                                            {{ $siswa->nama }}
+                                                        </p>
+                                                        <p class="text-[11px] text-slate-400 truncate">
+                                                            NIS: {{ $siswa->nis ?? '-' }} &bull; {{ $siswa->jenis_kelamin }}
+                                                        </p>
+                                                        @if($isStatusOtomatisPiket)
+                                                            <p class="mt-0.5 text-[11px] font-semibold text-indigo-600"><i class="bi bi-shield-check mr-0.5"></i>Otomatis dari Guru Piket</p>
+                                                        @elseif($isStatusDariJurnalSebelumnya)
+                                                            <p class="mt-0.5 text-[11px] font-semibold text-amber-600"><i class="bi bi-clock-history mr-0.5"></i>Tercatat dari Guru Sebelumnya</p>
+                                                        @endif
+                                                    </div>
                                                 </div>
+
+                                                {{-- PILIHAN STATUS H, S, I, A, D --}}
+                                                <fieldset @disabled($isStatusOtomatisPiket) class="flex shrink-0 items-center gap-1 disabled:opacity-70">
+                                                    {{-- HADIR (H) --}}
+                                                    <div>
+                                                        <input type="radio" id="absensi_{{ $siswa->id }}_hadir" name="absensi[{{ $siswa->id }}]" value="Hadir" @checked($statusSiswa === 'Hadir') class="peer sr-only">
+                                                        <label for="absensi_{{ $siswa->id }}_hadir" class="cursor-pointer flex h-7 w-7 items-center justify-center rounded-lg border text-xs font-bold transition peer-checked:border-emerald-600 peer-checked:bg-emerald-600 peer-checked:text-white border-slate-200 bg-white text-slate-600 hover:bg-slate-50" title="Hadir">H</label>
+                                                    </div>
+                                                    {{-- SAKIT (S) --}}
+                                                    <div>
+                                                        <input type="radio" id="absensi_{{ $siswa->id }}_sakit" name="absensi[{{ $siswa->id }}]" value="Sakit" @checked($statusSiswa === 'Sakit') class="peer sr-only">
+                                                        <label for="absensi_{{ $siswa->id }}_sakit" class="cursor-pointer flex h-7 w-7 items-center justify-center rounded-lg border text-xs font-bold transition peer-checked:border-amber-500 peer-checked:bg-amber-500 peer-checked:text-white border-slate-200 bg-white text-slate-600 hover:bg-slate-50" title="Sakit">S</label>
+                                                    </div>
+                                                    {{-- IZIN (I) --}}
+                                                    <div>
+                                                        <input type="radio" id="absensi_{{ $siswa->id }}_izin" name="absensi[{{ $siswa->id }}]" value="Izin" @checked($statusSiswa === 'Izin') class="peer sr-only">
+                                                        <label for="absensi_{{ $siswa->id }}_izin" class="cursor-pointer flex h-7 w-7 items-center justify-center rounded-lg border text-xs font-bold transition peer-checked:border-blue-500 peer-checked:bg-blue-500 peer-checked:text-white border-slate-200 bg-white text-slate-600 hover:bg-slate-50" title="Izin">I</label>
+                                                    </div>
+                                                    {{-- ALPA (A) --}}
+                                                    <div>
+                                                        <input type="radio" id="absensi_{{ $siswa->id }}_alpa" name="absensi[{{ $siswa->id }}]" value="Alpa" @checked(in_array($statusSiswa, ['Alpa', 'Alfa'], true)) class="peer sr-only">
+                                                        <label for="absensi_{{ $siswa->id }}_alpa" class="cursor-pointer flex h-7 w-7 items-center justify-center rounded-lg border text-xs font-bold transition peer-checked:border-rose-500 peer-checked:bg-rose-500 peer-checked:text-white border-slate-200 bg-white text-slate-600 hover:bg-slate-50" title="Alpa">A</label>
+                                                    </div>
+                                                    {{-- DISPENSASI (D) --}}
+                                                    <div>
+                                                        <input type="radio" id="absensi_{{ $siswa->id }}_dispensasi" name="absensi[{{ $siswa->id }}]" value="Dispensasi" @checked(in_array($statusSiswa, ['D', 'Dispensasi'], true)) class="peer sr-only">
+                                                        <label for="absensi_{{ $siswa->id }}_dispensasi" class="cursor-pointer flex h-7 w-7 items-center justify-center rounded-lg border text-xs font-bold transition peer-checked:border-indigo-600 peer-checked:bg-indigo-600 peer-checked:text-white border-slate-200 bg-white text-slate-600 hover:bg-slate-50" title="Dispensasi">D</label>
+                                                    </div>
+                                                </fieldset>
                                             </div>
 
-                                            {{-- PILIHAN STATUS H, S, I, A, D (FULL WIDTH DI MOBILE) --}}
-                                        <fieldset @disabled($isStatusOtomatisPiket) class="flex w-full items-center justify-between gap-1 sm:w-auto sm:justify-end disabled:opacity-70">
-                                            {{-- HADIR (H) --}}
-                                            <div class="flex-1 sm:flex-none">
+                                            {{-- Baris bawah: Catatan keterangan (full width) --}}
+                                            <label class="w-full">
+                                                <span class="sr-only">Keterangan absensi {{ $siswa->nama }}</span>
                                                 <input
-                                                    type="radio"
-                                                    id="absensi_{{ $siswa->id }}_hadir"
-                                                    name="absensi[{{ $siswa->id }}]"
-                                                    value="Hadir"
-                                                    @checked($statusSiswa === 'Hadir')
-                                                    class="peer sr-only"
+                                                    type="text"
+                                                    name="absensi_catatan[{{ $siswa->id }}]"
+                                                    maxlength="255"
+                                                    value="{{ $catatanSiswa }}"
+                                                    @disabled($isStatusOtomatisPiket)
+                                                    placeholder="Keterangan jika tidak hadir (opsional)"
+                                                    class="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-xs text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100"
                                                 >
-                                                <label for="absensi_{{ $siswa->id }}_hadir" class="cursor-pointer flex h-7 w-full sm:w-7 items-center justify-center rounded-lg border text-xs font-bold transition peer-checked:border-emerald-600 peer-checked:bg-emerald-600 peer-checked:text-white border-slate-200 bg-white text-slate-600 hover:bg-slate-50" title="Hadir">
-                                                    H
-                                                </label>
-                                            </div>
-
-                                            {{-- SAKIT (S) --}}
-                                            <div class="flex-1 sm:flex-none">
-                                                <input
-                                                    type="radio"
-                                                    id="absensi_{{ $siswa->id }}_sakit"
-                                                    name="absensi[{{ $siswa->id }}]"
-                                                    value="Sakit"
-                                                    @checked($statusSiswa === 'Sakit')
-                                                    class="peer sr-only"
-                                                >
-                                                <label for="absensi_{{ $siswa->id }}_sakit" class="cursor-pointer flex h-7 w-full sm:w-7 items-center justify-center rounded-lg border text-xs font-bold transition peer-checked:border-amber-500 peer-checked:bg-amber-500 peer-checked:text-white border-slate-200 bg-white text-slate-600 hover:bg-slate-50" title="Sakit">
-                                                    S
-                                                </label>
-                                            </div>
-
-                                            {{-- IZIN (I) --}}
-                                            <div class="flex-1 sm:flex-none">
-                                                <input
-                                                    type="radio"
-                                                    id="absensi_{{ $siswa->id }}_izin"
-                                                    name="absensi[{{ $siswa->id }}]"
-                                                    value="Izin"
-                                                    @checked($statusSiswa === 'Izin')
-                                                    class="peer sr-only"
-                                                >
-                                                <label for="absensi_{{ $siswa->id }}_izin" class="cursor-pointer flex h-7 w-full sm:w-7 items-center justify-center rounded-lg border text-xs font-bold transition peer-checked:border-blue-500 peer-checked:bg-blue-500 peer-checked:text-white border-slate-200 bg-white text-slate-600 hover:bg-slate-50" title="Izin">
-                                                    I
-                                                </label>
-                                            </div>
-
-                                            {{-- ALPA (A) --}}
-                                            <div class="flex-1 sm:flex-none">
-                                                <input
-                                                    type="radio"
-                                                    id="absensi_{{ $siswa->id }}_alpa"
-                                                    name="absensi[{{ $siswa->id }}]"
-                                                    value="Alpa"
-                                                    @checked(in_array($statusSiswa, ['Alpa', 'Alfa'], true))
-                                                    class="peer sr-only"
-                                                >
-                                                <label for="absensi_{{ $siswa->id }}_alpa" class="cursor-pointer flex h-7 w-full sm:w-7 items-center justify-center rounded-lg border text-xs font-bold transition peer-checked:border-rose-500 peer-checked:bg-rose-500 peer-checked:text-white border-slate-200 bg-white text-slate-600 hover:bg-slate-50" title="Alpa">
-                                                    A
-                                                </label>
-                                            </div>
-
-                                            {{-- DISPENSASI (D) --}}
-                                            <div class="flex-1 sm:flex-none">
-                                                <input
-                                                    type="radio"
-                                                    id="absensi_{{ $siswa->id }}_dispensasi"
-                                                    name="absensi[{{ $siswa->id }}]"
-                                                    value="Dispensasi"
-                                                    @checked(in_array($statusSiswa, ['D', 'Dispensasi'], true))
-                                                    class="peer sr-only"
-                                                >
-                                                <label for="absensi_{{ $siswa->id }}_dispensasi" class="cursor-pointer flex h-7 w-full sm:w-7 items-center justify-center rounded-lg border text-xs font-bold transition peer-checked:border-indigo-600 peer-checked:bg-indigo-600 peer-checked:text-white border-slate-200 bg-white text-slate-600 hover:bg-slate-50" title="Dispensasi">
-                                                    D
-                                                </label>
-                                            </div>
-                                        </fieldset>
-                                        <label class="w-full sm:col-span-2">
-                                            <span class="sr-only">Keterangan absensi {{ $siswa->nama }}</span>
-                                            <input
-                                                type="text"
-                                                name="absensi_catatan[{{ $siswa->id }}]"
-                                                maxlength="255"
-                                                value="{{ $catatanSiswa }}"
-                                                @disabled($isStatusOtomatisPiket)
-                                                placeholder="Keterangan jika tidak hadir (opsional)"
-                                                class="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-xs text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100"
-                                            >
-                                        </label>
-                                    </div>
+                                            </label>
+                                        </div>
                                 @endforeach
                                 </div>
                             @endif
@@ -1318,10 +1240,8 @@ function guruLogbookState(config) {
                                 Foto Tersimpan ✓
                             </span>
                         </div>
-                        <div class="mt-1.5">
                         <div class="mt-1.5 flex items-center gap-3">
                             <button type="button" @click="retakePhoto()" class="text-xs font-semibold text-emerald-600 hover:underline inline-flex items-center gap-1">
-                                <i class="bi bi-arrow-repeat"></i> Ambil Ulang Foto Live
                                 <i class="bi bi-camera"></i> Ambil Ulang Kamera
                             </button>
                             <span class="text-slate-300">|</span>
@@ -1353,8 +1273,6 @@ function guruLogbookState(config) {
                         </button>
                     </div>
 
-                    {{-- Tombol Buka Kamera Live --}}
-                    <div x-show="!cameraActive && !capturedPhoto" class="mt-2">
                     {{-- Tombol Buka Kamera Live & Pilih Berkas --}}
                     <div x-show="!cameraActive && !capturedPhoto" class="mt-2 flex flex-wrap items-center gap-2">
                         <button type="button" @click="startCamera()"

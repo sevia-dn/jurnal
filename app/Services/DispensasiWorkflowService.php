@@ -89,17 +89,21 @@ class DispensasiWorkflowService
 
     private function notifyRelatedUsers(Dispensasi $dispensasi): void
     {
+        $siswas = $dispensasi->siswas->isNotEmpty()
+            ? $dispensasi->siswas
+            : collect([$dispensasi->siswa])->filter();
+        $classIds = $siswas->pluck('kelas_id')->filter()->unique();
+        $classNames = $siswas->pluck('kelas.nama_kelas')->filter()->unique();
         $date = Carbon::parse($dispensasi->tanggal)->locale('id')->translatedFormat('l');
         $teacherIds = JadwalMengajar::query()
-            ->where('id_kelas', $dispensasi->siswa->kelas_id)
+            ->whereIn('id_kelas', $classIds)
             ->where('hari', $date)
             ->pluck('id_user');
 
-        $namaKelasSiswa = $dispensasi->siswa->kelas?->nama_kelas;
         $pengurusIds = User::query()
             ->where('role', 'pengurus_kelas')
             ->get()
-            ->filter(fn (User $u) => trim(str_ireplace('Pengurus Kelas ', '', $u->name)) === $namaKelasSiswa || $u->name === $namaKelasSiswa)
+            ->filter(fn (User $user) => $classNames->contains(trim(str_ireplace('Pengurus Kelas ', '', $user->name))) || $classNames->contains($user->name))
             ->pluck('id');
 
         $piketIds = User::query()
@@ -113,14 +117,15 @@ class DispensasiWorkflowService
             ->filter()
             ->unique();
 
-        $kelas = $dispensasi->siswa->kelas?->nama_kelas ?? '-';
-        $message = "{$dispensasi->siswa->nama} kelas {$kelas} mendapat dispensasi (D) pada {$dispensasi->deskripsi_waktu}. Alasan: {$dispensasi->alasan}";
+        $namaSiswa = $siswas->pluck('nama')->join(', ');
+        $kelas = $classNames->join(', ') ?: '-';
+        $message = "{$namaSiswa} kelas {$kelas} mendapat dispensasi (D) pada {$dispensasi->deskripsi_waktu}. Alasan: {$dispensasi->alasan}";
 
-        $recipientIds->each(function (int $userId) use ($dispensasi, $message): void {
+        $recipientIds->each(function (int $userId) use ($classIds, $dispensasi, $message): void {
             Notifikasi::updateOrCreate(
                 ['id_user' => $userId, 'id_dispensasi' => $dispensasi->id],
                 [
-                    'id_kelas' => $dispensasi->siswa->kelas_id,
+                    'id_kelas' => $classIds->first(),
                     'judul' => 'Dispensasi siswa disetujui',
                     'pesan' => $message,
                     'tipe' => 'dispensasi',

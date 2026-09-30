@@ -91,6 +91,7 @@
                 <div class="divide-y divide-slate-100">
                     @foreach($dispensasis as $dispensasi)
                         @php
+                            $siswasDispensasi = $dispensasi->siswas->isNotEmpty() ? $dispensasi->siswas : collect([$dispensasi->siswa])->filter();
                             $sw = strtolower($dispensasi->status_waka ?? 'menunggu');
                             $swClass = in_array($sw, ['disetujui', 'approved'])
                                 ? 'bg-emerald-100 text-emerald-800 border-emerald-200'
@@ -108,13 +109,8 @@
                                 </span>
                                 <div class="min-w-0 flex-1">
                                     <div class="flex flex-wrap items-center gap-2">
-                                        <h3 class="font-bold text-slate-900 text-sm sm:text-base">{{ $dispensasi->siswa?->nama ?? 'Nama Siswa' }}</h3>
-                                        <span class="rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-600">
-                                            {{ $dispensasi->siswa?->kelas?->nama_kelas ?? 'Kelas -' }}
-                                        </span>
-                                        @if($dispensasi->siswa?->nis)
-                                            <span class="text-[11px] text-slate-400">NIS: {{ $dispensasi->siswa->nis }}</span>
-                                        @endif
+                                        <h3 class="font-bold text-slate-900 text-sm sm:text-base">{{ $siswasDispensasi->pluck('nama')->join(', ') ?: 'Nama Siswa' }}</h3>
+                                        <span class="rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-600">{{ $siswasDispensasi->count() }} siswa</span>
                                     </div>
 
                                     <div class="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500">

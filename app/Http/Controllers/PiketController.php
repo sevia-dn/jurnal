@@ -361,11 +361,15 @@ class PiketController extends Controller
             ->get();
 
         // Ambil dispensasi yang aktif & disetujui waka pada tanggal ini
-        $dispensasis = Dispensasi::where('status_akhir', 'disetujui')
+        $dispensasis = Dispensasi::with(['siswa', 'siswas'])
+            ->where('status_akhir', 'disetujui')
             ->whereDate('tanggal', '<=', $tanggal)
             ->whereDate('tanggal_selesai', '>=', $tanggal)
-            ->get()
-            ->keyBy('siswa_id');
+            ->get();
+        $dispensasisByStudent = $dispensasis->flatMap(function (Dispensasi $dispensasi) {
+            return ($dispensasi->siswas->isNotEmpty() ? $dispensasi->siswas : collect([$dispensasi->siswa])->filter())
+                ->mapWithKeys(fn (Siswa $siswa) => [$siswa->id => $dispensasi]);
+        });
 
         // Catatan piket adalah sumber presensi harian lintas sesi guru.
         $kehadiranPiket = PiketKehadiranSiswa::query()
@@ -396,8 +400,8 @@ class PiketController extends Controller
             ->groupBy('id_siswa')
             ->map(fn ($records) => $records->sortByDesc(fn ($r) => $priorityMap[strtoupper(trim((string) $r->status))] ?? 0)->first());
 
-        $studentsData = $siswas->map(function ($s) use ($dispensasis, $kehadiranPiket, $absensiRecords, $selectedKelas) {
-            $dispen = $dispensasis->get($s->id);
+        $studentsData = $siswas->map(function ($s) use ($dispensasisByStudent, $kehadiranPiket, $absensiRecords, $selectedKelas) {
+            $dispen = $dispensasisByStudent->get($s->id);
             $piketRecord = $kehadiranPiket->get($s->id);
             $absen = $absensiRecords->get($s->id);
 
@@ -715,7 +719,7 @@ class PiketController extends Controller
         // Simpan semua siswa ke pivot table dispensasi_siswa
         $dispensasi->siswas()->sync($siswaIds);
 
-        $dispensasi->load(['siswa.kelas', 'pembuat']);
+        $dispensasi->load(['siswa.kelas', 'siswas.kelas', 'pembuat']);
 
         $this->createPendingDispensasiNotifications($dispensasi);
         $whatsAppDelivery = $this->whatsAppService->sendDispensasiNotificationToWaka($dispensasi);
@@ -753,13 +757,17 @@ class PiketController extends Controller
         $startDate = $request->query('tanggal_mulai');
         $endDate = $request->query('tanggal_selesai');
 
-        $query = Dispensasi::with(['siswa.kelas', 'pembuat']);
+        $query = Dispensasi::with(['siswa.kelas', 'siswas.kelas', 'pembuat']);
 
         if ($search !== '') {
             $query->where(function ($q) use ($search) {
                 $q->where('alasan', 'like', "%{$search}%")
                     ->orWhere('jenis_dispensasi', 'like', "%{$search}%")
                     ->orWhereHas('siswa', function ($sq) use ($search) {
+                        $sq->where('nama', 'like', "%{$search}%")
+                            ->orWhere('nis', 'like', "%{$search}%");
+                    })
+                    ->orWhereHas('siswas', function ($sq) use ($search) {
                         $sq->where('nama', 'like', "%{$search}%")
                             ->orWhere('nis', 'like', "%{$search}%");
                     })
@@ -820,12 +828,14 @@ class PiketController extends Controller
 
     private function createPendingDispensasiNotifications(Dispensasi $dispensasi): void
     {
-        $dispensasi->loadMissing(['siswa.kelas', 'pembuat']);
-        $namaKelas = $dispensasi->siswa?->kelas?->nama_kelas ?? '-';
-        $message = "Pengajuan dispensasi {$dispensasi->siswa?->nama} kelas {$namaKelas} dari "
+        $dispensasi->loadMissing(['siswa.kelas', 'siswas.kelas', 'pembuat']);
+        $siswas = $dispensasi->siswas->isNotEmpty() ? $dispensasi->siswas : collect([$dispensasi->siswa])->filter();
+        $namaSiswa = $siswas->pluck('nama')->join(', ');
+        $namaKelas = $siswas->pluck('kelas.nama_kelas')->filter()->unique()->join(', ') ?: '-';
+        $message = "Pengajuan dispensasi {$namaSiswa} kelas {$namaKelas} dari "
             .($dispensasi->pembuat?->name ?? 'Guru Piket').'. Menunggu validasi Wakasek Kesiswaan.';
 
-        User::wakaKesiswaan()->each(function (User $waka) use ($dispensasi, $message): void {
+        User::wakaKesiswaan()->each(function (User $waka) use ($dispensasi, $message, $siswas): void {
             Notifikasi::updateOrCreate(
                 [
                     'id_user' => $waka->id,
@@ -833,7 +843,7 @@ class PiketController extends Controller
                     'tipe' => 'dispensasi_menunggu',
                 ],
                 [
-                    'id_kelas' => $dispensasi->siswa?->kelas_id,
+                    'id_kelas' => $siswas->first()?->kelas_id,
                     'judul' => 'Pengajuan dispensasi menunggu validasi',
                     'pesan' => $message,
                     'is_read' => false,

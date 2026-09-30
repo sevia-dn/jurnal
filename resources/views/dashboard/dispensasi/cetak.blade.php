@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Surat Dispensasi - {{ $dispensasi->nama }}</title>
+    <title>Surat Dispensasi - {{ $dispensasi->siswas->isNotEmpty() ? $dispensasi->siswas->count().' Siswa' : $dispensasi->nama }}</title>
     <link rel="icon" type="image/x-icon" href="{{ asset('favicon.ico') }}">
     <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('img/logo-mark-64.png') }}">
     <link rel="apple-touch-icon" href="{{ asset('img/apple-touch-icon.png') }}">
@@ -30,6 +30,11 @@
     </style>
 </head>
 <body class="bg-slate-100 font-serif text-slate-900 py-8 px-4">
+    @php
+        $siswasDispensasi = $dispensasi->siswas->isNotEmpty()
+            ? $dispensasi->siswas
+            : collect([$dispensasi->siswa])->filter();
+    @endphp
 
     <!-- Action Bar (Hidden on Print) -->
     <div class="no-print max-w-3xl mx-auto mb-6 flex items-center justify-between bg-white p-4 rounded-xl shadow-sm border border-slate-200">
@@ -81,20 +86,10 @@
                 Yang bertanda tangan di bawah ini, Wakil Kepala Sekolah Bidang Kesiswaan SMK Negeri 1 Boyolangu, dengan ini menerangkan bahwa:
             </p>
 
-            <!-- Biodata Siswa -->
+            <div class="my-4 overflow-hidden rounded-lg border border-slate-300 text-sm sm:text-base">
+                <table class="w-full border-collapse text-left"><thead class="bg-slate-100 text-xs uppercase text-slate-600"><tr><th class="w-12 px-3 py-2">No.</th><th class="px-3 py-2">Nama Siswa</th><th class="px-3 py-2">NIS</th><th class="px-3 py-2">Kelas</th></tr></thead><tbody class="divide-y divide-slate-200">@foreach($siswasDispensasi as $index => $siswa)<tr><td class="px-3 py-2">{{ $index + 1 }}</td><td class="px-3 py-2 font-bold">{{ $siswa->nama }}</td><td class="px-3 py-2 font-mono">{{ $siswa->nis ?? '-' }}</td><td class="px-3 py-2">{{ $siswa->kelas?->nama_kelas ?? '-' }}</td></tr>@endforeach</tbody></table>
+            </div>
             <div class="ml-4 sm:ml-8 my-4 space-y-2 text-sm sm:text-base">
-                <div class="grid grid-cols-12">
-                    <span class="col-span-4 font-semibold text-slate-700">Nama Siswa</span>
-                    <span class="col-span-8 font-bold text-slate-900">: {{ $dispensasi->siswa?->nama ?? $dispensasi->nama }}</span>
-                </div>
-                <div class="grid grid-cols-12">
-                    <span class="col-span-4 font-semibold text-slate-700">NIS</span>
-                    <span class="col-span-8 font-mono text-slate-900">: {{ $dispensasi->siswa?->nis ?? '-' }}</span>
-                </div>
-                <div class="grid grid-cols-12">
-                    <span class="col-span-4 font-semibold text-slate-700">Kelas</span>
-                    <span class="col-span-8 font-bold text-slate-900">: {{ $dispensasi->siswa?->kelas?->nama_kelas ?? 'Umum' }}</span>
-                </div>
                 <div class="grid grid-cols-12">
                     <span class="col-span-4 font-semibold text-slate-700">Keperluan Dispensasi</span>
                     <span class="col-span-8 font-semibold text-emerald-800 uppercase">: {{ ucwords(str_replace('_', ' ', $dispensasi->jenis_dispensasi)) }}</span>

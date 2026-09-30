@@ -90,7 +90,6 @@ class LogbookController extends Controller
                 'materi' => 'required|string|max:500',
                 'ada_tugas' => 'required|in:Ya,Tidak',
                 'catatan' => 'nullable|string',
-                'lampiran' => 'required|file|mimes:jpeg,png,jpg,webp,pdf|max:5120',
                 'lampiran' => $request->filled('lampiran_base64') ? 'nullable' : 'required|file|mimes:jpeg,png,jpg,webp,pdf|max:5120',
                 'lampiran_base64' => 'nullable|string',
                 'absensi' => 'nullable|array',

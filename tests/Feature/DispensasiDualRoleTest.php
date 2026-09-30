@@ -260,4 +260,42 @@ class DispensasiDualRoleTest extends TestCase
         $verificationResponse->assertSee('Waka Test');
         $verificationResponse->assertSee('Guru Piket Test');
     }
+
+    public function test_multi_student_dispensation_lists_every_student_on_approval_print_and_qr_verification(): void
+    {
+        $kelas = Kelas::create(['nama_kelas' => 'XI RPL 1', 'jumlah_siswa' => 0]);
+        $siswaPertama = Siswa::create(['kelas_id' => $kelas->id_kelas, 'nama' => 'Andi Saputra', 'nis' => '1001', 'jenis_kelamin' => 'L']);
+        $siswaKedua = Siswa::create(['kelas_id' => $kelas->id_kelas, 'nama' => 'Bunga Lestari', 'nis' => '1002', 'jenis_kelamin' => 'P']);
+        $dispensasi = Dispensasi::create([
+            'siswa_id' => $siswaPertama->id,
+            'jenis_dispensasi' => 'Lomba sekolah',
+            'tipe_dispensasi' => 'satu_hari',
+            'tanggal' => now()->toDateString(),
+            'tanggal_selesai' => now()->toDateString(),
+            'alasan' => 'Mewakili sekolah.',
+            'status_piket' => 'disetujui',
+            'status_waka' => 'disetujui',
+            'status_akhir' => 'disetujui',
+            'token_approval' => 'approval-multi-siswa',
+            'token_verifikasi' => 'verifikasi-multi-siswa',
+        ]);
+        $dispensasi->siswas()->sync([$siswaPertama->id, $siswaKedua->id]);
+
+        $this->get(route('waka.dispensasi.show', ['token' => $dispensasi->token_approval]))
+            ->assertOk()
+            ->assertSee('Andi Saputra')
+            ->assertSee('Bunga Lestari');
+
+        $this->get(route('waka.dispensasi.cetak', ['token' => $dispensasi->token_approval]))
+            ->assertOk()
+            ->assertSee('Andi Saputra')
+            ->assertSee('Bunga Lestari')
+            ->assertSee('1001')
+            ->assertSee('1002');
+
+        $this->get(route('dispensasi.verify', $dispensasi->token_verifikasi))
+            ->assertOk()
+            ->assertSee('Andi Saputra')
+            ->assertSee('Bunga Lestari');
+    }
 }

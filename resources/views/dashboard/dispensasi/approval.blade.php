@@ -13,6 +13,11 @@
 @endif
 
 @section('content')
+@php
+    $siswasDispensasi = $dispensasi->siswas->isNotEmpty()
+        ? $dispensasi->siswas
+        : collect([$dispensasi->siswa])->filter();
+@endphp
 <div class="mx-auto w-full max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
     {{-- Header Banner --}}
     <div class="rounded-2xl bg-gradient-to-r from-purple-900 to-indigo-900 p-6 text-white shadow-xl">
@@ -44,8 +49,8 @@
     <div class="mt-6 rounded-2xl bg-white p-6 shadow-md border border-slate-200 space-y-6">
         <div class="flex flex-wrap items-center justify-between border-b border-slate-100 pb-4 gap-2">
             <div>
-                <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Nama Siswa</p>
-                <h2 class="text-xl font-bold text-slate-900 mt-0.5">{{ $dispensasi->nama }} <span class="text-sm font-semibold text-purple-700 font-sans">({{ $dispensasi->siswa?->kelas?->nama_kelas ?? 'Umum' }})</span></h2>
+                <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Siswa yang diajukan</p>
+                <h2 class="text-xl font-bold text-slate-900 mt-0.5">{{ $siswasDispensasi->count() }} siswa</h2>
             </div>
             <div>
                 @if($dispensasi->status_waka === 'disetujui')
@@ -63,6 +68,18 @@
                 @endif
             </div>
         </div>
+
+        <section class="rounded-xl border border-slate-200 bg-slate-50 p-4">
+            <h3 class="text-xs font-bold uppercase tracking-wider text-slate-500">Daftar siswa</h3>
+            <div class="mt-3 divide-y divide-slate-200">
+                @foreach($siswasDispensasi as $siswa)
+                    <div class="flex items-center justify-between gap-3 py-2.5 first:pt-0 last:pb-0">
+                        <div><p class="font-bold text-slate-800">{{ $siswa->nama }}</p><p class="text-xs text-slate-500">NIS: {{ $siswa->nis ?? '-' }}</p></div>
+                        <span class="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-bold text-slate-700">{{ $siswa->kelas?->nama_kelas ?? '-' }}</span>
+                    </div>
+                @endforeach
+            </div>
+        </section>
 
         <div class="grid gap-6 sm:grid-cols-2 text-sm">
             <div class="rounded-xl bg-slate-50 p-4 border border-slate-100">
