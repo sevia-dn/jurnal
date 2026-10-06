@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\PasswordResetRequest;
 use App\Models\User;
+use App\Services\WhatsAppService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
@@ -14,12 +15,16 @@ class PasswordResetWorkflowTest extends TestCase
 
     public function test_login_page_renders_with_admin_whatsapp_info(): void
     {
+        $adminNumber = app(WhatsAppService::class)->getAdminNumber();
+        $cleanNumber = preg_replace('/[^0-9]/', '', $adminNumber);
+        $intlNumber = str_starts_with($cleanNumber, '0') ? '62'.substr($cleanNumber, 1) : $cleanNumber;
+
         $response = $this->get('/login');
 
         $response->assertOk();
         $response->assertSee('Lupa Password ?');
-        $response->assertSee('083838606396');
-        $response->assertSee('6283838606396');
+        $response->assertSee($adminNumber);
+        $response->assertSee($intlNumber);
     }
 
     public function test_user_can_submit_password_reset_request_and_get_redirected_to_admin_whatsapp(): void
@@ -49,10 +54,14 @@ class PasswordResetWorkflowTest extends TestCase
             'alasan' => 'Lupa password setelah restart HP',
         ]);
 
-        // Harus redirect ke tautan wa.me Admin (083838606396 -> 6283838606396)
+        $adminNumber = app(WhatsAppService::class)->getAdminNumber();
+        $cleanNumber = preg_replace('/[^0-9]/', '', $adminNumber);
+        $intlNumber = str_starts_with($cleanNumber, '0') ? '62'.substr($cleanNumber, 1) : $cleanNumber;
+
+        // Harus redirect ke tautan wa.me Admin
         $response->assertRedirect();
         $targetUrl = $response->headers->get('Location');
-        $this->assertStringContainsString('https://wa.me/6283838606396', $targetUrl);
+        $this->assertStringContainsString('https://wa.me/'.$intlNumber, $targetUrl);
         $this->assertStringContainsString('PERMOHONAN+RESET+PASSWORD', $targetUrl);
         $this->assertStringContainsString('Guru+Pengajar+Test', $targetUrl);
     }
@@ -71,13 +80,17 @@ class PasswordResetWorkflowTest extends TestCase
             'no_hp' => '08987654321',
         ]);
 
+        $adminNumber = app(WhatsAppService::class)->getAdminNumber();
+        $cleanNumber = preg_replace('/[^0-9]/', '', $adminNumber);
+        $intlNumber = str_starts_with($cleanNumber, '0') ? '62'.substr($cleanNumber, 1) : $cleanNumber;
+
         $response->assertOk();
         $response->assertJson([
             'success' => true,
         ]);
         $data = $response->json();
         $this->assertArrayHasKey('wa_url', $data);
-        $this->assertStringContainsString('https://wa.me/6283838606396', $data['wa_url']);
+        $this->assertStringContainsString('https://wa.me/'.$intlNumber, $data['wa_url']);
     }
 
     public function test_admin_can_approve_password_reset_and_generate_message_template(): void

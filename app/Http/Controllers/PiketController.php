@@ -648,6 +648,14 @@ class PiketController extends Controller
             ->get()
             ->unique('jam_ke');
 
+        if ($daftarJam->isEmpty()) {
+            $daftarJam = collect(range(1, 10))->map(fn ($jam) => (object) [
+                'jam_ke' => $jam,
+                'jam_mulai' => null,
+                'jam_selesai' => null,
+            ]);
+        }
+
         return view('dashboard.piket.dispensasi', compact('siswas', 'daftarJam'));
     }
 
@@ -660,14 +668,16 @@ class PiketController extends Controller
             'siswa_ids.*' => 'exists:siswas,id',
             'jenis_dispensasi' => 'required|string',
             'mode_waktu' => 'required|in:sepanjang_hari,jam_tertentu',
-            'jam_ke_mulai' => 'nullable|required_if:mode_waktu,jam_tertentu|integer|min:1',
-            'jam_ke_selesai' => 'nullable|integer|gte:jam_ke_mulai',
+            'jam_ke_mulai' => 'exclude_if:mode_waktu,sepanjang_hari|nullable|required_if:mode_waktu,jam_tertentu|integer|min:0',
+            'jam_ke_selesai' => 'exclude_if:mode_waktu,sepanjang_hari|nullable|integer|gte:jam_ke_mulai',
             'tanggal_mulai' => 'required|date',
             'tanggal_selesai' => 'required|date|after_or_equal:tanggal_mulai',
             'alasan' => 'required|string',
         ], [
             'siswa_ids.required' => 'Pilih setidaknya satu siswa.',
+            'siswa_ids.min' => 'Pilih setidaknya satu siswa.',
             'jam_ke_mulai.required_if' => 'Jam ke mulai wajib dipilih jika memilih mode Jam Tertentu.',
+            'jam_ke_mulai.min' => 'Jam ke mulai tidak boleh kurang dari 0.',
             'jam_ke_selesai.gte' => 'Jam ke selesai harus sama atau lebih besar dari jam ke mulai.',
             'tanggal_selesai.after_or_equal' => 'Tanggal selesai tidak boleh sebelum tanggal mulai.',
         ]);
@@ -724,7 +734,7 @@ class PiketController extends Controller
         $this->createPendingDispensasiNotifications($dispensasi);
         $whatsAppDelivery = $this->whatsAppService->sendDispensasiNotificationToWaka($dispensasi);
 
-        $approvalUrl = route('dispensasi.approval', ['token' => $tokenApproval]);
+        $approvalUrl = route('waka.dispensasi.show', ['token' => $tokenApproval]);
 
         $jumlahSiswa = count($siswaIds);
         $namaUtama = $siswaUtama->nama;

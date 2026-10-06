@@ -40,9 +40,9 @@ class DispensasiApprovalController extends Controller
 
         $user = Auth::user();
 
-        // Pastikan hanya Waka yang bisa menyetujui
+        // Jika bukan Waka, arahkan ke halaman detail dispensasi publik
         if (! $user->isWaka()) {
-            return redirect()->route('guru')->with('error', 'Halaman ini khusus untuk Wakasek Kesiswaan.');
+            return redirect()->route('waka.dispensasi.show', ['token' => $dispensasi->token_approval]);
         }
 
         return view('dashboard.dispensasi.approval', [

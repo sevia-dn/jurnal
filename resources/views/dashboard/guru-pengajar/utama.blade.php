@@ -424,7 +424,8 @@ function guruLogbookState(config) {
         <button
             type="button"
             @click="aktifkanIsiJurnal()"
-            class="flex-1 rounded-2xl border border-emerald-200 bg-white p-4 sm:p-5 flex items-center gap-4 text-left transition-all duration-200 hover:border-emerald-400 hover:bg-emerald-50/50 shadow-sm group cursor-pointer"
+            class="flex-1 rounded-2xl border p-4 sm:p-5 flex items-center gap-4 text-left transition-all duration-200 shadow-sm group cursor-pointer"
+            :class="modePilihJurnal ? 'border-emerald-500 ring-2 ring-emerald-500 bg-emerald-50/40' : 'border-emerald-200 bg-white hover:border-emerald-400 hover:bg-emerald-50/50'"
         >
             <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-white text-xl shadow-md shadow-emerald-600/20 transition group-hover:scale-105">
                 <i class="bi bi-pencil-square"></i>
@@ -434,10 +435,13 @@ function guruLogbookState(config) {
                     <p class="text-sm sm:text-base font-bold text-slate-900 group-hover:text-emerald-800 transition">
                         Isi Jurnal Mengajar
                     </p>
+                    <span x-show="modePilihJurnal" x-cloak class="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800">
+                        <i class="bi bi-check-circle-fill text-[9px]"></i> Aktif
+                    </span>
                 </div>
                 <p class="mt-0.5 text-xs text-slate-500">Pilih jadwal mengajar di bawah untuk langsung mengisi logbook pembelajaran</p>
             </div>
-            <i class="bi bi-arrow-down text-sm text-slate-400 group-hover:text-emerald-600 group-hover:translate-y-0.5 transition"></i>
+            <i class="bi bi-arrow-down text-sm text-slate-400 group-hover:text-emerald-600 group-hover:translate-y-0.5 transition" :class="modePilihJurnal ? 'text-emerald-600 translate-y-0.5' : ''"></i>
         </button>
 
         {{-- Opsi B: Guru Tidak Hadir (Izin / Sakit) --}}
@@ -644,10 +648,10 @@ function guruLogbookState(config) {
                         'border-emerald-500 ring-2 ring-emerald-500 bg-emerald-50/40': selectedJadwalKey === '{{ $jadwalKey }}',
                         'border-emerald-400 bg-white shadow-2xs': selectedJadwalKey !== '{{ $jadwalKey }}' && {{ $isOngoing ? 'true' : 'false' }},
                         'border-slate-200 bg-white hover:border-slate-300': selectedJadwalKey !== '{{ $jadwalKey }}' && !{{ $isOngoing ? 'true' : 'false' }},
-                        'hover:border-emerald-400 hover:shadow-xs cursor-pointer': !{{ $isFilled ? 'true' : 'false' }} && {{ $canFillSchedule ? 'true' : 'false' }}
+                        'hover:border-emerald-400 hover:shadow-xs cursor-pointer': (modePilihJurnal || isGuruTidakHadir) && !{{ $isFilled ? 'true' : 'false' }} && {{ $canFillSchedule ? 'true' : 'false' }}
                     }"
                     @if(! $isFilled && $canFillSchedule)
-                        @click="pilihJadwal('{{ $jadwal->id_kelas }}', '{{ $jadwal->id_mapel }}', '{{ $jadwal->jam_mulai }}', '{{ $jadwal->jam_selesai }}', '{{ $jadwalKey }}')"
+                        @click="if (modePilihJurnal || isGuruTidakHadir) { pilihJadwal('{{ $jadwal->id_kelas }}', '{{ $jadwal->id_mapel }}', '{{ $jadwal->jam_mulai }}', '{{ $jadwal->jam_selesai }}', '{{ $jadwalKey }}') }"
                     @endif
                 >
                     
@@ -710,15 +714,25 @@ function guruLogbookState(config) {
                                     <i class="bi bi-lock-fill mr-1"></i>Tenggat Waktu Lewat
                                 </span>
                             @else
-                                {{-- Tombol Pemilihan Jadwal (Langsung aktif dan dapat diklik) --}}
+                                {{-- Tombol Isi Jurnal: disabled sebelum klik 'Isi Jurnal Mengajar' di atas, aktif jika sudah klik atau izin sudah disetujui piket --}}
                                 <button
                                     type="button"
-                                    @click.stop="pilihJadwal('{{ $jadwal->id_kelas }}', '{{ $jadwal->id_mapel }}', '{{ $jadwal->jam_mulai }}', '{{ $jadwal->jam_selesai }}', '{{ $jadwalKey }}')"
-                                    class="inline-flex w-full items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-bold text-white transition shadow-xs cursor-pointer"
-                                    :class="selectedJadwalKey === '{{ $jadwalKey }}' ? 'bg-emerald-700 ring-2 ring-emerald-400' : 'bg-emerald-600 hover:bg-emerald-700'"
+                                    :disabled="!modePilihJurnal && !isGuruTidakHadir"
+                                    @click.stop="if (modePilihJurnal || isGuruTidakHadir) { pilihJadwal('{{ $jadwal->id_kelas }}', '{{ $jadwal->id_mapel }}', '{{ $jadwal->jam_mulai }}', '{{ $jadwal->jam_selesai }}', '{{ $jadwalKey }}') }"
+                                    class="inline-flex w-full items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-bold transition shadow-xs"
+                                    :class="{
+                                        'border border-slate-200 bg-slate-100 text-slate-400 cursor-not-allowed shadow-none': !modePilihJurnal && !isGuruTidakHadir,
+                                        'bg-emerald-700 ring-2 ring-emerald-400 text-white cursor-pointer': (modePilihJurnal || isGuruTidakHadir) && selectedJadwalKey === '{{ $jadwalKey }}',
+                                        'bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer': (modePilihJurnal || isGuruTidakHadir) && selectedJadwalKey !== '{{ $jadwalKey }}'
+                                    }"
+                                    :title="!modePilihJurnal && !isGuruTidakHadir ? (isGuruTidakHadirPending ? 'Menunggu persetujuan izin dari Guru Piket' : 'Pilih \'Isi Jurnal Mengajar\' di atas terlebih dahulu') : ''"
                                 >
-                                    <i class="bi text-sm" :class="selectedJadwalKey === '{{ $jadwalKey }}' ? 'bi-check-circle-fill' : 'bi-pencil-square'"></i>
-                                    <span x-text="selectedJadwalKey === '{{ $jadwalKey }}' ? 'Jadwal Dipilih (Lanjutkan Mengisi di Bawah)' : 'Isi Jurnal Mengajar'">Isi Jurnal Mengajar</span>
+                                    <i class="bi text-sm" :class="{
+                                        'bi-lock-fill opacity-60': !modePilihJurnal && !isGuruTidakHadir,
+                                        'bi-check-circle-fill': (modePilihJurnal || isGuruTidakHadir) && selectedJadwalKey === '{{ $jadwalKey }}',
+                                        'bi-pencil-square': (modePilihJurnal || isGuruTidakHadir) && selectedJadwalKey !== '{{ $jadwalKey }}'
+                                    }"></i>
+                                    <span x-text="(!modePilihJurnal && !isGuruTidakHadir) ? 'Isi Jurnal Mengajar' : (selectedJadwalKey === '{{ $jadwalKey }}' ? 'Jadwal Dipilih (Lanjutkan Mengisi di Bawah)' : 'Isi Jurnal Mengajar')">Isi Jurnal Mengajar</span>
                                 </button>
                             @endif
                         </div>

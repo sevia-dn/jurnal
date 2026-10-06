@@ -72,9 +72,12 @@ class WhatsAppService
             ];
         }
 
+        $senderNumber = $this->getSenderNumber();
         $delivered = 0;
+
         foreach ($recipients as $recipient) {
             Log::info('=== NOTIFIKASI WHATSAPP DISPENSASI ===', [
+                'sender' => $senderNumber,
                 'to_user' => $recipient['name'],
                 'no_hp' => $recipient['number'],
                 'approval_url' => $recipient['approval_url'] ?? null,
@@ -82,12 +85,18 @@ class WhatsAppService
             ]);
 
             try {
-                $response = Http::asForm()->withHeaders([
-                    'Authorization' => $gatewayApiKey,
-                ])->post($gatewayUrl, [
+                $payload = [
                     'target' => $recipient['target'],
                     'message' => $recipient['message'],
-                ]);
+                ];
+
+                if ($senderNumber !== null) {
+                    $payload['sender'] = $senderNumber;
+                }
+
+                $response = Http::asForm()->withHeaders([
+                    'Authorization' => $gatewayApiKey,
+                ])->post($gatewayUrl, $payload);
 
                 if ($this->wasAcceptedByGateway($response)) {
                     $delivered++;
@@ -204,15 +213,24 @@ class WhatsAppService
                 return false;
             }
 
-            $response = Http::asForm()->withHeaders([
-                'Authorization' => $gatewayApiKey,
-            ])->post($gatewayUrl, [
+            $senderNumber = $this->getSenderNumber();
+            $payload = [
                 'target' => $normalizedTarget,
                 'message' => $message,
-            ]);
+            ];
+
+            if ($senderNumber !== null) {
+                $payload['sender'] = $senderNumber;
+            }
+
+            $response = Http::asForm()->withHeaders([
+                'Authorization' => $gatewayApiKey,
+            ])->post($gatewayUrl, $payload);
 
             if ($this->wasAcceptedByGateway($response)) {
-                Log::info('WhatsAppService: Pesan WhatsApp berhasil dikirim ke '.$normalizedTarget);
+                Log::info('WhatsAppService: Pesan WhatsApp berhasil dikirim ke '.$normalizedTarget, [
+                    'sender' => $senderNumber,
+                ]);
 
                 return true;
             }
@@ -225,11 +243,27 @@ class WhatsAppService
             return false;
         } catch (\Throwable $e) {
             Log::error('WhatsAppService Error saat mengirim pesan: '.$e->getMessage(), [
-                'target' => $normalizedTarget,
+                'target' => $normalizedTarget ?? $targetNumber,
             ]);
 
             return false;
         }
+    }
+
+    /**
+     * Dapatkan nomor pengirim WhatsApp (device Fonnte) dari konfigurasi.
+     * Nomor ini adalah nomor yang terdaftar sebagai device di akun Fonnte.
+     */
+    public function getSenderNumber(): ?string
+    {
+        $number = config('services.whatsapp.piket_confirmation_number')
+            ?? config('services.whatsapp.admin_number');
+
+        if (blank($number)) {
+            return null;
+        }
+
+        return $this->normalizeIndonesianWhatsAppNumber((string) $number);
     }
 
     private function normalizeIndonesianWhatsAppNumber(string $number): ?string

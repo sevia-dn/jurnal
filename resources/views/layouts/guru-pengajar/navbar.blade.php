@@ -39,6 +39,12 @@
             $notifGuru = \App\Models\Notifikasi::query()
                 ->where('id_user', Auth::id())
                 ->where('is_read', false)
+                ->where(function ($q) {
+                    $q->whereNull('id_ketidakhadiran_guru')
+                      ->orWhereHas('ketidakhadiranGuru', function ($kq) {
+                          $kq->where('status', 'pending');
+                      });
+                })
                 ->latest()
                 ->take(10)
                 ->get();
