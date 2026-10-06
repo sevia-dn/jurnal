@@ -18,6 +18,9 @@
         $opsiJamJadwal = collect(range(0, 13))->map(fn ($jam) => ['value' => (string) $jam, 'label' => $jam === 0 ? 'Jam Ke-0 (Kegiatan / Istirahat / Upacara)' : 'Jam Ke-'.$jam]);
         $opsiMapelJadwal = $mapels->map(fn ($mapel) => ['value' => (string) $mapel->id, 'label' => '['.ucfirst($mapel->kategori ?? 'biasa').'] '.$mapel->nama_mapel]);
         $opsiGuruJadwal = $gurus->map(fn ($guru) => ['value' => (string) $guru->id, 'label' => $guru->name.' ('.($guru->nip ?? 'Guru').')']);
+        $scheduleTimeService = app(\App\Services\ScheduleTimeService::class);
+        $weekdayTimePresets = collect(range(1, 10))->mapWithKeys(fn ($jam) => [$jam => [$scheduleTimeService->slot('Senin', $jam)['start'], $scheduleTimeService->slot('Senin', $jam)['end']]]);
+        $fridayTimePresets = collect(range(1, 13))->mapWithKeys(fn ($jam) => [$jam => [$scheduleTimeService->slot('Jumat', $jam)['start'], $scheduleTimeService->slot('Jumat', $jam)['end']]]);
     @endphp
 
     <!-- Notifikasi Flash Message -->
@@ -32,6 +35,12 @@
             <button type="button" onclick="this.parentElement.remove()" class="text-emerald-500 hover:text-emerald-700">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
             </button>
+        </div>
+    @endif
+
+    @if(session('error'))
+        <div class="mb-6 rounded-lg bg-amber-50 border border-amber-200 p-4 text-sm text-amber-900">
+            <div class="flex items-center gap-2"><i class="bi bi-exclamation-triangle-fill text-amber-600"></i><span>{{ session('error') }}</span></div>
         </div>
     @endif
 
@@ -50,6 +59,10 @@
 
     <div class="mb-6 flex flex-col items-start justify-between gap-4 border-b border-slate-200 pb-5 lg:flex-row lg:items-center lg:gap-6">
         <div class="flex items-center gap-2.5">
+            <button type="button" onclick="openModal('modalImportJadwal')" class="inline-flex items-center gap-1.5 rounded-lg bg-[#155d50] px-3.5 py-2 text-xs font-semibold text-white shadow-xs transition hover:bg-[#0b2b24]">
+                <i class="bi bi-file-earmark-arrow-up"></i>
+                <span>Import Jadwal</span>
+            </button>
             <a href="{{ route('dashboard.jadwal.download-pdf') }}" class="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 shadow-xs transition hover:bg-slate-50">
                 <i class="bi bi-file-earmark-pdf text-rose-600"></i>
                 <span>Unduh PDF</span>
@@ -96,14 +109,16 @@
                     <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
                         <div>
                             <label class="mb-1.5 block text-sm font-medium text-slate-700">Jam Mulai <span class="text-red-500">*</span></label>
-                            <input type="time" id="formAddJamMulai" name="jam_mulai" value="{{ old('jam_mulai', '07:30') }}" required class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-[#155d50] focus:ring-2 focus:ring-[#155d50]/10" />
+                            <input type="time" id="formAddJamMulai" name="jam_mulai" value="{{ old('jam_mulai', '07:00') }}" required readonly class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-[#155d50] focus:ring-2 focus:ring-[#155d50]/10" />
                         </div>
 
                         <div>
                             <label class="mb-1.5 block text-sm font-medium text-slate-700">Jam Selesai <span class="text-red-500">*</span></label>
-                            <input type="time" id="formAddJamSelesai" name="jam_selesai" value="{{ old('jam_selesai', '09:00') }}" required class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-[#155d50] focus:ring-2 focus:ring-[#155d50]/10" />
+                            <input type="time" id="formAddJamSelesai" name="jam_selesai" value="{{ old('jam_selesai', '07:40') }}" required readonly class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-[#155d50] focus:ring-2 focus:ring-[#155d50]/10" />
                         </div>
                     </div>
+
+                    <p class="-mt-2 text-xs text-slate-500">Waktu otomatis mengikuti hari dan jam pelajaran. Waktu kegiatan khusus tetap dapat diatur.</p>
 
                     <div>
                         <label class="mb-1.5 block text-sm font-medium text-slate-700">Mata Pelajaran / Kegiatan <span class="text-red-500">*</span></label>
@@ -1102,33 +1117,8 @@
     }
 
     // ================= TIME PRESETS BY PERIOD =================
-    const SENIN_KAMIS_TIMES = {
-        1: ['07:00', '07:40'],
-        2: ['07:40', '08:20'],
-        3: ['08:20', '09:00'],
-        4: ['09:00', '09:40'],
-        5: ['10:00', '10:40'],
-        6: ['10:40', '11:20'],
-        7: ['11:20', '12:00'],
-        8: ['13:00', '13:40'],
-        9: ['13:40', '14:20'],
-        10: ['14:20', '15:00']
-    };
-    const JUMAT_TIMES = {
-        1: ['07:00', '07:30'],
-        2: ['07:30', '08:00'],
-        3: ['08:00', '08:30'],
-        4: ['08:30', '09:00'],
-        5: ['09:00', '09:30'],
-        6: ['09:50', '10:20'],
-        7: ['10:20', '10:50'],
-        8: ['10:50', '11:20'],
-        9: ['13:00', '13:30'],
-        10: ['13:30', '14:00'],
-        11: ['14:00', '14:30'],
-        12: ['14:30', '15:00'],
-        13: ['15:00', '15:30']
-    };
+    const SENIN_KAMIS_TIMES = @json($weekdayTimePresets);
+    const JUMAT_TIMES = @json($fridayTimePresets);
 
     function applyScheduleTimePresets(context) {
         const isEdit = (context === 'edit');
@@ -1144,9 +1134,13 @@
         const times = (hari === 'Jumat') ? JUMAT_TIMES : SENIN_KAMIS_TIMES;
 
         if (jamKe > 0 && times[jamKe]) {
+            inputMulai.readOnly = true;
+            inputSelesai.readOnly = true;
             inputMulai.value = times[jamKe][0];
             inputSelesai.value = times[jamKe][1];
         } else if (jamKe === 0) {
+            inputMulai.readOnly = isEdit;
+            inputSelesai.readOnly = isEdit;
             if (hari === 'Jumat') {
                 inputMulai.value = '09:30';
                 inputSelesai.value = '09:50';

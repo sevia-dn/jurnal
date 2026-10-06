@@ -6,6 +6,7 @@ use App\Imports\GuruImport;
 use App\Imports\JadwalImport;
 use App\Models\Absensi;
 use App\Models\Dispensasi;
+use App\Models\JadwalMengajar;
 use App\Models\JadwalPelajaran;
 use App\Models\JadwalPiket;
 use App\Models\JurnalMengajar;
@@ -87,14 +88,16 @@ class AdminController extends Controller
 
         $users = $query->orderBy('name')->get();
 
-        // Ambil pemetaan seluruh mapel yang diajar tiap guru di jadwal pelajaran (multi-mapel)
-        $jadwalRecords = JadwalPelajaran::whereNotNull('id_user')
+        // Satu semester dihitung sebagai 18 minggu efektif karena kalender semester belum dikelola aplikasi.
+        $mingguEfektifSemester = 18;
+
+        // Ambil seluruh sesi agar beban mingguan dapat dihitung per guru, kelas, dan hari.
+        $jadwalRecords = JadwalPelajaran::with('kelas')
+            ->whereNotNull('id_user')
             ->whereNotNull('mapel')
             ->where('mapel', 'not like', '%istirahat%')
             ->where('mapel', 'not like', '%upacara%')
             ->where('mapel', 'not like', '%pembiasaan%')
-            ->select('id_user', 'mapel')
-            ->distinct()
             ->get();
 
         $allMapelsByUser = [];
@@ -111,6 +114,26 @@ class AdminController extends Controller
             }
             sort($mapelList);
             $u->all_mapel_names = $mapelList;
+
+            $jadwalGuru = $jadwalRecords->where('id_user', $u->id)->filter(fn (JadwalPelajaran $jadwal): bool => $jadwal->jam_ke > 0);
+            $u->beban_jadwal = [
+                'total' => $jadwalGuru->sum(fn (JadwalPelajaran $jadwal): int => max(1, ($jadwal->jam_ke_selesai ?? $jadwal->jam_ke) - $jadwal->jam_ke + 1)),
+                'semester' => $jadwalGuru->sum(fn (JadwalPelajaran $jadwal): int => max(1, ($jadwal->jam_ke_selesai ?? $jadwal->jam_ke) - $jadwal->jam_ke + 1)) * $mingguEfektifSemester,
+                'minggu_efektif_semester' => $mingguEfektifSemester,
+                'kelas' => $jadwalGuru->groupBy('id_kelas')->map(function ($jadwals) use ($mingguEfektifSemester): array {
+                    $first = $jadwals->first();
+
+                    return [
+                        'nama' => $first->kelas?->nama_kelas ?? 'Kelas',
+                        'jam' => $jadwals->sum(fn (JadwalPelajaran $jadwal): int => max(1, ($jadwal->jam_ke_selesai ?? $jadwal->jam_ke) - $jadwal->jam_ke + 1)),
+                        'semester' => $jadwals->sum(fn (JadwalPelajaran $jadwal): int => max(1, ($jadwal->jam_ke_selesai ?? $jadwal->jam_ke) - $jadwal->jam_ke + 1)) * $mingguEfektifSemester,
+                        'jadwal' => $jadwals->groupBy('hari')->map(fn ($hariJadwals, $hari): array => [
+                            'hari' => $hari,
+                            'jam' => $hariJadwals->sum(fn (JadwalPelajaran $jadwal): int => max(1, ($jadwal->jam_ke_selesai ?? $jadwal->jam_ke) - $jadwal->jam_ke + 1)),
+                        ])->values()->all(),
+                    ];
+                })->values()->all(),
+            ];
         }
 
         $mapels = Mapel::orderBy('nama_mapel')->get();
@@ -1077,15 +1100,21 @@ class AdminController extends Controller
             'id_mapel' => 'nullable|exists:mapels,id',
             'hari' => 'required|in:Senin,Selasa,Rabu,Kamis,Jumat,Sabtu',
             'jam_ke' => 'required|integer|min:0',
-            'jam_mulai' => 'required',
-            'jam_selesai' => 'required',
+            'jam_mulai' => 'nullable|date_format:H:i',
+            'jam_selesai' => 'nullable|date_format:H:i',
             'mapel' => 'required|string|max:100',
         ], [
             'id_kelas.required' => 'Pilih kelas jadwal.',
             'hari.required' => 'Pilih hari pelaksanaan.',
         ]);
 
-        JadwalPelajaran::create($this->normalizeScheduleTimes($validated));
+        $validated = $this->normalizeScheduleTimes($validated);
+        $conflict = $this->scheduleConflictMessage($validated);
+        if ($conflict !== null) {
+            return back()->withInput()->with('error', $conflict);
+        }
+
+        JadwalPelajaran::create($validated);
 
         return redirect()->route('dashboard.jadwal', ['kelas_id' => $kelasId, 'hari' => $validated['hari']])
             ->with('success', 'Jadwal pelajaran berhasil ditambahkan!');
@@ -1124,12 +1153,18 @@ class AdminController extends Controller
             'id_mapel' => 'nullable|exists:mapels,id',
             'hari' => 'required|in:Senin,Selasa,Rabu,Kamis,Jumat,Sabtu',
             'jam_ke' => 'required|integer|min:0',
-            'jam_mulai' => 'required',
-            'jam_selesai' => 'required',
+            'jam_mulai' => 'nullable|date_format:H:i',
+            'jam_selesai' => 'nullable|date_format:H:i',
             'mapel' => 'required|string|max:100',
         ]);
 
-        $jadwal->update($this->normalizeScheduleTimes($validated));
+        $validated = $this->normalizeScheduleTimes($validated);
+        $conflict = $this->scheduleConflictMessage($validated, $jadwal->id_jadwal);
+        if ($conflict !== null) {
+            return back()->withInput()->with('error', $conflict);
+        }
+
+        $jadwal->update($validated);
 
         return redirect()->route('dashboard.jadwal', ['kelas_id' => $kelasId, 'hari' => $validated['hari']])
             ->with('success', 'Jadwal pelajaran berhasil diperbarui!');
@@ -1150,20 +1185,77 @@ class AdminController extends Controller
         }
 
         $slot = app(ScheduleTimeService::class)->slot($schedule['hari'], $jamKe);
-        $jamMulai = substr((string) $schedule['jam_mulai'], 0, 5);
-        $jamSelesai = substr((string) $schedule['jam_selesai'], 0, 5);
-
-        if ($jamMulai < $slot['start'] || $jamSelesai < $slot['end'] || $jamSelesai <= $jamMulai) {
-            $schedule['jam_mulai'] = $slot['start'];
-            $schedule['jam_selesai'] = $slot['end'];
-        }
+        $schedule['jam_mulai'] = $slot['start'];
+        $schedule['jam_selesai'] = $slot['end'];
 
         return $schedule;
+    }
+
+    private function synchronizeTeacherSchedule(JadwalPelajaran $jadwal): void
+    {
+        if ($jadwal->jam_ke <= 0 || $jadwal->id_mapel === null) {
+            JadwalMengajar::query()
+                ->where('id_kelas', $jadwal->id_kelas)
+                ->where('hari', $jadwal->hari)
+                ->where('jam_mulai', $jadwal->jam_ke)
+                ->delete();
+
+            return;
+        }
+
+        $scheduleTimeService = app(ScheduleTimeService::class);
+        $jamSelesai = $scheduleTimeService->slotNumberFromEndTime($jadwal->hari, (string) $jadwal->jam_selesai) ?? $jadwal->jam_ke;
+        JadwalMengajar::updateOrCreate(
+            [
+                'id_kelas' => $jadwal->id_kelas,
+                'hari' => $jadwal->hari,
+                'jam_mulai' => $jadwal->jam_ke,
+            ],
+            [
+                'id_user' => $jadwal->id_user,
+                'id_mapel' => $jadwal->id_mapel,
+                'jam_selesai' => max($jadwal->jam_ke, $jamSelesai),
+            ],
+        );
+    }
+
+    /** @param array<string, int|string|null> $schedule */
+    private function scheduleConflictMessage(array $schedule, ?int $exceptId = null): ?string
+    {
+        if ((int) $schedule['jam_ke'] === 0) {
+            return null;
+        }
+
+        $conflicts = JadwalPelajaran::query()
+            ->where('hari', $schedule['hari'])
+            ->where('jam_ke', '>', 0)
+            ->where('jam_mulai', '<', $schedule['jam_selesai'])
+            ->where('jam_selesai', '>', $schedule['jam_mulai'])
+            ->when($exceptId !== null, fn ($query) => $query->where('id_jadwal', '!=', $exceptId))
+            ->with(['kelas', 'guru'])
+            ->get();
+
+        $kelasConflict = $conflicts->firstWhere('id_kelas', $schedule['id_kelas']);
+        if ($kelasConflict !== null) {
+            return 'Jadwal bentrok: kelas '.$kelasConflict->kelas?->nama_kelas.' sudah memiliki jadwal '.$kelasConflict->mapel.' pada waktu tersebut.';
+        }
+
+        $guruConflict = $conflicts->firstWhere('id_user', $schedule['id_user']);
+        if ($guruConflict !== null) {
+            return 'Jadwal bentrok: guru '.$guruConflict->guru?->name.' sedang mengajar di kelas '.$guruConflict->kelas?->nama_kelas.' pada waktu tersebut.';
+        }
+
+        return null;
     }
 
     public function destroyJadwal($id)
     {
         $jadwal = JadwalPelajaran::findOrFail($id);
+        JadwalMengajar::query()
+            ->where('id_kelas', $jadwal->id_kelas)
+            ->where('hari', $jadwal->hari)
+            ->where('jam_mulai', $jadwal->jam_ke)
+            ->delete();
         $jadwal->delete();
 
         return redirect()->route('dashboard.jadwal')->with('success', 'Jadwal pelajaran berhasil dihapus!');
@@ -1176,6 +1268,14 @@ class AdminController extends Controller
             return back()->with('error', 'Pilih minimal satu jadwal.');
         }
 
+        $jadwals = JadwalPelajaran::whereIn('id_jadwal', $ids)->get();
+        foreach ($jadwals as $jadwal) {
+            JadwalMengajar::query()
+                ->where('id_kelas', $jadwal->id_kelas)
+                ->where('hari', $jadwal->hari)
+                ->where('jam_mulai', $jadwal->jam_ke)
+                ->delete();
+        }
         $count = JadwalPelajaran::whereIn('id_jadwal', $ids)->delete();
 
         return redirect()->route('dashboard.jadwal')->with('success', "{$count} jadwal pelajaran berhasil dihapus masal!");
@@ -1459,7 +1559,12 @@ class AdminController extends Controller
             $import = new JadwalImport;
             Excel::import($import, $request->file('file'));
 
-            return redirect()->route('dashboard.jadwal')->with('success', "Import selesai! {$import->importedCount} jadwal baru ditambahkan dan {$import->updatedCount} jadwal diperbarui.");
+            $message = "Import selesai! {$import->importedCount} jadwal baru ditambahkan dan {$import->updatedCount} jadwal diperbarui.";
+            if ($import->conflicts !== []) {
+                $message .= ' '.count($import->conflicts).' baris dilewati karena bentrok/tidak valid: '.implode(' ', array_slice($import->conflicts, 0, 5));
+            }
+
+            return redirect()->route('dashboard.jadwal')->with($import->conflicts === [] ? 'success' : 'error', $message);
         } catch (\Throwable $e) {
             return redirect()->route('dashboard.jadwal')->with('error', 'Gagal memproses file Excel: '.$e->getMessage());
         }
