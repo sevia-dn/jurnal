@@ -16,7 +16,7 @@
                 $query->orWhere('id_kelas', $kelasPengurusNavbar->id_kelas);
             }
         })
-        ->whereIn('tipe', ['jurnal_baru', 'dispensasi'])
+        ->whereIn('tipe', ['jurnal_baru', 'dispensasi', 'siswa_terlambat', 'siswa_telat', 'kehadiran_siswa_piket'])
         ->where('is_read', false)
         ->latest()
         ->take(10)
@@ -89,15 +89,21 @@
                         @php
                             $isJurnalBaru = $notif->tipe === 'jurnal_baru';
                             $isDispensasi = $notif->tipe === 'dispensasi';
-                            $badgeColor = $isJurnalBaru
-                                ? 'bg-emerald-100 text-emerald-700'
-                                : 'bg-indigo-100 text-indigo-700';
+                            $isSiswaTelat = in_array($notif->tipe, ['siswa_terlambat', 'siswa_telat'], true);
+
+                            $badgeColor = $isSiswaTelat
+                                ? 'bg-amber-100 text-amber-800'
+                                : ($isJurnalBaru ? 'bg-emerald-100 text-emerald-700' : 'bg-indigo-100 text-indigo-700');
+
                             $borderColor = $notif->is_read
                                 ? 'border-slate-100 bg-slate-50/40'
-                                : ($isJurnalBaru ? 'border-emerald-200 bg-emerald-50/50' : 'border-indigo-100 bg-indigo-50/40');
-                            $iconClass = $isJurnalBaru
-                                ? 'bi-journal-plus'
-                                : 'bi-patch-check-fill';
+                                : ($isSiswaTelat
+                                    ? 'border-amber-300 bg-amber-50/60'
+                                    : ($isJurnalBaru ? 'border-emerald-200 bg-emerald-50/50' : 'border-indigo-100 bg-indigo-50/40'));
+
+                            $iconClass = $isSiswaTelat
+                                ? 'bi-clock-history'
+                                : ($isJurnalBaru ? 'bi-journal-plus' : 'bi-patch-check-fill');
                         @endphp
                         <form method="POST" action="{{ route('pengurus-kelas.notifikasi.read', $notif) }}" class="mb-2">
                             @csrf
@@ -113,6 +119,11 @@
                                             <span class="h-2 w-2 shrink-0 rounded-full bg-rose-500"></span>
                                         @endif
                                     </div>
+                                    @if($isSiswaTelat)
+                                        <span class="inline-flex items-center gap-1 mt-0.5 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold text-amber-800">
+                                            <i class="bi bi-file-earmark-check"></i> Izin Masuk Piket
+                                        </span>
+                                    @endif
                                     <p class="mt-1 text-xs leading-relaxed text-slate-600">{{ $notif->pesan }}</p>
                                     <p class="mt-1 text-[10px] text-slate-400">{{ $notif->created_at->diffForHumans() }}</p>
                                 </div>

@@ -407,12 +407,16 @@ class PiketController extends Controller
 
             $isPiketNonHadir = $piketRecord && in_array(strtoupper(trim((string) $piketRecord->status)), ['S', 'SAKIT', 'I', 'IZIN', 'A', 'ALPA', 'ALFA', 'D', 'DISPENSASI'], true);
             $isAbsenNonHadir = $absen && in_array(strtoupper(trim((string) $absen->status)), ['S', 'SAKIT', 'I', 'IZIN', 'A', 'ALPA', 'ALFA', 'D', 'DISPENSASI'], true);
+            $isPiketTerlambat = $piketRecord && in_array(strtoupper(trim((string) $piketRecord->status)), ['TERLAMBAT', 'TELAT', 'T'], true);
 
             if ($dispen) {
                 $status = 'D';
                 $catatan = 'Dispensasi: '.$dispen->deskripsi_waktu.' ('.$dispen->alasan.')';
             } elseif ($isPiketNonHadir) {
                 $status = $piketRecord->status;
+                $catatan = $piketRecord->catatan ?? '-';
+            } elseif ($isPiketTerlambat) {
+                $status = 'Terlambat';
                 $catatan = $piketRecord->catatan ?? '-';
             } elseif ($isAbsenNonHadir) {
                 $status = $absen->status;
@@ -439,6 +443,7 @@ class PiketController extends Controller
                 'note' => $catatan,
                 'is_dispen' => $dispen !== null,
                 'is_piket_record' => $piketRecord !== null,
+                'is_terlambat' => $isPiketTerlambat,
             ];
         });
 
@@ -449,6 +454,7 @@ class PiketController extends Controller
         $totalIzin = $studentsData->where('status', 'Izin')->count();
         $totalAlfa = $studentsData->whereIn('status', ['Alfa', 'Alpa'])->count();
         $totalDispen = $studentsData->where('status', 'D')->count();
+        $totalTerlambat = $studentsData->whereIn('status', ['Terlambat', 'Telat', 'T'])->count();
         $isEditableDate = $tanggal === now('Asia/Jakarta')->toDateString();
 
         return view('dashboard.piket.kehadiran-siswa', compact(
@@ -463,6 +469,7 @@ class PiketController extends Controller
             'totalIzin',
             'totalAlfa',
             'totalDispen',
+            'totalTerlambat',
             'isEditableDate'
         ));
     }
@@ -478,7 +485,7 @@ class PiketController extends Controller
 
         $request->validate([
             'siswa_id' => 'required|exists:siswas,id',
-            'status' => 'required|in:Hadir,Sakit,Izin,Alfa,D',
+            'status' => 'required|in:Hadir,Sakit,Izin,Alfa,D,Terlambat,Telat,T',
             'catatan' => 'nullable|string|max:255',
             'tanggal' => 'required|date',
             'kelas_id' => 'required|exists:kelas,id_kelas',
@@ -495,29 +502,83 @@ class PiketController extends Controller
             return back()->with('error', 'Status kehadiran hanya dapat diubah untuk tanggal hari ini. Tanggal lain hanya untuk pemantauan.');
         }
 
-        $status = $request->status === 'Alfa' ? 'Alpa' : $request->status;
+        $rawStatus = (string) $request->status;
+        $status = match (strtoupper(trim($rawStatus))) {
+            'ALFA' => 'Alpa',
+            'TELAT', 'T', 'TERLAMBAT' => 'Terlambat',
+            default => $rawStatus,
+        };
+        $catatan = $request->catatan;
+        if ($status === 'Terlambat' && empty(trim((string) $catatan))) {
+            $catatan = 'Terlambat masuk sekolah';
+        }
+
         $attendance = PiketKehadiranSiswa::updateOrCreate(
             ['siswa_id' => $siswa->id, 'tanggal' => $request->tanggal],
             [
                 'kelas_id' => $siswa->kelas_id,
                 'status' => $status,
                 'sumber' => PiketKehadiranSiswa::SumberGuruPiket,
-                'catatan' => $request->catatan,
+                'catatan' => $catatan,
                 'dicatat_oleh' => auth()->id(),
             ],
         );
 
         $synchronizationService->synchronize($attendance);
-        $this->notifyStudentAttendanceChange($siswa, $request->tanggal, $status, $request->catatan);
+        $this->notifyStudentAttendanceChange($siswa, $request->tanggal, $status, $catatan);
 
         return back()->with('success', "Status kehadiran untuk {$siswa->nama} berhasil diperbarui.");
+    }
+
+    public function catatSiswaTelat(Request $request, StudentAttendanceSynchronizationService $synchronizationService)
+    {
+        $this->ensurePiketAccess();
+
+        $request->validate([
+            'siswa_id' => 'required|exists:siswas,id',
+            'alasan' => 'required|string|max:255',
+            'tindakan' => 'nullable|string|max:255',
+            'tanggal' => 'nullable|date',
+        ], [
+            'alasan.required' => 'Alasan keterlambatan siswa wajib diisi.',
+        ]);
+
+        $today = now('Asia/Jakarta')->toDateString();
+        $tanggal = $request->input('tanggal', $today);
+
+        if ($tanggal !== $today) {
+            return back()->with('error', 'Pencatatan keterlambatan hanya dapat dilakukan untuk tanggal hari ini.');
+        }
+
+        $siswa = Siswa::with('kelas')->findOrFail($request->siswa_id);
+
+        $catatan = trim((string) $request->alasan);
+        if ($request->filled('tindakan')) {
+            $catatan .= ' (Tindakan Piket: '.trim((string) $request->tindakan).')';
+        }
+
+        $attendance = PiketKehadiranSiswa::updateOrCreate(
+            ['siswa_id' => $siswa->id, 'tanggal' => $tanggal],
+            [
+                'kelas_id' => $siswa->kelas_id,
+                'status' => 'Terlambat',
+                'sumber' => PiketKehadiranSiswa::SumberGuruPiket,
+                'catatan' => $catatan,
+                'dicatat_oleh' => auth()->id(),
+            ],
+        );
+
+        $synchronizationService->synchronize($attendance);
+        $this->notifyStudentAttendanceChange($siswa, $tanggal, 'Terlambat', $catatan);
+
+        return back()->with('success', "Surat izin masuk untuk {$siswa->nama} berhasil diterbitkan dan pemberitahuan telah dikirim ke pengurus kelas {$siswa->kelas?->nama_kelas}.");
     }
 
     private function updateBulkKehadiranSiswa(Request $request, StudentAttendanceSynchronizationService $synchronizationService)
     {
         $validated = $request->validate([
             'absensi' => ['nullable', 'array'],
-            'absensi.*' => ['required', 'in:Hadir,Sakit,Izin,Alfa,D'],
+            'absensi.*' => ['required', 'in:Hadir,Sakit,Izin,Alfa,D,Terlambat,Telat,T'],
             'absensi_catatan' => ['nullable', 'array'],
             'absensi_catatan.*' => ['nullable', 'string', 'max:255'],
             'tanggal' => ['required', 'date'],
@@ -567,8 +628,15 @@ class PiketController extends Controller
                 }
 
                 $student = $students->get((int) $studentId);
-                $status = $requestedStatus === 'Alfa' ? 'Alpa' : $requestedStatus;
+                $status = match (strtoupper(trim((string) $requestedStatus))) {
+                    'ALFA' => 'Alpa',
+                    'TELAT', 'T', 'TERLAMBAT' => 'Terlambat',
+                    default => $requestedStatus,
+                };
                 $note = trim((string) ($validated['absensi_catatan'][$studentId] ?? '')) ?: null;
+                if ($status === 'Terlambat' && ! $note) {
+                    $note = 'Terlambat masuk sekolah';
+                }
                 $existingRecord = $existingRecords->get((int) $studentId);
 
                 if ($existingRecord?->status === $status && $existingRecord?->catatan === $note) {
@@ -614,21 +682,33 @@ class PiketController extends Controller
         $pengurus = User::query()
             ->where('role', 'pengurus_kelas')
             ->get()
-            ->filter(fn (User $user) => trim(str_ireplace('Pengurus Kelas ', '', $user->name)) === $kelas->nama_kelas);
+            ->filter(fn (User $user) => trim(str_ireplace('Pengurus Kelas ', '', $user->name)) === $kelas->nama_kelas || $user->name === $kelas->nama_kelas);
         $recipientIds = $teacherIds->merge($pengurus->pluck('id'))->unique();
         $tanggalLabel = Carbon::parse($tanggal, 'Asia/Jakarta')->translatedFormat('d F Y');
-        $pesan = "{$siswa->nama} kelas {$kelas->nama_kelas} tercatat {$status} pada {$tanggalLabel}.";
-        if ($catatan) {
-            $pesan .= " Keterangan: {$catatan}";
+
+        $isTerlambat = in_array(strtoupper(trim((string) $status)), ['TERLAMBAT', 'TELAT', 'T'], true);
+
+        if ($isTerlambat) {
+            $judul = 'Surat Izin Masuk (Siswa Terlambat)';
+            $alasanText = $catatan ?: 'Terlambat masuk sekolah';
+            $pesan = "Siswa {$siswa->nama} (kelas {$kelas->nama_kelas}) terlambat ke sekolah pada {$tanggalLabel}. Alasan: {$alasanText}. Telah diproses piket & diberikan surat izin masuk kelas.";
+            $tipe = 'siswa_terlambat';
+        } else {
+            $judul = 'Pembaruan Kehadiran Siswa';
+            $pesan = "{$siswa->nama} kelas {$kelas->nama_kelas} tercatat {$status} pada {$tanggalLabel}.";
+            if ($catatan) {
+                $pesan .= " Keterangan: {$catatan}";
+            }
+            $tipe = 'kehadiran_siswa_piket';
         }
 
         foreach ($recipientIds as $recipientId) {
             Notifikasi::create([
                 'id_user' => $recipientId,
                 'id_kelas' => $kelas->id_kelas,
-                'judul' => 'Pembaruan Kehadiran Siswa',
+                'judul' => $judul,
                 'pesan' => $pesan,
-                'tipe' => 'kehadiran_siswa_piket',
+                'tipe' => $tipe,
                 'is_read' => false,
             ]);
         }

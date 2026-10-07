@@ -121,6 +121,9 @@ Route::middleware('auth')->group(function () {
         Route::post('/piket/kehadiran-siswa', [PiketController::class, 'updateKehadiranSiswa'])
             ->name('piket.kehadiran-siswa.update');
 
+        Route::post('/piket/kehadiran-siswa/telat', [PiketController::class, 'catatSiswaTelat'])
+            ->name('piket.kehadiran-siswa.telat');
+
         // ==========================================
         // DATA GURU
         // ==========================================

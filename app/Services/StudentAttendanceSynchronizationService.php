@@ -46,12 +46,22 @@ class StudentAttendanceSynchronizationService
             'i', 'izin' => 'Izin',
             'd', 'dispensasi' => 'D',
             'a', 'alfa', 'alpa' => 'Alpa',
+            't', 'telat', 'terlambat' => 'Hadir',
             default => 'Hadir',
         };
     }
 
     public function automaticNote(PiketKehadiranSiswa $attendance): string
     {
+        if (in_array(mb_strtolower(trim($attendance->status)), ['t', 'telat', 'terlambat'], true)) {
+            $reason = trim((string) $attendance->catatan);
+            if (str_starts_with(mb_strtolower($reason), 'terlambat')) {
+                return $reason.' (Izin Masuk Piket)';
+            }
+
+            return 'Terlambat'.($reason !== '' ? ": {$reason}" : '').' (Izin Masuk Piket)';
+        }
+
         $source = $attendance->sumber === PiketKehadiranSiswa::SumberDispensasiWaka
             ? 'Dispensasi Waka'
             : 'Guru Piket';
