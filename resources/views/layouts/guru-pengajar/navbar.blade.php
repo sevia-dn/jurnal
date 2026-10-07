@@ -41,8 +41,11 @@
                 ->where('is_read', false)
                 ->where(function ($q) {
                     $q->whereNull('id_ketidakhadiran_guru')
+                      ->orWhere('tipe', 'waka_konfirmasi_guru_absen')
+                      ->orWhere('tipe', 'konfirmasi_waka_hasil')
                       ->orWhereHas('ketidakhadiranGuru', function ($kq) {
-                          $kq->where('status', 'pending');
+                          $kq->where('status', 'pending')
+                            ->orWhere('status_konfirmasi_waka', 'pending');
                       });
                 })
                 ->latest()

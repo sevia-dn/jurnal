@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\JadwalPelajaran;
 use App\Models\JurnalMengajar;
 use App\Models\Kelas;
+use App\Models\KetidakhadiranGuru;
 use App\Models\PersetujuanJurnalKelas;
 use App\Models\User;
 use Carbon\Carbon;
@@ -48,15 +49,20 @@ class ClassJournalApprovalService
             ->get()
             ->keyBy('kelas_id');
 
-        return $classes->map(function (Kelas $class) use ($approvalsByClass, $date, $journalsByClass, $schedulesByClass): object {
+        $teacherAbsences = KetidakhadiranGuru::whereDate('tanggal', $date)->get()->keyBy('user_id');
+
+        return $classes->map(function (Kelas $class) use ($approvalsByClass, $date, $journalsByClass, $schedulesByClass, $teacherAbsences): object {
             $schedules = $schedulesByClass->get($class->id_kelas, collect())
                 ->filter(fn (JadwalPelajaran $schedule): bool => $this->scheduleTimeService->isScheduleEndApplicableOnDate($date, (string) $schedule->jam_selesai));
             $journals = $journalsByClass->get($class->id_kelas, collect());
-            $sessionItems = $schedules->map(function (JadwalPelajaran $schedule) use ($journals): object {
+            $sessionItems = $schedules->map(function (JadwalPelajaran $schedule) use ($journals, $teacherAbsences, $date): object {
                 $journal = $journals->first(function (JurnalMengajar $journal) use ($schedule): bool {
                     return $journal->jam_ke == $schedule->jam_ke
                         || ($schedule->id_mapel && $journal->id_mapel == $schedule->id_mapel && $journal->jam_ke <= $schedule->jam_ke && ($journal->jam_selesai ?? $journal->jam_ke) >= $schedule->jam_ke);
                 });
+
+                $teacherAbsence = $schedule->id_user ? $teacherAbsences->get($schedule->id_user) : null;
+                $statusInfo = app(JournalStatusService::class)->determineStatus($date, $journal, $teacherAbsence);
 
                 return (object) [
                     'jam_ke' => $schedule->jam_ke,
@@ -70,6 +76,7 @@ class ClassJournalApprovalService
                     'is_terisi' => $journal !== null,
                     'is_validated' => $journal?->status_validasi === 'disetujui',
                     'jurnal' => $journal,
+                    'status_info' => $statusInfo,
                 ];
             });
             $totalSessions = $sessionItems->count();

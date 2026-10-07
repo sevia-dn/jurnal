@@ -59,11 +59,12 @@
                         @php
                             $statusClass = ! $session->is_terisi ? 'bg-rose-100 text-rose-800' : ($session->is_validated ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800');
                             $statusLabel = ! $session->is_terisi ? 'Belum diisi' : ($session->is_validated ? 'Tervalidasi pengurus' : 'Menunggu validasi pengurus');
+                            $si = $session->status_info ?? null;
                         @endphp
                         <div class="p-4 sm:p-5">
                             <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                                 <div class="min-w-0">
-                                    <div class="flex flex-wrap items-center gap-2"><span class="rounded-md bg-slate-100 px-2 py-1 text-xs font-extrabold text-slate-700">{{ $session->jam_ke_formatted }}</span><span class="rounded-full px-2.5 py-1 text-[11px] font-bold {{ $statusClass }}">{{ $statusLabel }}</span></div>
+                                    <div class="flex flex-wrap items-center gap-2"><span class="rounded-md bg-slate-100 px-2 py-1 text-xs font-extrabold text-slate-700">{{ $session->jam_ke_formatted }}</span><span class="rounded-full px-2.5 py-1 text-[11px] font-bold {{ $statusClass }}">{{ $statusLabel }}</span>@if($si)<span class="rounded-full px-2.5 py-1 text-[11px] font-bold {{ $si['badge_class'] }}" title="{{ $si['reason'] ?? '' }}"><i class="{{ $si['icon'] }}"></i> {{ $si['label'] }}</span>@endif</div>
                                     <h3 class="mt-2 font-extrabold text-slate-800">{{ $session->mapel }}</h3>
                                     <p class="mt-0.5 text-sm text-slate-500">{{ $session->guru }} · {{ $session->waktu_mulai }}–{{ $session->waktu_selesai }}</p>
                                     @if($session->is_terisi)

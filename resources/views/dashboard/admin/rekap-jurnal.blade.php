@@ -329,13 +329,13 @@
                     <p class="text-slate-700 text-xs leading-relaxed line-clamp-2">{{ $jurnal->materi }}</p>
                   </td>
                   <td class="px-6 py-4 text-center whitespace-nowrap">
-                    @if(($jurnal->menit_keterlambatan ?? 0) > 0)
-                      <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-extrabold bg-amber-100 text-amber-800 border border-amber-300">
-                        <i class="bi bi-clock-history"></i> +{{ $jurnal->menit_keterlambatan }}m
+                    @if($jurnal->is_late || ($jurnal->menit_keterlambatan ?? 0) > 0)
+                      <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-extrabold bg-amber-100 text-amber-800 border border-amber-300" title="{{ $jurnal->filled_at ? 'Diisi ' . \Carbon\Carbon::parse($jurnal->filled_at)->translatedFormat('d M Y H:i') : '' }}">
+                        <i class="bi bi-clock-history"></i> Terlambat{{ $jurnal->filled_at ? ', diisi ' . \Carbon\Carbon::parse($jurnal->filled_at)->translatedFormat('d M Y H:i') : '' }}
                       </span>
                     @else
                       <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                        <i class="bi bi-check2"></i> Tepat
+                        <i class="bi bi-check2-circle"></i> Tepat Waktu
                       </span>
                     @endif
                   </td>
@@ -482,10 +482,14 @@
                               <p class="text-slate-700 line-clamp-2">{{ $jrn->materi }}</p>
                             </td>
                             <td class="px-5 py-3 text-center whitespace-nowrap">
-                              @if(($jrn->menit_keterlambatan ?? 0) > 0)
-                                <span class="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 font-bold">+{{ $jrn->menit_keterlambatan }}m</span>
+                              @if($jrn->is_late || ($jrn->menit_keterlambatan ?? 0) > 0)
+                                <span class="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 font-bold inline-flex items-center gap-1">
+                                  <i class="bi bi-clock-history"></i> Terlambat{{ $jrn->filled_at ? ', diisi ' . \Carbon\Carbon::parse($jrn->filled_at)->translatedFormat('d M Y H:i') : '' }}
+                                </span>
                               @else
-                                <span class="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-semibold">Tepat</span>
+                                <span class="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-semibold inline-flex items-center gap-1">
+                                  <i class="bi bi-check2-circle"></i> Tepat
+                                </span>
                               @endif
                             </td>
                             <td class="px-5 py-3 text-center">
@@ -625,15 +629,15 @@
                               @if($sesi->guru_nip)<div class="text-[10px] text-slate-400">{{ $sesi->guru_nip }}</div>@endif
                             </td>
                             <td class="px-5 py-3 text-center whitespace-nowrap">
-                              @if($sesi->is_terisi)
-                                <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-200">
-                                  <i class="bi bi-check2-circle"></i> Sudah Terisi
-                                </span>
-                              @else
-                                <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-extrabold bg-rose-100 text-rose-700 border border-rose-200">
-                                  <i class="bi bi-x-circle"></i> Belum Terisi
-                                </span>
-                              @endif
+                              @php
+                                $sesiStatus = $sesi->status_info ?? null;
+                                $sesiBadgeClass = $sesiStatus['badge_class'] ?? ($sesi->is_terisi ? 'bg-emerald-100 text-emerald-800 border-emerald-200' : 'bg-rose-100 text-rose-700 border-rose-200');
+                                $sesiIcon = $sesiStatus['icon'] ?? ($sesi->is_terisi ? 'bi-check2-circle' : 'bi-x-circle');
+                                $sesiLabel = $sesiStatus['label'] ?? ($sesi->is_terisi ? 'Sudah Terisi' : 'Belum Terisi');
+                              @endphp
+                              <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-extrabold {{ $sesiBadgeClass }} border">
+                                <i class="bi {{ $sesiIcon }}"></i> {{ $sesiLabel }}
+                              </span>
                             </td>
                             <td class="px-5 py-3 text-center">
                               @if($sesi->is_terisi && $sesi->jurnal)
@@ -845,10 +849,11 @@
 
         const badgeContainer = document.getElementById('detailKetepatanBadge');
         if (badgeContainer) {
-            if ((jurnal.menit_keterlambatan || 0) > 0) {
-                badgeContainer.innerHTML = `<span class="px-2.5 py-1 rounded-md text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-300"><i class="bi bi-clock-history"></i> Telat ${jurnal.menit_keterlambatan}m</span>`;
+            if (jurnal.is_late || (jurnal.menit_keterlambatan || 0) > 0) {
+                const filledText = jurnal.filled_at_formatted ? `, diisi ${jurnal.filled_at_formatted}` : (jurnal.menit_keterlambatan ? ` +${jurnal.menit_keterlambatan}m` : '');
+                badgeContainer.innerHTML = `<span class="px-2.5 py-1 rounded-md text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-300"><i class="bi bi-clock-history"></i> Terlambat${filledText}</span>`;
             } else {
-                badgeContainer.innerHTML = `<span class="px-2.5 py-1 rounded-md text-[11px] font-semibold bg-emerald-100 text-emerald-800 border border-emerald-300"><i class="bi bi-check2"></i> Tepat Waktu</span>`;
+                badgeContainer.innerHTML = `<span class="px-2.5 py-1 rounded-md text-[11px] font-semibold bg-emerald-100 text-emerald-800 border border-emerald-300"><i class="bi bi-check2-circle"></i> Tepat Waktu</span>`;
             }
         }
 

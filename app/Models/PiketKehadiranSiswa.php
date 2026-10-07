@@ -16,12 +16,15 @@ class PiketKehadiranSiswa extends Model
         'tanggal',
         'status',
         'sumber',
+        'periode_id',
+        'is_multi_day',
         'catatan',
         'dicatat_oleh',
     ];
 
     protected $casts = [
         'tanggal' => 'date',
+        'is_multi_day' => 'boolean',
     ];
 
     public function siswa()
@@ -37,5 +40,10 @@ class PiketKehadiranSiswa extends Model
     public function pencatat()
     {
         return $this->belongsTo(User::class, 'dicatat_oleh');
+    }
+
+    public function periode()
+    {
+        return $this->belongsTo(PeriodeKetidakhadiranSiswa::class, 'periode_id');
     }
 }

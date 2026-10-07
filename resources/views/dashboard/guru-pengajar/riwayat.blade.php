@@ -191,6 +191,18 @@
                                 <span class="rounded-full bg-{{ $statusColor }}-100 px-2.5 py-0.5 text-[10px] font-bold text-{{ $statusColor }}-700">
                                     {{ $statusLabel }}
                                 </span>
+
+                                @if($jurnal->is_late)
+                                    <span class="rounded-full bg-amber-100 border border-amber-300 px-2.5 py-0.5 text-[10px] font-extrabold text-amber-900 inline-flex items-center gap-1" title="Jurnal diisi setelah jadwal lewat">
+                                        <i class="bi bi-clock-history"></i>
+                                        Terlambat, diisi {{ $jurnal->filled_at ? \Carbon\Carbon::parse($jurnal->filled_at)->translatedFormat('d M Y H:i') : '-' }}
+                                    </span>
+                                @else
+                                    <span class="rounded-full bg-emerald-100 border border-emerald-200 px-2.5 py-0.5 text-[10px] font-bold text-emerald-800 inline-flex items-center gap-1">
+                                        <i class="bi bi-check2-circle"></i>
+                                        Tepat Waktu
+                                    </span>
+                                @endif
                             </div>
 
                             <p class="mt-0.5 text-xs font-semibold text-slate-600">

@@ -2,10 +2,13 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class JurnalMengajar extends Model
 {
+    use HasFactory;
+
     protected $table = 'jurnal_mengajars';
 
     protected $primaryKey = 'id_jurnal';
@@ -34,6 +37,17 @@ class JurnalMengajar extends Model
         'status_validasi',
         'catatan_validasi',
         'divalidasi_pada',
+        'filled_at',
+        'is_late',
+        'late_mode',
+    ];
+
+    protected $casts = [
+        'tanggal' => 'date',
+        'filled_at' => 'datetime',
+        'is_late' => 'boolean',
+        'ada_tugas' => 'boolean',
+        'divalidasi_pada' => 'datetime',
     ];
 
     public function absensis()

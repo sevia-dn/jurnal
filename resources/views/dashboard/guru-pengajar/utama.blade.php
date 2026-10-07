@@ -375,6 +375,51 @@ function guruLogbookState(config) {
     @endif
 
     {{-- ========================================================= --}}
+    {{-- PANEL KHUSUS WAKASEK KESISWAAN: KONFIRMASI KETIDAKHADIRAN GURU --}}
+    {{-- ========================================================= --}}
+    @if(($isWaka ?? false) && ($pendingKetidakhadiranWaka ?? collect())->isNotEmpty())
+        <section class="mb-5 overflow-hidden rounded-2xl border border-indigo-200 bg-white shadow-sm" aria-labelledby="waka-absence-panel-title">
+            <div class="flex items-center justify-between border-b border-indigo-100 bg-indigo-50/60 px-5 py-3.5">
+                <div class="flex items-center gap-2.5">
+                    <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-600 text-white text-sm">
+                        <i class="bi bi-shield-check"></i>
+                    </span>
+                    <div>
+                        <h2 id="waka-absence-panel-title" class="text-sm font-bold text-indigo-950">Konfirmasi Ketidakhadiran Guru (Waka Kesiswaan)</h2>
+                        <p class="text-xs text-indigo-700">Terdapat {{ $pendingKetidakhadiranWaka->count() }} pengajuan ketidakhadiran guru yang menunggu konfirmasi Anda.</p>
+                    </div>
+                </div>
+                <span class="rounded-full bg-indigo-100 px-2.5 py-1 text-xs font-bold text-indigo-800">{{ $pendingKetidakhadiranWaka->count() }} Menunggu</span>
+            </div>
+            <div class="divide-y divide-slate-100">
+                @foreach($pendingKetidakhadiranWaka as $pAbsence)
+                    <div class="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
+                        <div class="min-w-0">
+                            <div class="flex items-center gap-2">
+                                <h3 class="text-sm font-bold text-slate-900">{{ $pAbsence->guru?->name ?? 'Guru' }}</h3>
+                                <span class="rounded-full px-2 py-0.5 text-[10px] font-bold {{ $pAbsence->alasan === 'sakit' ? 'bg-amber-100 text-amber-800' : 'bg-sky-100 text-sky-800' }}">
+                                    {{ ucfirst($pAbsence->alasan) }}
+                                </span>
+                            </div>
+                            <p class="mt-1 text-xs text-slate-500">
+                                Tanggal: <strong>{{ \Carbon\Carbon::parse($pAbsence->tanggal)->translatedFormat('l, d F Y') }}</strong>
+                                @if($pAbsence->keterangan)
+                                    · <span class="text-slate-600">"{{ Str::limit($pAbsence->keterangan, 60) }}"</span>
+                                @endif
+                            </p>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <a href="{{ route('guru.utama', ['konfirmasi_guru_absen' => $pAbsence->id]) }}" class="inline-flex items-center gap-1.5 rounded-xl bg-indigo-600 px-3.5 py-2 text-xs font-bold text-white transition hover:bg-indigo-700 shadow-xs">
+                                <i class="bi bi-eye-fill"></i> Periksa & Konfirmasi
+                            </a>
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+        </section>
+    @endif
+
+    {{-- ========================================================= --}}
     {{-- SECTION 1 : PILIHAN UTAMA GURU (PALING ATAS) --}}
     {{-- ========================================================= --}}
 
@@ -1527,6 +1572,93 @@ function guruLogbookState(config) {
                         </form>
                     @else
                         <div class="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">Pengajuan ini sudah <strong>{{ $approvalDispensasi->status_waka }}</strong> oleh {{ $approvalDispensasi->pemroses?->name ?? 'Wakasek Kesiswaan' }}. Status yang sama berlaku untuk semua Wakasek penerima tautan.</div>
+                    @endif
+                </div>
+            </div>
+        </div>
+    @endif
+
+    {{-- MODAL DETAIL & KONFIRMASI KETIDAKHADIRAN GURU OLEH WAKA --}}
+    @if($detailKetidakhadiranWaka)
+        <div x-data="{ open: true }" x-show="open" x-cloak class="fixed inset-0 z-[90] flex items-end bg-slate-950/60 p-0 backdrop-blur-sm sm:items-center sm:justify-center sm:p-5">
+            <div class="max-h-[92dvh] w-full overflow-y-auto rounded-t-2xl bg-white shadow-2xl sm:max-w-2xl sm:rounded-2xl">
+                <div class="sticky top-0 flex items-start justify-between gap-4 border-b border-slate-100 bg-white px-4 py-4 sm:px-5">
+                    <div>
+                        <p class="text-xs font-bold uppercase tracking-wide text-indigo-600">Konfirmasi Waka Kesiswaan</p>
+                        <h2 class="mt-1 text-lg font-bold text-slate-900">Ketidakhadiran Guru</h2>
+                    </div>
+                    <a href="{{ route('guru.utama') }}" class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-slate-500 transition hover:bg-slate-100" aria-label="Tutup detail ketidakhadiran"><i class="bi bi-x-lg"></i></a>
+                </div>
+
+                <div class="space-y-4 p-4 sm:p-5">
+                    <div class="rounded-xl border border-indigo-100 bg-indigo-50 p-4">
+                        <p class="text-xs font-semibold uppercase tracking-wide text-indigo-600">Guru Pemohon</p>
+                        <p class="mt-1 text-base font-bold text-slate-900">{{ $detailKetidakhadiranWaka->guru?->name }} <span class="text-sm font-semibold text-slate-500">· NIP: {{ $detailKetidakhadiranWaka->guru?->nip ?? '-' }}</span></p>
+                    </div>
+
+                    <div class="grid gap-3 sm:grid-cols-2">
+                        <div class="rounded-xl border border-slate-200 p-3">
+                            <p class="text-[11px] font-bold uppercase text-slate-400">Jenis Alasan</p>
+                            <p class="mt-1 text-sm font-semibold text-slate-800">{{ ucfirst($detailKetidakhadiranWaka->alasan) }}</p>
+                        </div>
+                        <div class="rounded-xl border border-slate-200 p-3">
+                            <p class="text-[11px] font-bold uppercase text-slate-400">Tanggal Ketidakhadiran</p>
+                            <p class="mt-1 text-sm font-semibold text-slate-800">{{ \Carbon\Carbon::parse($detailKetidakhadiranWaka->tanggal)->translatedFormat('l, d F Y') }}</p>
+                        </div>
+                    </div>
+
+                    <div class="rounded-xl border border-slate-200 p-3">
+                        <p class="text-[11px] font-bold uppercase text-slate-400">Keterangan Tambahan</p>
+                        <p class="mt-1 text-sm leading-relaxed text-slate-700">{{ $detailKetidakhadiranWaka->keterangan ?: 'Tidak ada keterangan tambahan.' }}</p>
+                    </div>
+
+                    @if($detailKetidakhadiranWaka->lampiran)
+                        <div class="rounded-xl border border-slate-200 p-3">
+                            <p class="text-[11px] font-bold uppercase text-slate-400">Berkas / Surat Bukti</p>
+                            <a href="{{ asset('storage/' . $detailKetidakhadiranWaka->lampiran) }}" target="_blank" class="mt-1.5 inline-flex items-center gap-1.5 text-xs font-bold text-indigo-600 hover:underline">
+                                <i class="bi bi-file-earmark-arrow-down"></i> Buka Lampiran Surat / Bukti
+                            </a>
+                        </div>
+                    @endif
+
+                    <div class="rounded-xl border border-slate-200 p-3">
+                        <p class="text-[11px] font-bold uppercase text-slate-400">Verifikasi Guru Piket</p>
+                        <p class="mt-1 text-sm font-semibold text-slate-800">
+                            Status: <span class="rounded px-2 py-0.5 text-xs font-bold {{ $detailKetidakhadiranWaka->status === 'disetujui' ? 'bg-emerald-100 text-emerald-800' : ($detailKetidakhadiranWaka->status === 'ditolak' ? 'bg-rose-100 text-rose-800' : 'bg-amber-100 text-amber-800') }}">{{ ucfirst($detailKetidakhadiranWaka->status) }}</span>
+                            @if($detailKetidakhadiranWaka->handler)
+                                · diverifikasi oleh {{ $detailKetidakhadiranWaka->handler->name }}
+                            @endif
+                        </p>
+                        @if($detailKetidakhadiranWaka->catatan_piket)
+                            <p class="mt-1 text-xs text-slate-500">Catatan piket: {{ $detailKetidakhadiranWaka->catatan_piket }}</p>
+                        @endif
+                    </div>
+
+                    @if($detailKetidakhadiranWaka->status_konfirmasi_waka === 'pending')
+                        <form action="{{ route('waka.ketidakhadiran.konfirmasi', $detailKetidakhadiranWaka) }}" method="POST" class="space-y-3 border-t border-slate-100 pt-4">
+                            @csrf
+                            <label class="block">
+                                <span class="text-xs font-bold text-slate-700">Catatan Waka (opsional)</span>
+                                <textarea name="catatan_waka" rows="3" class="mt-1.5 w-full rounded-xl border border-slate-200 p-3 text-sm outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100" placeholder="Tambahkan catatan atau arahan bagi guru/piket bila diperlukan."></textarea>
+                            </label>
+                            <div class="grid grid-cols-2 gap-3">
+                                <button type="submit" name="keputusan" value="dikonfirmasi" class="rounded-xl bg-emerald-600 px-4 py-3 text-sm font-bold text-white transition hover:bg-emerald-700">
+                                    <i class="bi bi-check-circle-fill mr-1"></i> Konfirmasi Hadir/Izin
+                                </button>
+                                <button type="submit" name="keputusan" value="ditolak" class="rounded-xl bg-rose-600 px-4 py-3 text-sm font-bold text-white transition hover:bg-rose-700">
+                                    <i class="bi bi-x-circle-fill mr-1"></i> Tolak Pengajuan
+                                </button>
+                            </div>
+                        </form>
+                    @else
+                        <div class="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
+                            Pengajuan ini telah <strong>{{ $detailKetidakhadiranWaka->status_konfirmasi_waka }}</strong>
+                            oleh {{ $detailKetidakhadiranWaka->konfirmatorWaka?->name ?? 'Waka Kesiswaan' }}
+                            pada {{ $detailKetidakhadiranWaka->dikonfirmasi_waka_pada?->translatedFormat('d F Y H:i') }} WIB.
+                            @if($detailKetidakhadiranWaka->catatan_waka)
+                                <p class="mt-1 text-xs text-slate-600"><strong>Catatan:</strong> {{ $detailKetidakhadiranWaka->catatan_waka }}</p>
+                            @endif
+                        </div>
                     @endif
                 </div>
             </div>
