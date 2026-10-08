@@ -52,7 +52,7 @@ return [
     |
     */
 
-    'piket_test_mode' => (bool) env('PIKET_TEST_MODE', true),
+    'piket_test_mode' => (bool) env('PIKET_TEST_MODE', false),
 
     /*
     |--------------------------------------------------------------------------

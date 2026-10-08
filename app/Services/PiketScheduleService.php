@@ -11,6 +11,10 @@ class PiketScheduleService
 {
     public function isScheduled(User $user, CarbonInterface $date): bool
     {
+        if ($this->isTestAccessEnabled() && $this->hasAnyAssignment($user)) {
+            return true;
+        }
+
         $dayName = $this->dayName($date);
 
         return JadwalPiket::query()
