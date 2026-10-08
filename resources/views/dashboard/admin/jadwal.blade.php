@@ -894,24 +894,6 @@
         if (footerText) {
             footerText.innerHTML = 'Menampilkan <strong>' + visibleCount + '</strong> sesi pelajaran aktif';
         }
-
-        // Sinkronkan form Tambah Jadwal jika bukan 'Semua'
-        if (hari !== 'Semua') {
-            const addHariSelect = document.getElementById('formAddHari');
-            if (addHariSelect) addHariSelect.value = hari;
-        }
-    }
-
-    function setAddFormDay() {
-        if (currentSelectedHari !== 'Semua') {
-            const addHariSelect = document.getElementById('formAddHari');
-            if (addHariSelect) addHariSelect.value = currentSelectedHari;
-        }
-        const addForm = document.getElementById('formAddHari');
-        if (addForm) {
-            addForm.focus();
-            addForm.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
     }
 
 
@@ -923,8 +905,8 @@
         const kategori = mapelCategories[selectElement.value] ?? (selectedOption ? selectedOption.getAttribute('data-kategori') : '');
         const text = selectedOption ? selectedOption.textContent.toLowerCase() : '';
 
-        const jamKeEl = (type === 'add') ? document.getElementById('formAddJamKe') : document.getElementById('editJamKe');
-        const guruEl = (type === 'add') ? document.getElementById('formAddGuruId') : document.getElementById('editGuruId');
+        const jamKeEl = document.getElementById('editJamKe');
+        const guruEl = document.getElementById('editGuruId');
 
         if (kategori === 'kegiatan' || text.includes('istirahat') || text.includes('upacara') || text.includes('pembiasaan')) {
             if (jamKeEl) {
@@ -1049,11 +1031,10 @@
     const JUMAT_TIMES = @json($fridayTimePresets);
 
     function applyScheduleTimePresets(context) {
-        const isEdit = (context === 'edit');
-        const hariEl = isEdit ? document.getElementById('editHari') : document.getElementById('formAddHari');
-        const jamKeEl = isEdit ? document.getElementById('editJamKe') : document.getElementById('formAddJamKe');
-        const inputMulai = isEdit ? document.getElementById('editJamMulai') : document.getElementById('formAddJamMulai');
-        const inputSelesai = isEdit ? document.getElementById('editJamSelesai') : document.getElementById('formAddJamSelesai');
+        const hariEl = document.getElementById('editHari');
+        const jamKeEl = document.getElementById('editJamKe');
+        const inputMulai = document.getElementById('editJamMulai');
+        const inputSelesai = document.getElementById('editJamSelesai');
 
         if (!hariEl || !jamKeEl || !inputMulai || !inputSelesai) return;
 
