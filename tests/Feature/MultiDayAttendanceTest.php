@@ -2,7 +2,10 @@
 
 namespace Tests\Feature;
 
+use App\Models\JadwalMengajar;
 use App\Models\Kelas;
+use App\Models\Mapel;
+use App\Models\Notifikasi;
 use App\Models\PeriodeKetidakhadiranSiswa;
 use App\Models\PiketKehadiranSiswa;
 use App\Models\Siswa;
@@ -112,6 +115,53 @@ class MultiDayAttendanceTest extends TestCase
         $this->assertSame(3, PiketKehadiranSiswa::where('siswa_id', $siswa->id)->count());
     }
 
+    public function test_multi_day_absence_notifies_the_scheduled_teacher_and_class_manager(): void
+    {
+        $kelas = Kelas::create(['nama_kelas' => 'XII-RPL-1', 'jumlah_siswa' => 30]);
+        $siswa = Siswa::create([
+            'nama' => 'Ahmad Dahlan',
+            'nis' => '12347',
+            'kelas_id' => $kelas->id_kelas,
+            'jenis_kelamin' => 'L',
+        ]);
+        $guru = User::factory()->create(['role' => 'guru']);
+        $pengurus = User::factory()->create([
+            'name' => 'Pengurus Kelas XII-RPL-1',
+            'role' => 'pengurus_kelas',
+        ]);
+        $admin = User::factory()->create(['role' => 'admin']);
+        $mapel = Mapel::create(['kode_mapel' => 'INF', 'nama_mapel' => 'Informatika']);
+        JadwalMengajar::create([
+            'id_user' => $guru->id,
+            'id_kelas' => $kelas->id_kelas,
+            'id_mapel' => $mapel->id,
+            'hari' => 'Senin',
+            'jam_mulai' => 1,
+            'jam_selesai' => 2,
+        ]);
+
+        $this->actingAs($admin)
+            ->post(route('piket.kehadiran-siswa.multi-day'), [
+                'siswa_id' => $siswa->id,
+                'tanggal_mulai' => '2026-10-05',
+                'tanggal_selesai' => '2026-10-05',
+                'status' => 'Izin',
+                'alasan' => 'Mengikuti pemeriksaan dokter.',
+            ])
+            ->assertRedirect();
+
+        foreach ([$guru->id, $pengurus->id] as $recipientId) {
+            $this->assertDatabaseHas('notifikasis', [
+                'id_user' => $recipientId,
+                'id_kelas' => $kelas->id_kelas,
+                'tipe' => 'kehadiran_siswa_piket',
+            ]);
+        }
+
+        $notification = Notifikasi::where('id_user', $guru->id)->firstOrFail();
+        $this->assertStringContainsString('Mengikuti pemeriksaan dokter.', $notification->pesan);
+    }
+
     public function test_piket_can_cancel_multi_day_absence_period(): void
     {
         $kelas = Kelas::create(['nama_kelas' => 'XII-RPL-1', 'jumlah_siswa' => 30]);
@@ -140,5 +190,30 @@ class MultiDayAttendanceTest extends TestCase
 
         $this->assertDatabaseMissing('periode_ketidakhadiran_siswas', ['id' => $periode->id]);
         $this->assertSame(0, PiketKehadiranSiswa::where('siswa_id', $siswa->id)->count());
+    }
+
+    public function test_multi_day_absence_only_accepts_izin_or_sakit_statuses(): void
+    {
+        $kelas = Kelas::create(['nama_kelas' => 'XII-RPL-1', 'jumlah_siswa' => 30]);
+        $siswa = Siswa::create([
+            'nama' => 'Dewi Sartika',
+            'nis' => '12348',
+            'kelas_id' => $kelas->id_kelas,
+            'jenis_kelamin' => 'P',
+        ]);
+        $admin = User::factory()->create(['role' => 'admin']);
+
+        $this->actingAs($admin)
+            ->from(route('piket.kehadiran-siswa'))
+            ->post(route('piket.kehadiran-siswa.multi-day'), [
+                'siswa_id' => $siswa->id,
+                'tanggal_mulai' => '2026-10-05',
+                'tanggal_selesai' => '2026-10-05',
+                'status' => 'Alfa',
+            ])
+            ->assertRedirect(route('piket.kehadiran-siswa'))
+            ->assertSessionHasErrors('status');
+
+        $this->assertDatabaseCount('periode_ketidakhadiran_siswas', 0);
     }
 }

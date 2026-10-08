@@ -327,8 +327,8 @@ class PengurusKelasController extends Controller
         Notifikasi::create([
             'id_user' => $jurnal->id_user,
             'id_kelas' => null,
-            'judul' => 'Logbook Disetujui',
-            'pesan' => "Logbook {$jurnal->mapel?->nama_mapel} kelas {$jurnal->kelas?->nama_kelas} telah divalidasi Pengurus Kelas.",
+            'judul' => 'Logbook Sudah Tervalidasi',
+            'pesan' => 'Logbook sudah tervalidasi oleh Pengurus Kelas.',
             'tipe' => 'logbook_disetujui',
             'is_read' => false,
         ]);

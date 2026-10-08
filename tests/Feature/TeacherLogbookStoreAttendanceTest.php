@@ -166,4 +166,44 @@ class TeacherLogbookStoreAttendanceTest extends TestCase
         $resPiketKehadiran->assertSee('Dewi');
         $resPiketKehadiran->assertSee('Eko');
     }
+
+    public function test_teacher_dashboard_shows_students_and_all_logbook_sections_for_a_scheduled_class(): void
+    {
+        $now = Carbon::parse('2026-10-05 08:30:00', 'Asia/Jakarta');
+        $this->travelTo($now);
+
+        $guru = User::factory()->create(['role' => 'guru']);
+        $kelasTerjadwal = Kelas::create(['nama_kelas' => 'X RPL 1', 'jumlah_siswa' => 1]);
+        $kelasLain = Kelas::create(['nama_kelas' => 'X TKJ 1', 'jumlah_siswa' => 1]);
+        $mapel = Mapel::create(['kode_mapel' => 'INF', 'nama_mapel' => 'Informatika']);
+        JadwalMengajar::create([
+            'id_user' => $guru->id,
+            'id_kelas' => $kelasTerjadwal->id_kelas,
+            'id_mapel' => $mapel->id,
+            'hari' => $now->translatedFormat('l'),
+            'jam_mulai' => 1,
+            'jam_selesai' => 2,
+        ]);
+        Siswa::create([
+            'nama' => 'Siswa Terjadwal',
+            'nis' => '10001',
+            'kelas_id' => $kelasTerjadwal->id_kelas,
+            'jenis_kelamin' => 'L',
+        ]);
+        Siswa::create([
+            'nama' => 'Siswa Kelas Lain',
+            'nis' => '10002',
+            'kelas_id' => $kelasLain->id_kelas,
+            'jenis_kelamin' => 'P',
+        ]);
+
+        $this->actingAs($guru)
+            ->get(route('guru.utama'))
+            ->assertOk()
+            ->assertSee('Siswa Terjadwal')
+            ->assertDontSee('Siswa Kelas Lain')
+            ->assertSee('Presensi Kehadiran Siswa')
+            ->assertSee('Lampiran Foto Live Mengajar')
+            ->assertSee('Catatan Khusus / Hambatan');
+    }
 }

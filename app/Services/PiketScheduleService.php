@@ -11,7 +11,7 @@ class PiketScheduleService
 {
     public function isScheduled(User $user, CarbonInterface $date): bool
     {
-        if ($this->isTestAccessEnabled() && $this->hasAnyAssignment($user)) {
+        if ($this->hasTestModePiketAccess()) {
             return true;
         }
 
@@ -31,7 +31,7 @@ class PiketScheduleService
 
     public function isScheduledNow(User $user): bool
     {
-        if ($this->isTestAccessEnabled() && $this->hasAnyAssignment($user)) {
+        if ($this->hasTestModePiketAccess()) {
             return true;
         }
 
@@ -82,10 +82,8 @@ class PiketScheduleService
         return (bool) config('app.piket_test_mode', false);
     }
 
-    private function hasAnyAssignment(User $user): bool
+    private function hasTestModePiketAccess(): bool
     {
-        return JadwalPiket::query()
-            ->where('user_id', $user->id)
-            ->exists();
+        return $this->isTestAccessEnabled();
     }
 }

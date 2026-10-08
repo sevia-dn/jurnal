@@ -153,20 +153,25 @@ class GuruController extends Controller
         // Jadwal aktif pertama hari ini yang belum terlewat atau belum diisi untuk auto-fill
         $activeJadwal = $jadwals->firstWhere('is_filled', false) ?? $jadwals->first();
 
-        // Data pendukung form
+        // Form jurnal hanya terhubung ke kelas dan mapel yang dijadwalkan untuk guru ini.
+        // Daftar siswa juga dibatasi ke kelas tersebut agar presensi selalu sesuai sesi mengajar.
+        $scheduledClassIds = $jadwals->pluck('id_kelas')->unique()->values();
+        $scheduledMapelIds = $jadwals->pluck('id_mapel')->unique()->values();
         $teachers = User::where('role', 'guru')->orderBy('name')->get();
-        $kelases = Kelas::orderBy('nama_kelas')->get();
-        $mapels = Mapel::orderBy('nama_mapel')->get();
-
-        // Siswa dikirim ke view untuk daftar presensi di kelas terpilih
+        $kelases = Kelas::query()
+            ->whereIn('id_kelas', $scheduledClassIds)
+            ->orderBy('nama_kelas')
+            ->get();
+        $mapels = Mapel::query()
+            ->whereIn('id', $scheduledMapelIds)
+            ->orderBy('nama_mapel')
+            ->get();
         $siswas = Siswa::with('kelas')
+            ->whereIn('kelas_id', $scheduledClassIds)
             ->orderBy('kelas_id')
             ->orderBy('nama')
             ->get();
-        // Siswa dikirim ke view dikelompokkan per kelas_id untuk presensi instan tanpa lag
-        $siswasByKelas = Siswa::orderBy('nama')
-            ->get(['id', 'nama', 'nis', 'jenis_kelamin', 'kelas_id'])
-            ->groupBy('kelas_id');
+        $siswasByKelas = $siswas->groupBy('kelas_id');
         $piketKehadiranHariIni = PiketKehadiranSiswa::query()
             ->whereDate('tanggal', $todayDate)
             ->get()

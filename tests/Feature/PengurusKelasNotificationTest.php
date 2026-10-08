@@ -35,6 +35,7 @@ class PengurusKelasNotificationTest extends TestCase
             'id' => $notification->id,
             'is_read' => true,
         ]);
+
     }
 
     public function test_validating_a_journal_marks_its_notification_read(): void
@@ -57,6 +58,14 @@ class PengurusKelasNotificationTest extends TestCase
         $this->assertDatabaseHas('notifikasis', [
             'id' => $notification->id,
             'is_read' => true,
+        ]);
+
+        $this->assertDatabaseHas('notifikasis', [
+            'id_user' => $jurnal->id_user,
+            'id_jurnal' => null,
+            'judul' => 'Logbook Sudah Tervalidasi',
+            'pesan' => 'Logbook sudah tervalidasi oleh Pengurus Kelas.',
+            'tipe' => 'logbook_disetujui',
         ]);
     }
 

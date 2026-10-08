@@ -46,9 +46,9 @@ return [
     | Piket Test Mode
     |--------------------------------------------------------------------------
     |
-    | This temporarily lets a teacher with a piket assignment access piket
-    | features outside their configured shift hours. Keep this disabled in
-    | normal operation.
+    | This temporarily lets any authenticated user access piket features without
+    | a piket assignment or configured shift hours. Keep this disabled in normal
+    | operation.
     |
     */
 

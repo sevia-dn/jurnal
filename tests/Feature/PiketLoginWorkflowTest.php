@@ -72,6 +72,28 @@ class PiketLoginWorkflowTest extends TestCase
         $this->actingAs($guru)->get(route('dashboard.piket'))->assertOk();
     }
 
+    public function test_test_mode_allows_a_teacher_without_piket_assignment_to_access_piket(): void
+    {
+        config()->set('app.piket_test_mode', true);
+        $guru = $this->teacher('guru-uji-piket');
+
+        $this->assertTrue($guru->isPiketActive());
+        $this->actingAs($guru)->get(route('dashboard.piket'))->assertOk();
+    }
+
+    public function test_test_mode_allows_pengurus_kelas_to_access_piket(): void
+    {
+        config()->set('app.piket_test_mode', true);
+        $pengurus = User::factory()->create([
+            'role' => 'pengurus_kelas',
+        ]);
+
+        $this->assertTrue($pengurus->isPiketActive());
+        $this->actingAs($pengurus)
+            ->get(route('dashboard.piket'))
+            ->assertOk();
+    }
+
     public function test_unscheduled_teacher_lands_on_teaching_dashboard(): void
     {
         $this->travelTo(Carbon::parse('2026-09-22 08:00:00', 'Asia/Jakarta'));
