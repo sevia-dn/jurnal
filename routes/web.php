@@ -127,6 +127,9 @@ Route::middleware('auth')->group(function () {
         Route::delete('/piket/kehadiran-siswa/multi-day/{periode}', [PiketController::class, 'cancelMultiDayKehadiranSiswa'])
             ->name('piket.kehadiran-siswa.multi-day.cancel');
 
+        Route::post('/piket/kehadiran-siswa/telat', [PiketController::class, 'catatSiswaTelat'])
+            ->name('piket.kehadiran-siswa.telat');
+
         // ==========================================
         // DATA GURU
         // ==========================================

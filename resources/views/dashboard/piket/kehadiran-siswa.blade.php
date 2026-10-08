@@ -11,7 +11,7 @@
 @endsection
 
 @section('content')
-<div id="student-attendance-page" class="min-h-full bg-slate-50 p-4 pb-24 font-sans sm:p-6 lg:p-8">
+<div id="student-attendance-page" x-data="{ showModalTelat: false, selectedStudentId: '' }" class="min-h-full bg-slate-50 p-4 pb-24 font-sans sm:p-6 lg:p-8">
     <div class="mx-auto max-w-7xl">
         <a href="{{ route('dashboard.piket') }}" class="mb-4 inline-flex items-center gap-2 rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-xs font-bold text-sky-700 transition hover:bg-sky-100">
             <i class="bi bi-arrow-left"></i>Kembali
@@ -25,6 +25,16 @@
                     <span>{{ session('success') }}</span>
                 </div>
                 <button type="button" onclick="this.parentElement.remove()" class="text-emerald-500 hover:text-emerald-700"><i class="bi bi-x-lg"></i></button>
+            </div>
+        @endif
+
+        @if(session('error') || $errors->any())
+            <div class="mb-5 flex items-center justify-between rounded-xl bg-rose-50 p-4 border border-rose-200 text-rose-800 text-sm font-semibold shadow-xs">
+                <div class="flex items-center gap-2">
+                    <i class="bi bi-exclamation-triangle-fill text-lg text-rose-600"></i>
+                    <span>{{ session('error') ?: $errors->first() }}</span>
+                </div>
+                <button type="button" onclick="this.parentElement.remove()" class="text-rose-500 hover:text-rose-700"><i class="bi bi-x-lg"></i></button>
             </div>
         @endif
 
@@ -70,16 +80,28 @@
                     <span class="rounded-full bg-sky-100 px-2.5 py-1 text-sky-800">{{ $totalIzin }} Izin</span>
                     <span class="rounded-full bg-indigo-100 px-2.5 py-1 text-indigo-800">{{ $totalDispen }} Dispensasi</span>
                     <span class="rounded-full bg-rose-100 px-2.5 py-1 text-rose-800">{{ $totalAlfa }} Alpa</span>
+                    <span class="rounded-full bg-orange-100 px-2.5 py-1 text-orange-800">{{ $totalTerlambat ?? 0 }} Terlambat</span>
                 </div>
             </div>
         </section>
 
         <!-- Pencarian & Filter Cepat -->
-        <section class="mb-4">
-            <div class="relative max-w-md">
+        <section class="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div class="relative max-w-md w-full">
                 <i class="bi bi-search absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none"></i>
                 <input type="text" id="search-input" placeholder="Cari nama atau NIS siswa..." class="w-full rounded-xl border border-slate-300 bg-white py-2 pl-9 pr-4 text-xs sm:text-sm font-medium text-slate-800 shadow-xs placeholder:text-slate-400 focus:border-emerald-500 focus:outline-none focus:ring-4 focus:ring-emerald-100">
             </div>
+
+            @if($isEditableDate)
+                <button
+                    type="button"
+                    @click="selectedStudentId = ''; showModalTelat = true"
+                    class="inline-flex items-center gap-1.5 rounded-xl border border-amber-300 bg-amber-50 px-3.5 py-2 text-xs font-bold text-amber-900 shadow-xs transition hover:bg-amber-100 active:scale-95 cursor-pointer shrink-0"
+                >
+                    <i class="bi bi-clock-history text-sm text-amber-700"></i>
+                    <span>+ Catat Siswa Telat (Izin Masuk)</span>
+                </button>
+            @endif
         </section>
 
         <!-- Main Table Container -->
@@ -110,6 +132,7 @@
                             <option value="Izin">Izin</option>
                             <option value="Dispensasi">Dispensasi</option>
                             <option value="Alfa">Alfa</option>
+                            <option value="Terlambat">Terlambat</option>
                         </select>
                     </label>
 
@@ -163,6 +186,8 @@
                     <!-- Content rendered via JS from real backend data -->
                 </div>
             </form>
+        </section>
+
         <!-- Modal Form Input Ketidakhadiran Multi-Hari -->
         <div id="multi-day-modal" class="fixed inset-0 z-50 hidden items-center justify-center overflow-y-auto bg-slate-900/60 p-4 backdrop-blur-xs">
             <div class="relative w-full max-w-lg rounded-2xl bg-white p-5 shadow-2xl sm:p-6">
@@ -232,10 +257,183 @@
                 </form>
             </div>
         </div>
+
+        {{-- MODAL CATAT SISWA TELAT & SURAT IZIN MASUK --}}
+        <div
+            x-show="showModalTelat"
+            x-cloak
+            class="fixed inset-0 z-50 overflow-y-auto"
+            aria-labelledby="modal-telat-title"
+            role="dialog"
+            aria-modal="true"
+        >
+            <div class="flex min-h-screen items-center justify-center p-4 text-center sm:p-0">
+                <div
+                    x-show="showModalTelat"
+                    x-transition:enter="ease-out duration-300"
+                    x-transition:enter-start="opacity-0"
+                    x-transition:enter-end="opacity-100"
+                    x-transition:leave="ease-in duration-200"
+                    x-transition:leave-start="opacity-100"
+                    x-transition:leave-end="opacity-0"
+                    class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity"
+                    @click="showModalTelat = false"
+                ></div>
+
+                <div
+                    x-show="showModalTelat"
+                    x-transition:enter="ease-out duration-300"
+                    x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+                    x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100"
+                    x-transition:leave="ease-in duration-200"
+                    x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
+                    x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+                    class="relative transform overflow-hidden rounded-2xl bg-white text-left shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-lg"
+                >
+                    <form method="POST" action="{{ route('piket.kehadiran-siswa.telat') }}">
+                        @csrf
+                        <input type="hidden" name="tanggal" value="{{ $tanggal }}">
+
+                        {{-- Header Modal --}}
+                        <div class="border-b border-amber-100 bg-linear-to-r from-amber-50 to-orange-50 px-5 py-4 sm:px-6">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-2.5">
+                                    <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-500 text-white shadow-xs">
+                                        <i class="bi bi-clock-history text-lg"></i>
+                                    </div>
+                                    <div>
+                                        <h3 id="modal-telat-title" class="text-sm sm:text-base font-bold text-slate-900">
+                                            Catat Siswa Terlambat
+                                        </h3>
+                                        <p class="text-xs text-amber-800">
+                                            Terbitkan Surat Izin Masuk &amp; Notifikasi Kelas
+                                        </p>
+                                    </div>
+                                </div>
+                                <button
+                                    type="button"
+                                    @click="showModalTelat = false"
+                                    class="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition cursor-pointer"
+                                >
+                                    <i class="bi bi-x-lg text-sm"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        {{-- Body Modal --}}
+                        <div class="space-y-4 p-5 sm:p-6">
+                            {{-- Info Kelas & Tanggal --}}
+                            <div class="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600">
+                                <div>
+                                    <span class="text-slate-400">Kelas:</span>
+                                    <strong class="ml-1 text-slate-800">{{ $selectedKelas?->nama_kelas ?? 'Umum' }}</strong>
+                                </div>
+                                <div>
+                                    <span class="text-slate-400">Tanggal:</span>
+                                    <strong class="ml-1 text-slate-800">{{ \Carbon\Carbon::parse($tanggal)->translatedFormat('d F Y') }}</strong>
+                                </div>
+                            </div>
+
+                            {{-- Pilih Siswa --}}
+                            <div>
+                                <label for="modal-siswa-id" class="block text-xs font-bold text-slate-700">
+                                    Pilih Siswa Terlambat <span class="text-rose-500">*</span>
+                                </label>
+                                <div class="mt-1.5 relative">
+                                    <select
+                                        id="modal-siswa-id"
+                                        name="siswa_id"
+                                        x-model="selectedStudentId"
+                                        required
+                                        class="w-full appearance-none rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs sm:text-sm font-medium text-slate-800 shadow-xs focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-200 cursor-pointer pr-8"
+                                    >
+                                        <option value="">-- Pilih Nama Siswa --</option>
+                                        @foreach($studentsData as $student)
+                                            <option value="{{ $student['id'] }}">
+                                                {{ $student['name'] }} (NIS: {{ $student['nis'] ?: '-' }})
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                    <i class="bi bi-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 pointer-events-none"></i>
+                                </div>
+                            </div>
+
+                            {{-- Alasan Terlambat --}}
+                            <div>
+                                <label for="modal-alasan" class="block text-xs font-bold text-slate-700">
+                                    Alasan Keterlambatan <span class="text-rose-500">*</span>
+                                </label>
+                                <textarea
+                                    id="modal-alasan"
+                                    name="alasan"
+                                    rows="2"
+                                    maxlength="255"
+                                    required
+                                    placeholder="Contoh: Ban motor bocor, membantu orang tua, jalan macet..."
+                                    class="mt-1.5 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs sm:text-sm font-medium text-slate-800 shadow-xs placeholder:text-slate-400 focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-200"
+                                ></textarea>
+                            </div>
+
+                            {{-- Tindakan / Hukuman Piket --}}
+                            <div>
+                                <label for="modal-tindakan" class="block text-xs font-bold text-slate-700">
+                                    Tindakan / Sanksi Pembinaan <span class="text-slate-400 font-normal">(Opsional)</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    id="modal-tindakan"
+                                    name="tindakan"
+                                    maxlength="255"
+                                    placeholder="Contoh: Membersihkan area taman 10 menit, menyanyikan lagu nasional..."
+                                    class="mt-1.5 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs sm:text-sm font-medium text-slate-800 shadow-xs placeholder:text-slate-400 focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-200"
+                                >
+                            </div>
+
+                            {{-- Notice box --}}
+                            <div class="rounded-xl border border-amber-200 bg-amber-50/70 p-3 text-xs text-amber-900 flex items-start gap-2.5">
+                                <i class="bi bi-info-circle-fill text-amber-600 mt-0.5 shrink-0 text-sm"></i>
+                                <div class="leading-relaxed">
+                                    Setelah diterbitkan, sistem akan mengirim <strong>Surat Izin Masuk</strong> ke akun <strong>Pengurus Kelas {{ $selectedKelas?->nama_kelas }}</strong> dan Guru Pengajar hari ini, serta mencatat status siswa.
+                                </div>
+                            </div>
+                        </div>
+
+                        {{-- Footer Modal --}}
+                        <div class="flex items-center justify-end gap-2.5 border-t border-slate-100 bg-slate-50 px-5 py-3.5 sm:px-6">
+                            <button
+                                type="button"
+                                @click="showModalTelat = false"
+                                class="rounded-xl border border-slate-300 bg-white px-4 py-2 text-xs font-bold text-slate-700 transition hover:bg-slate-50 cursor-pointer"
+                            >
+                                Batal
+                            </button>
+                            <button
+                                type="submit"
+                                class="inline-flex items-center gap-1.5 rounded-xl bg-amber-600 px-4 py-2 text-xs font-bold text-white shadow-xs transition hover:bg-amber-700 active:scale-95 cursor-pointer"
+                            >
+                                <i class="bi bi-file-earmark-check"></i>
+                                <span>Terbitkan Izin Masuk</span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 
 <script>
+window.catatTelatSiswa = function(studentId) {
+    const el = document.getElementById('student-attendance-page');
+    if (el && window.Alpine) {
+        const alpineData = window.Alpine.$data(el);
+        if (alpineData) {
+            alpineData.selectedStudentId = String(studentId);
+            alpineData.showModalTelat = true;
+        }
+    }
+};
+
 document.addEventListener('DOMContentLoaded', () => {
     // Data Riil Siswa dari Database Controller
     const studentsData = @json($studentsData);
@@ -257,6 +455,9 @@ document.addEventListener('DOMContentLoaded', () => {
         'Alpa':  ['bg-rose-600', 'border-rose-600', 'text-white'],
         'D':     ['bg-indigo-600', 'border-indigo-600', 'text-white'],
         'Dispensasi': ['bg-indigo-600', 'border-indigo-600', 'text-white'],
+        'Terlambat': ['bg-orange-500', 'border-orange-500', 'text-white'],
+        'Telat':     ['bg-orange-500', 'border-orange-500', 'text-white'],
+        'T':         ['bg-orange-500', 'border-orange-500', 'text-white'],
     };
     const ALL_ACTIVE_CLASSES = [
         'bg-emerald-600', 'border-emerald-600',
@@ -264,6 +465,7 @@ document.addEventListener('DOMContentLoaded', () => {
         'bg-sky-600', 'border-sky-600',
         'bg-rose-600', 'border-rose-600',
         'bg-indigo-600', 'border-indigo-600',
+        'bg-orange-500', 'border-orange-500',
         'text-white',
     ];
     const INACTIVE_CLS = ['bg-white', 'border-slate-200', 'text-slate-400'];
@@ -289,6 +491,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function displayStatus(status) {
         if (status === 'D') { return 'Dispensasi'; }
         if (status === 'Alpa') { return 'Alfa'; }
+        if (status === 'Telat' || status === 'T') { return 'Terlambat'; }
         return status;
     }
 
@@ -320,6 +523,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Default to 'Hadir' if no status recorded
             const storedStatus = s.status || 'Hadir';
             const isLocked = s.is_dispen || !canEditAttendance;
+            const isTardy = s.is_terlambat || storedStatus === 'Terlambat' || storedStatus === 'Telat' || storedStatus === 'T';
 
             const OPTIONS = [
                 { label: 'H', value: 'Hadir', title: 'Hadir', activeClass: 'bg-emerald-600 border-emerald-600 text-white' },
@@ -327,13 +531,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 { label: 'I', value: 'Izin',  title: 'Izin',  activeClass: 'bg-sky-600 border-sky-600 text-white' },
                 { label: 'A', value: 'Alfa',  title: 'Alfa',  activeClass: 'bg-rose-600 border-rose-600 text-white' },
                 { label: 'D', value: 'D',     title: 'Dispensasi', activeClass: 'bg-indigo-600 border-indigo-600 text-white' },
+                { label: 'T', value: 'Terlambat', title: 'Terlambat', activeClass: 'bg-orange-500 border-orange-500 text-white' },
             ];
 
             const buttons = OPTIONS.map(({ label, value, title, activeClass }) => {
                 const inputId = `att-${s.id}-${value}`;
                 const isChecked = storedStatus === value
                     || (value === 'Alfa' && storedStatus === 'Alpa')
-                    || (value === 'D' && (storedStatus === 'Dispensasi' || storedStatus === 'D'));
+                    || (value === 'D' && (storedStatus === 'Dispensasi' || storedStatus === 'D'))
+                    || (value === 'Terlambat' && (storedStatus === 'Telat' || storedStatus === 'T' || storedStatus === 'Terlambat'));
 
                 const inactiveCls = 'bg-white border-slate-200 text-slate-400 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-600';
                 const stateCls    = isChecked ? activeClass : inactiveCls;
@@ -368,14 +574,26 @@ document.addEventListener('DOMContentLoaded', () => {
                                             <i class="bi bi-calendar-range text-[9px]"></i> Multi-Hari
                                         </span>
                                     ` : ''}
+                                    ${isTardy ? `
+                                        <span class="inline-flex items-center gap-1 rounded-md bg-amber-50 border border-amber-200 px-1.5 py-0.5 text-[10px] font-bold text-amber-800">
+                                            <i class="bi bi-clock-history"></i> Terlambat
+                                        </span>
+                                    ` : ''}
                                 </div>
-                                <p class="text-[11px] text-slate-400 truncate">NIS: ${escapeHtml(s.nis || '-')} &bull; ${escapeHtml(s.gender || '-')}</p>
+                                <div class="flex items-center gap-2 text-[11px] text-slate-400 truncate">
+                                    <span>NIS: ${escapeHtml(s.nis || '-')} &bull; ${escapeHtml(s.gender || '-')}</span>
+                                    ${canEditAttendance && !isTardy ? `
+                                        <button type="button" onclick="window.catatTelatSiswa(${s.id})" title="Catat Siswa Terlambat" class="inline-flex items-center gap-1 rounded bg-amber-50 px-1.5 py-0.2 text-[10px] font-bold text-amber-700 hover:bg-amber-100 border border-amber-200 cursor-pointer">
+                                            <i class="bi bi-clock-history text-[9px]"></i> Izin Telat
+                                        </button>
+                                    ` : ''}
+                                </div>
                             </div>
                         </div>
 
                         <!-- Status Buttons -->
                         <div class="sm:col-span-3 flex items-center justify-between sm:justify-center">
-                            <fieldset data-student-id="${s.id}" class="flex items-center gap-1.5 shrink-0" aria-label="Status ${escapeHtml(s.name)}">
+                            <fieldset data-student-id="${s.id}" class="flex items-center gap-1 shrink-0" aria-label="Status ${escapeHtml(s.name)}">
                                 ${buttons}
                             </fieldset>
                         </div>
@@ -385,7 +603,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             <input type="text" name="absensi_catatan[${s.id}]" maxlength="255"
                                 value="${escapeHtml(s.note === '-' ? '' : s.note)}"
                                 ${isLocked ? 'readonly' : ''}
-                                placeholder="Keterangan jika tidak hadir..."
+                                placeholder="${isTardy ? 'Alasan terlambat / tindakan piket...' : 'Keterangan jika tidak hadir...'}"
                                 class="w-full rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-xs text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-emerald-500 focus:bg-white focus:ring-2 focus:ring-emerald-100 ${isLocked ? 'cursor-not-allowed opacity-60' : ''}">
                         </div>
                     </div>

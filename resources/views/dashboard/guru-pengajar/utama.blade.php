@@ -1133,8 +1133,14 @@ function guruLogbookState(config) {
                                         @php
                                             $catatanPiket = $piketKehadiranHariIni->get($siswa->id);
                                             $absensiSebelumnya = ($existingAbsensiHariIni ?? collect())->get($kelasId, collect())->get($siswa->id);
+                                            $isTerlambatPiket = $catatanPiket && in_array(strtoupper(trim((string)($catatanPiket->status ?? ''))), ['TERLAMBAT', 'TELAT', 'T'], true);
 
-                                            if ($catatanPiket) {
+                                            if ($isTerlambatPiket) {
+                                                $statusSiswa = 'Hadir';
+                                                $catatanSiswa = $catatanPiket->catatan ?: 'Terlambat: Masuk kelas dengan izin piket';
+                                                $isStatusOtomatisPiket = false;
+                                                $isStatusDariJurnalSebelumnya = false;
+                                            } elseif ($catatanPiket) {
                                                 $statusSiswa = $catatanPiket->status ?? 'Hadir';
                                                 $catatanSiswa = $catatanPiket->catatan ?? '';
                                                 $isStatusOtomatisPiket = in_array($statusSiswa, ['Sakit', 'Izin', 'D', 'Dispensasi'], true);
@@ -1179,7 +1185,12 @@ function guruLogbookState(config) {
                                                         <p class="text-[11px] text-slate-400 truncate">
                                                             NIS: {{ $siswa->nis ?? '-' }} &bull; {{ $siswa->jenis_kelamin }}
                                                         </p>
-                                                        @if($isStatusOtomatisPiket)
+                                                        @if($isTerlambatPiket)
+                                                            <p class="mt-0.5 text-[11px] font-semibold text-amber-700 flex items-center gap-1">
+                                                                <i class="bi bi-clock-history text-amber-600"></i>
+                                                                <span>Terlambat (Izin Piket): {{ $catatanSiswa }}</span>
+                                                            </p>
+                                                        @elseif($isStatusOtomatisPiket)
                                                             <p class="mt-0.5 text-[11px] font-semibold text-indigo-600"><i class="bi bi-shield-check mr-0.5"></i>Otomatis dari Guru Piket</p>
                                                         @elseif($isStatusDariJurnalSebelumnya)
                                                             <p class="mt-0.5 text-[11px] font-semibold text-amber-600"><i class="bi bi-clock-history mr-0.5"></i>Tercatat dari Guru Sebelumnya</p>

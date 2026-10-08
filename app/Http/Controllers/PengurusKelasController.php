@@ -98,6 +98,8 @@ class PengurusKelasController extends Controller
         $jmlIzin = 0;
         $jmlAlpa = 0;
         $jmlDispensasi = 0;
+        $jmlTerlambat = 0;
+        $siswaTerlambatHariIni = collect();
 
         if ($kelasId && $totalSiswa > 0) {
             $siswas = Siswa::where('kelas_id', $kelasId)->pluck('id');
@@ -122,10 +124,15 @@ class PengurusKelasController extends Controller
             }
 
             // Kehadiran siswa yang dicatat piket hari ini
-            $piketKehadiranToday = PiketKehadiranSiswa::where('kelas_id', $kelasId)
+            $piketKehadiranToday = PiketKehadiranSiswa::with(['siswa', 'pencatat'])
+                ->where('kelas_id', $kelasId)
                 ->whereDate('tanggal', $now->toDateString())
                 ->get()
                 ->keyBy('siswa_id');
+
+            $siswaTerlambatHariIni = $piketKehadiranToday->filter(function ($piket) {
+                return in_array(strtoupper(trim((string) $piket->status)), ['TERLAMBAT', 'TELAT', 'T'], true);
+            })->values();
 
             // Dispensasi aktif dan disetujui selalu menjadi status akhir siswa.
             $dispensasiAktifHariIni = Dispensasi::whereHas('siswa', fn ($q) => $q->where('kelas_id', $kelasId))
@@ -151,6 +158,8 @@ class PengurusKelasController extends Controller
                     $ps = strtoupper(trim((string) $piketRec->status));
                     if (in_array($ps, ['S', 'SAKIT', 'I', 'IZIN', 'A', 'ALPA', 'ALFA'], true)) {
                         $status = $ps;
+                    } elseif (in_array($ps, ['TERLAMBAT', 'TELAT', 'T'], true)) {
+                        $jmlTerlambat++;
                     }
                 }
 
@@ -206,6 +215,8 @@ class PengurusKelasController extends Controller
             'jmlIzin',
             'jmlAlpa',
             'jmlDispensasi',
+            'jmlTerlambat',
+            'siswaTerlambatHariIni',
             'jurnalAntrean',
             'jadwals',
             'jurnalHariIni',
@@ -451,12 +462,16 @@ class PengurusKelasController extends Controller
                 ->where('status_akhir', 'disetujui')
                 ->get()
                 ->keyBy('siswa_id');
-            $piketKehadiranHariIni = PiketKehadiranSiswa::query()
+            $piketKehadiranHariIni = PiketKehadiranSiswa::with(['siswa', 'pencatat'])
                 ->where('kelas_id', $kelasId)
                 ->whereDate('tanggal', $now->toDateString())
                 ->get()
                 ->keyBy('siswa_id');
         }
+
+        $siswaTerlambatHariIni = $piketKehadiranHariIni->filter(function ($piket) {
+            return in_array(strtoupper(trim((string) $piket->status)), ['TERLAMBAT', 'TELAT', 'T'], true);
+        })->values();
 
         return view('dashboard.pengurus-kelas.kehadiran-siswa', compact(
             'kelas',
@@ -465,6 +480,7 @@ class PengurusKelasController extends Controller
             'absensiTerakhir',
             'dispensasiAktifHariIni',
             'piketKehadiranHariIni',
+            'siswaTerlambatHariIni',
             'jurnalPertama',
             'totalJurnalHariIni'
         ));
@@ -498,6 +514,10 @@ class PengurusKelasController extends Controller
 
         if ($notifikasi->id_jurnal !== null) {
             return redirect()->route('pengurus-kelas.jurnal-detail', ['id' => $notifikasi->id_jurnal]);
+        }
+
+        if (in_array($notifikasi->tipe, ['siswa_terlambat', 'siswa_telat', 'kehadiran_siswa_piket'], true)) {
+            return redirect()->route('pengurus-kelas.kehadiran-siswa');
         }
 
         return redirect()->route('pengurus-kelas.dashboard');
