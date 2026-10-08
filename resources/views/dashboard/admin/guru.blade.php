@@ -177,7 +177,21 @@
                                 <span class="w-8 h-8 rounded-full bg-emerald-100 text-emerald-800 text-xs flex items-center justify-center font-bold shrink-0">
                                     {{ collect(explode(' ', $user->name))->map(fn($w) => strtoupper($w[0] ?? ''))->take(2)->implode('') }}
                                 </span>
-                                <span class="font-semibold text-gray-900">{{ $user->name }}</span>
+                                <details class="group">
+                                    <summary class="cursor-pointer list-none font-semibold text-gray-900 hover:text-emerald-700">
+                                        {{ $user->name }} <span class="ml-1 text-[10px] font-medium text-emerald-700">{{ $user->beban_jadwal['total'] }} jam/minggu · {{ $user->beban_jadwal['semester'] }} jam/semester · detail</span>
+                                    </summary>
+                                    <div class="mt-2 rounded-lg border border-emerald-100 bg-emerald-50/70 p-3 text-xs text-gray-700">
+                                        @forelse($user->beban_jadwal['kelas'] as $bebanKelas)
+                                            <div class="mb-2 last:mb-0">
+                                                <strong>{{ $bebanKelas['nama'] }}: {{ $bebanKelas['jam'] }} jam/minggu, {{ $bebanKelas['semester'] }} jam/semester</strong>
+                                                <span class="block text-gray-600">{{ collect($bebanKelas['jadwal'])->map(fn ($hari) => $hari['hari'].': '.$hari['jam'].' jam/minggu')->implode(' · ') }}</span>
+                                            </div>
+                                        @empty
+                                            <span>Belum ada jadwal mengajar yang terdaftar. Angka semester dihitung dari jadwal mingguan × {{ $user->beban_jadwal['minggu_efektif_semester'] }} minggu efektif.</span>
+                                        @endforelse
+                                    </div>
+                                </details>
                             </td>
                             <td class="px-4 py-3.5">
                                 @php
