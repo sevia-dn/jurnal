@@ -121,6 +121,12 @@ Route::middleware('auth')->group(function () {
         Route::post('/piket/kehadiran-siswa', [PiketController::class, 'updateKehadiranSiswa'])
             ->name('piket.kehadiran-siswa.update');
 
+        Route::post('/piket/kehadiran-siswa/multi-day', [PiketController::class, 'storeMultiDayKehadiranSiswa'])
+            ->name('piket.kehadiran-siswa.multi-day');
+
+        Route::delete('/piket/kehadiran-siswa/multi-day/{periode}', [PiketController::class, 'cancelMultiDayKehadiranSiswa'])
+            ->name('piket.kehadiran-siswa.multi-day.cancel');
+
         // ==========================================
         // DATA GURU
         // ==========================================
@@ -296,6 +302,10 @@ Route::middleware('auth')->group(function () {
 
     Route::post('/guru-pengajar/ketidakhadiran', [GuruController::class, 'ketidakhadiranStore'])
         ->name('guru.ketidakhadiran.store');
+
+    // Waka: konfirmasi/tolak ketidakhadiran guru
+    Route::post('/guru-pengajar/ketidakhadiran/{ketidakhadiran}/waka-konfirmasi', [GuruController::class, 'wakaKonfirmasiKetidakhadiran'])
+        ->name('waka.ketidakhadiran.konfirmasi');
 
     // Piket: lihat & proses ketidakhadiran guru
     Route::prefix('dashboard')->group(function () {

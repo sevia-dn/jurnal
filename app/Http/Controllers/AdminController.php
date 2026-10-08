@@ -11,12 +11,14 @@ use App\Models\JadwalPelajaran;
 use App\Models\JadwalPiket;
 use App\Models\JurnalMengajar;
 use App\Models\Kelas;
+use App\Models\KetidakhadiranGuru;
 use App\Models\Mapel;
 use App\Models\PasswordResetRequest;
 use App\Models\Pengaturan;
 use App\Models\PiketKehadiranSiswa;
 use App\Models\Siswa;
 use App\Models\User;
+use App\Services\JournalStatusService;
 use App\Services\ScheduleTimeService;
 use App\Services\WhatsAppService;
 use App\SimplePdfDocument;
@@ -1021,8 +1023,12 @@ class AdminController extends Controller
     public function rekapJurnalDetail(int $id): JsonResponse
     {
         $jurnal = JurnalMengajar::with(['kelas', 'mapel', 'guru'])->findOrFail($id);
+        $statusInfo = app(JournalStatusService::class)->determineStatus($jurnal->tanggal, $jurnal);
+        $data = $jurnal->toArray();
+        $data['status_info'] = $statusInfo;
+        $data['filled_at_formatted'] = $jurnal->filled_at ? Carbon::parse($jurnal->filled_at)->translatedFormat('d M Y H:i') : null;
 
-        return response()->json($jurnal);
+        return response()->json($data);
     }
 
     public function downloadRekapJurnalPdf(Request $request): Response
@@ -1043,13 +1049,16 @@ class AdminController extends Controller
         }
 
         $lines = $query->get()->map(function (JurnalMengajar $jurnal): string {
+            $statusInfo = app(JournalStatusService::class)->determineStatus($jurnal->tanggal, $jurnal);
+
             return sprintf(
-                '%s | Kelas %s | Jam %s | %s | %s | Hadir: %s',
+                '%s | Kelas %s | Jam %s | %s | %s | Status: %s | Hadir: %s',
                 $jurnal->tanggal,
                 $jurnal->kelas?->nama_kelas ?? '-',
                 $jurnal->jam_ke,
                 $jurnal->guru?->name ?? '-',
                 $jurnal->mapel?->nama_mapel ?? '-',
+                $statusInfo['short_label'],
                 $jurnal->jumlah_hadir
             );
         })->all();
@@ -1820,7 +1829,9 @@ class AdminController extends Controller
             ->get()
             ->groupBy('id_kelas');
 
-        $rekapJadwalKelas = $classesToInspect->map(function ($kelas) use ($jadwalKelasList, $jurnalKelasList, $scheduleTimeService, $tanggal) {
+        $teacherAbsences = KetidakhadiranGuru::whereDate('tanggal', $tanggal)->get()->keyBy('user_id');
+
+        $rekapJadwalKelas = $classesToInspect->map(function ($kelas) use ($jadwalKelasList, $jurnalKelasList, $teacherAbsences, $scheduleTimeService, $tanggal) {
             $jadwals = $jadwalKelasList->get($kelas->id_kelas, collect());
             $jurnals = $jurnalKelasList->get($kelas->id_kelas, collect());
 
@@ -1828,11 +1839,14 @@ class AdminController extends Controller
                 return $scheduleTimeService->isScheduleEndApplicableOnDate($tanggal, (string) $jadwal->jam_selesai);
             });
 
-            $sesiItems = $applicableJadwals->map(function ($jadwal) use ($jurnals) {
+            $sesiItems = $applicableJadwals->map(function ($jadwal) use ($jurnals, $teacherAbsences, $tanggal) {
                 $jurnal = $jurnals->first(function ($j) use ($jadwal) {
                     return $j->jam_ke == $jadwal->jam_ke
                         || ($jadwal->id_mapel && $j->id_mapel == $jadwal->id_mapel && $j->jam_ke <= $jadwal->jam_ke && ($j->jam_selesai ?? $j->jam_ke) >= $jadwal->jam_ke);
                 });
+
+                $teacherAbsence = $jadwal->id_user ? $teacherAbsences->get($jadwal->id_user) : null;
+                $statusInfo = app(JournalStatusService::class)->determineStatus($tanggal, $jurnal, $teacherAbsence);
 
                 return (object) [
                     'jam_ke' => $jadwal->jam_ke,
@@ -1845,6 +1859,7 @@ class AdminController extends Controller
                     'guru_nip' => $jadwal->guru?->nip,
                     'is_terisi' => $jurnal !== null,
                     'jurnal' => $jurnal,
+                    'status_info' => $statusInfo,
                 ];
             });
 

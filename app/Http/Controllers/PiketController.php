@@ -12,10 +12,13 @@ use App\Models\Kelas;
 use App\Models\KetidakhadiranGuru;
 use App\Models\Notifikasi;
 use App\Models\Pengaturan;
+use App\Models\PeriodeKetidakhadiranSiswa;
 use App\Models\PiketKehadiranSiswa;
 use App\Models\Siswa;
 use App\Models\User;
 use App\Services\ClassJournalApprovalService;
+use App\Services\JournalStatusService;
+use App\Services\MultiDayAttendanceService;
 use App\Services\PiketScheduleService;
 use App\Services\ScheduleTimeService;
 use App\Services\StudentAttendanceSynchronizationService;
@@ -373,6 +376,7 @@ class PiketController extends Controller
 
         // Catatan piket adalah sumber presensi harian lintas sesi guru.
         $kehadiranPiket = PiketKehadiranSiswa::query()
+            ->with('periode')
             ->where('kelas_id', $selectedKelas?->id_kelas)
             ->whereDate('tanggal', $tanggal)
             ->get()
@@ -439,6 +443,14 @@ class PiketController extends Controller
                 'note' => $catatan,
                 'is_dispen' => $dispen !== null,
                 'is_piket_record' => $piketRecord !== null,
+                'is_multi_day' => (bool) ($piketRecord?->is_multi_day),
+                'multi_day_info' => $piketRecord?->periode ? [
+                    'id' => $piketRecord->periode->id,
+                    'tanggal_mulai' => $piketRecord->periode->tanggal_mulai?->toDateString(),
+                    'tanggal_selesai' => $piketRecord->periode->tanggal_selesai?->toDateString(),
+                    'alasan' => $piketRecord->periode->alasan,
+                    'dokumen' => $piketRecord->periode->dokumen,
+                ] : null,
             ];
         });
 
@@ -596,6 +608,65 @@ class PiketController extends Controller
         }
 
         return back()->with('success', count($changedAttendances).' perubahan presensi siswa berhasil disimpan.');
+    }
+
+    /**
+     * Catat ketidakhadiran multi-hari untuk siswa oleh guru piket.
+     */
+    public function storeMultiDayKehadiranSiswa(
+        Request $request,
+        MultiDayAttendanceService $multiDayAttendanceService,
+        StudentAttendanceSynchronizationService $synchronizationService,
+    ) {
+        $this->ensurePiketAccess();
+
+        $request->validate([
+            'siswa_id' => 'required|exists:siswas,id',
+            'tanggal_mulai' => 'required|date',
+            'tanggal_selesai' => 'required|date|after_or_equal:tanggal_mulai',
+            'status' => 'required|in:Sakit,Izin,Alfa',
+            'alasan' => 'nullable|string|max:255',
+            'dokumen' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:4096',
+        ]);
+
+        $siswa = Siswa::findOrFail($request->siswa_id);
+
+        $dokumenPath = null;
+        if ($request->hasFile('dokumen')) {
+            $dokumenPath = $request->file('dokumen')->store('surat-izin-siswa', 'public');
+        }
+
+        $periode = $multiDayAttendanceService->applyMultiDayAttendance(
+            siswa: $siswa,
+            startDate: $request->tanggal_mulai,
+            endDate: $request->tanggal_selesai,
+            status: $request->status,
+            alasan: $request->alasan,
+            dokumenPath: $dokumenPath,
+            user: auth()->user(),
+        );
+
+        // Sinkronisasi record piket kehadiran terkait ke jurnal jika sudah ada
+        $periode->attendanceRecords()->get()->each(function (PiketKehadiranSiswa $record) use ($synchronizationService) {
+            $synchronizationService->synchronize($record);
+        });
+
+        return back()->with('success', "Ketidakhadiran multi-hari untuk {$siswa->nama} (".Carbon::parse($request->tanggal_mulai)->translatedFormat('d M').' s/d '.Carbon::parse($request->tanggal_selesai)->translatedFormat('d M Y').') berhasil dicatat.');
+    }
+
+    /**
+     * Batalkan periode ketidakhadiran multi-hari siswa.
+     */
+    public function cancelMultiDayKehadiranSiswa(
+        PeriodeKetidakhadiranSiswa $periode,
+        MultiDayAttendanceService $multiDayAttendanceService,
+    ) {
+        $this->ensurePiketAccess();
+
+        $namaSiswa = $periode->siswa?->nama ?? 'Siswa';
+        $multiDayAttendanceService->deletePeriod($periode);
+
+        return back()->with('success', "Periode ketidakhadiran untuk {$namaSiswa} berhasil dibatalkan.");
     }
 
     private function notifyStudentAttendanceChange(Siswa $siswa, string $tanggal, string $status, ?string $catatan): void
@@ -1364,8 +1435,12 @@ class PiketController extends Controller
     {
         $this->ensurePiketAccess();
         $jurnal = JurnalMengajar::with(['kelas', 'mapel', 'guru'])->findOrFail($id);
+        $statusInfo = app(JournalStatusService::class)->determineStatus($jurnal->tanggal, $jurnal);
+        $data = $jurnal->toArray();
+        $data['status_info'] = $statusInfo;
+        $data['filled_at_formatted'] = $jurnal->filled_at ? Carbon::parse($jurnal->filled_at)->translatedFormat('d M Y H:i') : null;
 
-        return response()->json($jurnal);
+        return response()->json($data);
     }
 
     public function downloadRekapJurnalPdf(Request $request): Response
@@ -1387,13 +1462,16 @@ class PiketController extends Controller
         }
 
         $lines = $query->get()->map(function (JurnalMengajar $jurnal): string {
+            $statusInfo = app(JournalStatusService::class)->determineStatus($jurnal->tanggal, $jurnal);
+
             return sprintf(
-                '%s | Kelas %s | Jam %s | %s | %s | Hadir: %s',
+                '%s | Kelas %s | Jam %s | %s | %s | Status: %s | Hadir: %s',
                 $jurnal->tanggal,
                 $jurnal->kelas?->nama_kelas ?? '-',
                 $jurnal->jam_ke,
                 $jurnal->guru?->name ?? '-',
                 $jurnal->mapel?->nama_mapel ?? '-',
+                $statusInfo['short_label'],
                 $jurnal->jumlah_hadir
             );
         })->all();

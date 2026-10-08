@@ -74,6 +74,8 @@ class GuruController extends Controller
 
         $pendingDispensasis = collect();
         $approvalDispensasi = null;
+        $pendingKetidakhadiranWaka = collect();
+        $detailKetidakhadiranWaka = null;
         if ($isWaka) {
             $pendingDispensasis = Dispensasi::with(['siswa', 'pembuat'])
                 ->where('status_waka', 'menunggu')
@@ -84,6 +86,16 @@ class GuruController extends Controller
                 $approvalDispensasi = Dispensasi::with(['siswa.kelas', 'pembuat', 'pemroses'])
                     ->where('token_approval', $request->string('dispensasi')->toString())
                     ->firstOrFail();
+            }
+
+            $pendingKetidakhadiranWaka = KetidakhadiranGuru::with(['guru'])
+                ->where('status_konfirmasi_waka', 'pending')
+                ->latest('tanggal')
+                ->get();
+
+            if ($request->filled('konfirmasi_guru_absen')) {
+                $detailKetidakhadiranWaka = KetidakhadiranGuru::with(['guru', 'handler', 'konfirmatorWaka'])
+                    ->find($request->integer('konfirmasi_guru_absen'));
             }
         } elseif ($request->filled('dispensasi')) {
             abort(403, 'Tautan validasi dispensasi hanya dapat dibuka oleh Wakasek Kesiswaan.');
@@ -182,6 +194,8 @@ class GuruController extends Controller
             'isWaka',
             'pendingDispensasis',
             'approvalDispensasi',
+            'pendingKetidakhadiranWaka',
+            'detailKetidakhadiranWaka',
             'allDispensasis',
             'sudahAbsen',
             'kehadiranHariIni',
@@ -251,6 +265,10 @@ class GuruController extends Controller
 
         if ($notifikasi->id_dispensasi !== null || str_starts_with((string) $notifikasi->tipe, 'dispensasi')) {
             return redirect()->route('piket.dispensasi.history');
+        }
+
+        if ($notifikasi->tipe === 'waka_konfirmasi_guru_absen') {
+            return redirect()->route('guru.utama', ['konfirmasi_guru_absen' => $notifikasi->id_ketidakhadiran_guru]);
         }
 
         if ($notifikasi->id_ketidakhadiran_guru !== null || $notifikasi->tipe === 'guru_tidak_hadir') {
@@ -425,6 +443,10 @@ class GuruController extends Controller
                 'handled_by' => null,
                 'handled_at' => null,
                 'catatan_piket' => null,
+                'status_konfirmasi_waka' => 'pending',
+                'dikonfirmasi_oleh_waka' => null,
+                'dikonfirmasi_waka_pada' => null,
+                'catatan_waka' => null,
             ]
         );
 
@@ -446,7 +468,69 @@ class GuruController extends Controller
             ]);
         }
 
+        // Kirim notifikasi konfirmasi ke Waka Kesiswaan
+        $wakaUsers = User::query()
+            ->where(function ($q) {
+                $q->where('is_waka', true)
+                    ->orWhere('role', 'waka');
+            })
+            ->get();
+
+        foreach ($wakaUsers as $wakaUser) {
+            Notifikasi::create([
+                'id_user' => $wakaUser->id,
+                'id_kelas' => null,
+                'id_dispensasi' => null,
+                'id_ketidakhadiran_guru' => $ketidakhadiran->id,
+                'judul' => 'Konfirmasi Ketidakhadiran Guru',
+                'pesan' => "Guru {$guru->name} mengajukan ketidakhadiran (".ucfirst($request->alasan).') untuk tanggal '.Carbon::parse($request->tanggal)->translatedFormat('d F Y').'. Menunggu konfirmasi Waka.',
+                'tipe' => 'waka_konfirmasi_guru_absen',
+                'is_read' => false,
+            ]);
+        }
+
         return redirect()->route('guru.utama')
-            ->with('success', 'Laporan ketidakhadiran ('.ucfirst($request->alasan).') berhasil dikirim ke Guru Piket dan sedang menunggu validasi.');
+            ->with('success', 'Laporan ketidakhadiran ('.ucfirst($request->alasan).') berhasil dikirim ke Guru Piket dan Waka Kesiswaan.');
+    }
+
+    /**
+     * Konfirmasi atau tolak pengajuan ketidakhadiran guru oleh Waka Kesiswaan.
+     */
+    public function wakaKonfirmasiKetidakhadiran(Request $request, KetidakhadiranGuru $ketidakhadiran)
+    {
+        /** @var User $user */
+        $user = auth()->user();
+        abort_unless($user !== null && ($user->isWaka() || $user->role === 'waka'), 403, 'Aksi ini hanya dapat dilakukan oleh Waka.');
+
+        $request->validate([
+            'keputusan' => 'required|in:dikonfirmasi,ditolak',
+            'catatan_waka' => 'nullable|string|max:1000',
+        ]);
+
+        $keputusan = $request->input('keputusan');
+
+        $ketidakhadiran->update([
+            'status_konfirmasi_waka' => $keputusan,
+            'dikonfirmasi_oleh_waka' => $user->id,
+            'dikonfirmasi_waka_pada' => Carbon::now('Asia/Jakarta'),
+            'catatan_waka' => $request->input('catatan_waka'),
+        ]);
+
+        // Kirim notifikasi hasil konfirmasi ke guru pemohon
+        Notifikasi::create([
+            'id_user' => $ketidakhadiran->user_id,
+            'id_kelas' => null,
+            'id_dispensasi' => null,
+            'id_ketidakhadiran_guru' => $ketidakhadiran->id,
+            'judul' => 'Status Konfirmasi Izin/Sakit oleh Waka',
+            'pesan' => 'Pengajuan ketidakhadiran Anda untuk tanggal '.Carbon::parse($ketidakhadiran->tanggal)->translatedFormat('d F Y')." telah {$keputusan} oleh Waka ({$user->name}).".($request->catatan_waka ? " Catatan: {$request->catatan_waka}" : ''),
+            'tipe' => 'konfirmasi_waka_hasil',
+            'is_read' => false,
+        ]);
+
+        $label = $keputusan === 'dikonfirmasi' ? 'dikonfirmasi' : 'ditolak';
+
+        return redirect()->route('guru.utama')
+            ->with('success', "Ketidakhadiran guru {$ketidakhadiran->guru?->name} berhasil {$label}.");
     }
 }

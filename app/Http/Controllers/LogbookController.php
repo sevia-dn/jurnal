@@ -253,6 +253,9 @@ class LogbookController extends Controller
             $jmlTidakHadir = $jmlSakit + $jmlIzin + $jmlAlpa + $jmlDispensasi;
         }
 
+        $isLate = $now->toDateString() > $journalDateString;
+        $lateMode = $isLate ? ($deadlinePolicy->configuration()['mode'] ?? 'los') : null;
+
         // 6. Database Transaction
         DB::beginTransaction();
         try {
@@ -278,6 +281,9 @@ class LogbookController extends Controller
                 'status_validasi' => 'belum_divalidasi',
                 'catatan_validasi' => null,
                 'divalidasi_pada' => null,
+                'filled_at' => $now,
+                'is_late' => $isLate,
+                'late_mode' => $lateMode,
             ]);
 
             // Simpan satu detail presensi untuk setiap siswa jika guru hadir

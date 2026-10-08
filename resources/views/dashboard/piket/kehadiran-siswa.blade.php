@@ -113,6 +113,13 @@
                         </select>
                     </label>
 
+                    {{-- Tombol Izin/Sakit Multi-Hari --}}
+                    <button type="button" onclick="openMultiDayModal()"
+                        class="inline-flex items-center gap-1.5 rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs font-bold text-indigo-700 shadow-xs transition hover:bg-indigo-100">
+                        <i class="bi bi-calendar-range"></i>
+                        <span>Multi-Hari</span>
+                    </button>
+
                     {{-- Tombol Simpan --}}
                     @if($isEditableDate)
                         <button form="student-attendance-form" type="submit"
@@ -156,7 +163,75 @@
                     <!-- Content rendered via JS from real backend data -->
                 </div>
             </form>
-        </section>
+        <!-- Modal Form Input Ketidakhadiran Multi-Hari -->
+        <div id="multi-day-modal" class="fixed inset-0 z-50 hidden items-center justify-center overflow-y-auto bg-slate-900/60 p-4 backdrop-blur-xs">
+            <div class="relative w-full max-w-lg rounded-2xl bg-white p-5 shadow-2xl sm:p-6">
+                <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                    <div class="flex items-center gap-2">
+                        <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-100 text-indigo-700 text-sm">
+                            <i class="bi bi-calendar-range"></i>
+                        </span>
+                        <h3 class="text-base font-bold text-slate-800">Catat Ketidakhadiran Multi-Hari</h3>
+                    </div>
+                    <button type="button" onclick="closeMultiDayModal()" class="text-slate-400 hover:text-slate-600">
+                        <i class="bi bi-x-lg text-sm"></i>
+                    </button>
+                </div>
+
+                <form method="POST" action="{{ route('piket.kehadiran-siswa.multi-day') }}" enctype="multipart/form-data" class="mt-4 space-y-3.5 text-xs sm:text-sm">
+                    @csrf
+                    <div>
+                        <label class="block font-bold text-slate-700 mb-1">Pilih Siswa (Kelas {{ $selectedKelas?->nama_kelas }})</label>
+                        <select name="siswa_id" required class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs sm:text-sm font-semibold text-slate-800 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100">
+                            <option value="">-- Pilih Siswa --</option>
+                            @foreach($studentsData as $st)
+                                <option value="{{ $st['id'] }}">{{ $st['name'] }} (NIS: {{ $st['nis'] ?? '-' }})</option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block font-bold text-slate-700 mb-1">Tanggal Mulai</label>
+                            <input type="date" name="tanggal_mulai" value="{{ $tanggal }}" required class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs sm:text-sm font-medium text-slate-800 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100">
+                        </div>
+                        <div>
+                            <label class="block font-bold text-slate-700 mb-1">Tanggal Selesai</label>
+                            <input type="date" name="tanggal_selesai" value="{{ $tanggal }}" required class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs sm:text-sm font-medium text-slate-800 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block font-bold text-slate-700 mb-1">Status Kehadiran</label>
+                        <select name="status" required class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs sm:text-sm font-semibold text-slate-800 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100">
+                            <option value="Sakit">Sakit</option>
+                            <option value="Izin">Izin</option>
+                            <option value="Alfa">Alfa</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block font-bold text-slate-700 mb-1">Keterangan / Alasan</label>
+                        <textarea name="alasan" rows="2" placeholder="Contoh: Dirawat di RS, isolasi mandiri, keperluan keluarga penting..." class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs sm:text-sm text-slate-800 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"></textarea>
+                    </div>
+
+                    <div>
+                        <label class="block font-bold text-slate-700 mb-1">Unggah Surat Izin / Surat Dokter (Opsional)</label>
+                        <input type="file" name="dokumen" accept=".jpg,.jpeg,.png,.pdf" class="w-full text-xs text-slate-500 file:mr-3 file:rounded-xl file:border-0 file:bg-indigo-50 file:px-3 file:py-1.5 file:text-xs file:font-bold file:text-indigo-700 hover:file:bg-indigo-100">
+                        <p class="mt-1 text-[11px] text-slate-400">Format: JPG, PNG, atau PDF (maks. 4 MB).</p>
+                    </div>
+
+                    <div class="flex items-center justify-end gap-2 border-t border-slate-100 pt-3">
+                        <button type="button" onclick="closeMultiDayModal()" class="rounded-xl border border-slate-300 bg-white px-4 py-2 text-xs font-bold text-slate-600 transition hover:bg-slate-50">
+                            Batal
+                        </button>
+                        <button type="submit" class="rounded-xl bg-indigo-600 px-4 py-2 text-xs font-bold text-white shadow-xs transition hover:bg-indigo-700">
+                            <i class="bi bi-check-lg mr-1"></i> Terapkan Rentang Hari
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -286,7 +361,14 @@ document.addEventListener('DOMContentLoaded', () => {
                                 ${String(index + 1).padStart(2, '0')}
                             </span>
                             <div class="min-w-0 flex-1">
-                                <p class="truncate text-xs sm:text-sm font-bold text-slate-800">${escapeHtml(s.name)}</p>
+                                <div class="flex items-center gap-1.5 flex-wrap">
+                                    <p class="truncate text-xs sm:text-sm font-bold text-slate-800">${escapeHtml(s.name)}</p>
+                                    ${s.is_multi_day && s.multi_day_info ? `
+                                        <span class="inline-flex items-center gap-1 rounded-md bg-indigo-100 px-1.5 py-0.5 text-[10px] font-bold text-indigo-700" title="Periode: ${escapeHtml(s.multi_day_info.tanggal_mulai)} s/d ${escapeHtml(s.multi_day_info.tanggal_selesai)} (${escapeHtml(s.multi_day_info.alasan || 'Izin/Sakit')})">
+                                            <i class="bi bi-calendar-range text-[9px]"></i> Multi-Hari
+                                        </span>
+                                    ` : ''}
+                                </div>
                                 <p class="text-[11px] text-slate-400 truncate">NIS: ${escapeHtml(s.nis || '-')} &bull; ${escapeHtml(s.gender || '-')}</p>
                             </div>
                         </div>
@@ -351,5 +433,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
     renderTable();
 });
+
+function openMultiDayModal() {
+    const modal = document.getElementById('multi-day-modal');
+    if (modal) {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+    }
+}
+
+function closeMultiDayModal() {
+    const modal = document.getElementById('multi-day-modal');
+    if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    }
+}
 </script>
 @endsection
