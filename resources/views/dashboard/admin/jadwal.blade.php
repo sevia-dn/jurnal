@@ -14,10 +14,6 @@
 <div class="p-6 font-sans sm:p-10 lg:p-8 xl:p-10">
     @php
         $opsiKelasJadwal = $kelases->map(fn ($kelas) => ['value' => (string) $kelas->id_kelas, 'label' => $kelas->nama_kelas.' (Wali: '.($kelas->wali_kelas ?? 'Belum ada').')']);
-        $opsiHariJadwal = collect($hariList)->map(fn ($hari) => ['value' => $hari, 'label' => $hari]);
-        $opsiJamJadwal = collect(range(0, 13))->map(fn ($jam) => ['value' => (string) $jam, 'label' => $jam === 0 ? 'Jam Ke-0 (Kegiatan / Istirahat / Upacara)' : 'Jam Ke-'.$jam]);
-        $opsiMapelJadwal = $mapels->map(fn ($mapel) => ['value' => (string) $mapel->id, 'label' => '['.ucfirst($mapel->kategori ?? 'biasa').'] '.$mapel->nama_mapel]);
-        $opsiGuruJadwal = $gurus->map(fn ($guru) => ['value' => (string) $guru->id, 'label' => $guru->name.' ('.($guru->nip ?? 'Guru').')']);
         $scheduleTimeService = app(\App\Services\ScheduleTimeService::class);
         $weekdayTimePresets = collect(range(1, 10))->mapWithKeys(fn ($jam) => [$jam => [$scheduleTimeService->slot('Senin', $jam)['start'], $scheduleTimeService->slot('Senin', $jam)['end']]]);
         $fridayTimePresets = collect(range(1, 13))->mapWithKeys(fn ($jam) => [$jam => [$scheduleTimeService->slot('Jumat', $jam)['start'], $scheduleTimeService->slot('Jumat', $jam)['end']]]);
@@ -72,74 +68,9 @@
 
     <!-- Jadwal Pelajaran -->
     <div id="containerJadwalPelajaran" class="transition-all duration-200">
-    <div class="grid gap-6 lg:grid-cols-3">
-        <!-- Kolom Kiri: Form Tambah Jadwal -->
-        <div class="lg:col-span-1">
-            <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-5 sticky top-6">
-                <div class="mb-5 flex items-center gap-3">
-                    <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-[#155d50] text-white shadow-sm">
-                        <i class="bi bi-calendar3 text-lg"></i>
-                    </div>
-                    <div>
-                        <h2 class="text-lg font-semibold text-slate-800">Tambah Jadwal</h2>
-                        <p class="text-xs text-slate-500">Atur sesi & jam pelajaran per hari</p>
-                    </div>
-                </div>
-
-                <form action="{{ route('dashboard.jadwal.store') }}" method="POST" class="space-y-4">
-                    @csrf
-
-                    <div>
-                        <label class="mb-1.5 block text-sm font-medium text-slate-700">Pilih Kelas <span class="text-red-500">*</span></label>
-                        <x-searchable-select id="formAddKelasId" name="kelas_id" :options="$opsiKelasJadwal" :selected="old('kelas_id', optional($selectedKelas)->id_kelas)" placeholder="Cari kelas" required />
-                    </div>
-
-                    <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                        <div>
-                            <label class="mb-1.5 block text-sm font-medium text-slate-700">Pilih Hari <span class="text-red-500">*</span></label>
-                            <x-searchable-select id="formAddHari" name="hari" :options="$opsiHariJadwal" :selected="old('hari', $selectedHari ?? 'Senin')" placeholder="Cari hari" onchange="applyScheduleTimePresets('add')" required />
-                        </div>
-
-                        <div>
-                            <label class="mb-1.5 block text-sm font-medium text-slate-700">Jam Pelajaran Ke- <span class="text-red-500">*</span></label>
-                            <x-searchable-select id="formAddJamKe" name="jam_ke" :options="$opsiJamJadwal" :selected="old('jam_ke', 1)" placeholder="Cari jam pelajaran" onchange="applyScheduleTimePresets('add')" required />
-                        </div>
-                    </div>
-
-                    <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                        <div>
-                            <label class="mb-1.5 block text-sm font-medium text-slate-700">Jam Mulai <span class="text-red-500">*</span></label>
-                            <input type="time" id="formAddJamMulai" name="jam_mulai" value="{{ old('jam_mulai', '07:00') }}" required readonly class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-[#155d50] focus:ring-2 focus:ring-[#155d50]/10" />
-                        </div>
-
-                        <div>
-                            <label class="mb-1.5 block text-sm font-medium text-slate-700">Jam Selesai <span class="text-red-500">*</span></label>
-                            <input type="time" id="formAddJamSelesai" name="jam_selesai" value="{{ old('jam_selesai', '07:40') }}" required readonly class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-[#155d50] focus:ring-2 focus:ring-[#155d50]/10" />
-                        </div>
-                    </div>
-
-                    <p class="-mt-2 text-xs text-slate-500">Waktu otomatis mengikuti hari dan jam pelajaran. Waktu kegiatan khusus tetap dapat diatur.</p>
-
-                    <div>
-                        <label class="mb-1.5 block text-sm font-medium text-slate-700">Mata Pelajaran / Kegiatan <span class="text-red-500">*</span></label>
-                        <x-searchable-select id="formAddMapelId" name="mapel_id" :options="$opsiMapelJadwal" :selected="old('mapel_id')" placeholder="Cari mata pelajaran atau kegiatan" onchange="handleMapelSelection(this, 'add')" required />
-                    </div>
-
-                    <div>
-                        <label class="mb-1.5 block text-sm font-medium text-slate-700">Guru Pengampu <span class="text-xs text-slate-400 font-normal">(Wajib untuk mapel, opsional untuk kegiatan)</span></label>
-                        <x-searchable-select id="formAddGuruId" name="guru_id" :options="$opsiGuruJadwal" :selected="old('guru_id')" placeholder="Cari guru pengampu" />
-                    </div>
-
-                    <button type="submit" class="w-full rounded-lg bg-[#155d50] px-4 py-3 text-sm font-semibold text-white shadow-sm transition duration-200 hover:bg-[#0b2b24] cursor-pointer inline-flex items-center justify-center gap-2">
-                        <i class="bi bi-plus-circle"></i>
-                        <span>Simpan Jadwal Pelajaran</span>
-                    </button>
-                </form>
-            </div>
-        </div>
-
-        <!-- Kolom Kanan: Tampilan Interaktif Per Hari & Tabel Jadwal -->
-        <div class="lg:col-span-2 space-y-4">
+    <div>
+        <!-- Tampilan Jadwal Full Width -->
+        <div>
 
             <div class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
 
@@ -203,7 +134,7 @@
                     </div>
                     <div class="flex items-center gap-2 text-xs text-slate-500">
                         <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white border border-slate-200 text-[11px] text-slate-600 shadow-2xs">
-                            <i class="bi bi-sliders text-[#155d50]"></i> Atur jam pelajaran & kegiatan bebas secara manual
+                            <i class="bi bi-file-earmark-excel text-emerald-600"></i> Jadwal dikelola via Import Excel / CSV
                         </span>
                     </div>
                 </div>
@@ -378,9 +309,9 @@
                             @empty
                                 <tr id="rowEmptyAll">
                                     <td colspan="6" class="px-5 py-12 text-center text-slate-400 text-sm">
-                                        <i class="bi bi-calendar-x text-3xl mb-2 block text-slate-300"></i>
+                                        <i class="bi bi-file-earmark-arrow-up text-3xl mb-2 block text-slate-300"></i>
                                         Belum ada jadwal pelajaran untuk kelas ini.<br>
-                                        <span class="text-xs text-slate-400">Silakan tambahkan jadwal baru menggunakan form di sebelah kiri.</span>
+                                        <span class="text-xs text-slate-400">Gunakan tombol <strong class="text-emerald-700">Import Jadwal</strong> di atas untuk mengunggah jadwal dari file Excel / CSV.</span>
                                     </td>
                                 </tr>
                             @endforelse
@@ -390,10 +321,7 @@
                                 <td colspan="6" class="px-5 py-12 text-center text-slate-400 text-sm">
                                     <i class="bi bi-calendar-minus text-3xl mb-2 block text-slate-300"></i>
                                     Belum ada jadwal pelajaran untuk hari <strong id="emptyDayName"></strong> pada kelas ini.<br>
-                                    <button type="button" onclick="setAddFormDay()" class="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#155d50] text-white rounded-lg text-xs font-semibold hover:bg-[#0b2b24] transition">
-                                        <i class="bi bi-plus-lg"></i>
-                                        <span>Tambah Jadwal untuk Hari <span id="btnDayName"></span></span>
-                                    </button>
+                                    <span class="text-xs text-slate-400 mt-2 block">Gunakan tombol <strong class="text-emerald-700">Import Jadwal</strong> di atas untuk mengunggah jadwal dari file Excel / CSV.</span>
                                 </td>
                             </tr>
                         </tbody>
