@@ -20,7 +20,25 @@
             <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
                 <div class="flex items-start gap-3 border-b border-slate-100 pb-4"><span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-xl text-emerald-700"><i class="bi bi-file-earmark-plus-fill"></i></span><div><h1 class="text-lg font-bold text-slate-900">Form Pengajuan Dispensasi</h1><p class="mt-1 text-xs text-slate-500">Lengkapi pengajuan untuk diteruskan kepada Wakasek Kesiswaan.</p></div></div>
                 @if(session('success'))<div class="mt-5 flex items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-medium text-emerald-800"><i class="bi bi-check-circle-fill"></i>{{ session('success') }}</div>@endif
-                @if(session('approval_url'))<div class="mt-5 rounded-xl border border-indigo-200 bg-indigo-50 p-4 text-sm text-indigo-900"><p class="font-bold">Notifikasi Wakasek telah dibuat.</p><a href="{{ session('approval_url') }}" target="_blank" class="mt-2 inline-flex items-center gap-1 font-bold text-indigo-700 hover:underline">Buka tautan validasi <i class="bi bi-box-arrow-up-right"></i></a></div>@endif
+                @if(session('whatsapp_url'))
+                    <div class="mt-4 rounded-2xl border-2 border-emerald-500 bg-emerald-50/90 p-4 sm:p-5 shadow-xs">
+                        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                            <div>
+                                <p class="font-extrabold text-emerald-950 text-sm sm:text-base flex items-center gap-2">
+                                    <i class="bi bi-whatsapp text-emerald-600 text-xl"></i> Kirim Permohonan ke WhatsApp Wakasek
+                                </p>
+                                <p class="text-xs text-emerald-800 mt-1">
+                                    Klik tombol untuk langsung membuka WhatsApp dengan format pengajuan dan tautan persetujuan yang sudah terisi otomatis.
+                                </p>
+                            </div>
+                            <a href="{{ session('whatsapp_url') }}" target="_blank" class="shrink-0 inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 px-5 py-2.5 text-xs font-bold text-white shadow-md transition">
+                                <i class="bi bi-whatsapp text-sm"></i>
+                                Buka WhatsApp (wa.me)
+                            </a>
+                        </div>
+                    </div>
+                @endif
+                @if(session('approval_url'))<div class="mt-4 rounded-xl border border-indigo-200 bg-indigo-50 p-3.5 text-xs text-indigo-900"><p class="font-bold">Tautan Validasi Mandiri (Cadangan):</p><a href="{{ session('approval_url') }}" target="_blank" class="mt-1 inline-flex items-center gap-1 font-semibold text-indigo-700 hover:underline">Buka tautan validasi langsung <i class="bi bi-box-arrow-up-right"></i></a></div>@endif
                 @if($errors->any())<div class="mt-5 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800"><p class="font-bold">Pengajuan belum dapat disimpan.</p><ul class="mt-1 list-inside list-disc">@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>@endif
                 <form method="POST" action="{{ route('piket.dispensasi.store') }}" enctype="multipart/form-data" class="mt-5 space-y-4">@csrf
                     {{-- MULTI-SISWA SELECTION --}}

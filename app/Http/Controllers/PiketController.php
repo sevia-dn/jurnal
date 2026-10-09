@@ -751,30 +751,27 @@ class PiketController extends Controller
             return;
         }
 
-        $tanggalLabel = Carbon::parse($tanggal, 'Asia/Jakarta')->translatedFormat('d F Y');
+        $hari = Carbon::parse($tanggal, 'Asia/Jakarta')->locale('id')->translatedFormat('l');
+        $teacherIds = JadwalMengajar::query()
+            ->where('id_kelas', $kelas->id_kelas)
+            ->where('hari', $hari)
+            ->pluck('id_user')
+            ->unique();
         $pengurus = User::query()
             ->where('role', 'pengurus_kelas')
             ->get()
             ->filter(fn (User $user) => trim(str_ireplace('Pengurus Kelas ', '', $user->name)) === $kelas->nama_kelas || $user->name === $kelas->nama_kelas);
+        $recipientIds = $teacherIds->merge($pengurus->pluck('id'))->unique();
+        $tanggalLabel = Carbon::parse($tanggal, 'Asia/Jakarta')->translatedFormat('d F Y');
 
         $isTerlambat = in_array(strtoupper(trim((string) $status)), ['TERLAMBAT', 'TELAT', 'T'], true);
 
         if ($isTerlambat) {
-            // Notifikasi terlambat hanya dikirim ke pengurus kelas (bukan semua guru pengajar)
-            $recipientIds = $pengurus->pluck('id')->unique();
             $judul = 'Surat Izin Masuk (Siswa Terlambat)';
             $alasanText = $catatan ?: 'Terlambat masuk sekolah';
             $pesan = "Siswa {$siswa->nama} (kelas {$kelas->nama_kelas}) terlambat ke sekolah pada {$tanggalLabel}. Alasan: {$alasanText}. Telah diproses piket & diberikan surat izin masuk kelas.";
             $tipe = 'siswa_terlambat';
         } else {
-            // Notifikasi perubahan status kehadiran dikirim ke guru pengajar hari ini + pengurus kelas
-            $hari = Carbon::parse($tanggal, 'Asia/Jakarta')->locale('id')->translatedFormat('l');
-            $teacherIds = JadwalMengajar::query()
-                ->where('id_kelas', $kelas->id_kelas)
-                ->where('hari', $hari)
-                ->pluck('id_user')
-                ->unique();
-            $recipientIds = $teacherIds->merge($pengurus->pluck('id'))->unique();
             $judul = 'Pembaruan Kehadiran Siswa';
             $pesan = "{$siswa->nama} kelas {$kelas->nama_kelas} tercatat {$status} pada {$tanggalLabel}.";
             if ($catatan) {
@@ -894,6 +891,7 @@ class PiketController extends Controller
 
         $this->createPendingDispensasiNotifications($dispensasi);
         $whatsAppDelivery = $this->whatsAppService->sendDispensasiNotificationToWaka($dispensasi);
+        $waUrl = $whatsAppDelivery['url'] ?? $this->whatsAppService->getDispensasiWhatsAppUrl($dispensasi);
 
         $approvalUrl = route('waka.dispensasi.show', ['token' => $tokenApproval]);
 
@@ -903,18 +901,11 @@ class PiketController extends Controller
             ? "Pengajuan dispensasi untuk {$namaUtama} dan ".($jumlahSiswa - 1).' siswa lainnya berhasil dibuat.'
             : "Pengajuan dispensasi untuk {$namaUtama} berhasil dibuat.";
 
-        if (! $whatsAppDelivery['configured']) {
-            $message .= ' WhatsApp belum dikirim karena gateway belum dikonfigurasi.';
-        } elseif ($whatsAppDelivery['delivered'] === $whatsAppDelivery['recipients']) {
-            $message .= " WhatsApp berhasil dikirim ke {$whatsAppDelivery['delivered']} nomor tujuan.";
-        } else {
-            $message .= " Gateway WhatsApp hanya menerima {$whatsAppDelivery['delivered']} dari {$whatsAppDelivery['recipients']} nomor tujuan. Periksa log gateway.";
-        }
-
         return redirect()->route('piket.dispensasi.form')
             ->with('success', $message)
             ->with('approval_url', $approvalUrl)
-            ->with('token_approval', $tokenApproval);
+            ->with('token_approval', $tokenApproval)
+            ->with('whatsapp_url', $waUrl);
     }
 
     public function dispensasiHistory(Request $request)

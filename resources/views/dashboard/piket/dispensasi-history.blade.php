@@ -172,7 +172,18 @@
                                             </button>
                                         @endif
                                     @else
-                                        <span class="text-xs text-slate-400 italic">Menunggu persetujuan Wakasek</span>
+                                        @php
+                                            $waUrl = app(\App\Services\WhatsAppService::class)->getDispensasiWhatsAppUrl($dispensasi);
+                                        @endphp
+                                        <div class="flex items-center gap-2 flex-wrap sm:justify-end">
+                                            <span class="text-xs text-slate-400 italic">Menunggu persetujuan</span>
+                                            @if($waUrl)
+                                                <a href="{{ $waUrl }}" target="_blank" class="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white shadow-xs transition hover:bg-emerald-700">
+                                                    <i class="bi bi-whatsapp"></i>
+                                                    Kirim WA
+                                                </a>
+                                            @endif
+                                        </div>
                                     @endif
                                 </div>
                             </div>

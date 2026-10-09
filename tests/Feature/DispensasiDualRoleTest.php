@@ -10,7 +10,6 @@ use App\Models\Mapel;
 use App\Models\Siswa;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Http\Client\Request as ClientRequest;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
@@ -169,13 +168,11 @@ class DispensasiDualRoleTest extends TestCase
         $this->assertNotNull($dispensasi);
         $this->assertEquals('menunggu', $dispensasi->status_waka);
         $this->assertNotNull($dispensasi->token_approval);
-        Http::assertSent(function (ClientRequest $request) use ($dispensasi): bool {
-            return $request->url() === 'https://gateway.test/send'
-                && $request['target'] === '6281233334444'
-                && str_contains($request['message'], 'https://public-aeration-unleaded.ngrok-free.dev'.route('waka.dispensasi.show', ['token' => $dispensasi->token_approval], false).'?waka=wakatest')
-                && str_contains($request['message'], 'Guru Piket Test');
-        });
-        Http::assertSentCount(1);
+        $response->assertSessionHas('whatsapp_url');
+        $sessionWaUrl = session('whatsapp_url');
+        $this->assertStringContainsString('https://wa.me/6281233334444', $sessionWaUrl);
+        $this->assertStringContainsString($dispensasi->token_approval, $sessionWaUrl);
+        $this->assertStringContainsString(urlencode('Guru Piket Test'), $sessionWaUrl);
 
         // Logout guru piket untuk menguji kondisi Guest
         auth()->logout();

@@ -12,15 +12,35 @@ use Illuminate\Support\Facades\Log;
 class WhatsAppService
 {
     /**
-     * Kirim pesan notifikasi dispensasi ke nomor WA milik Waka
+     * Buat URL wa.me langsung untuk permohonan persetujuan dispensasi ke Wakasek Kesiswaan.
      */
-    /**
-     * @return array{configured: bool, recipients: int, delivered: int}
-     */
-    public function sendDispensasiNotificationToWaka(Dispensasi $dispensasi): array
+    public function getDispensasiWhatsAppUrl(Dispensasi $dispensasi, ?string $wakaUsername = null): ?string
     {
-        $approvalPath = route('waka.dispensasi.show', ['token' => $dispensasi->token_approval], false);
-        $approvalBaseUrl = rtrim((string) config('services.whatsapp.approval_base_url'), '/');
+        $recipients = $this->wakaRecipients();
+        $waka = null;
+
+        if ($wakaUsername) {
+            $waka = $recipients->first(fn (array $r): bool => strtolower($r['username'] ?? '') === strtolower($wakaUsername));
+        }
+
+        if (! $waka) {
+            $waka = $recipients->first();
+        }
+
+        if (! $waka || blank($waka['number'] ?? null)) {
+            return null;
+        }
+
+        $message = $this->buildDispensasiMessage($dispensasi, $waka['username'] ?? null);
+
+        return $this->formatWhatsAppUrl((string) $waka['number'], $message);
+    }
+
+    /**
+     * Susun teks template pesan WhatsApp untuk dispensasi siswa.
+     */
+    public function buildDispensasiMessage(Dispensasi $dispensasi, ?string $wakaUsername = null): string
+    {
         $dispensasi->loadMissing(['siswa.kelas', 'siswas.kelas', 'pembuat']);
         $siswas = $dispensasi->siswas->isNotEmpty() ? $dispensasi->siswas : collect([$dispensasi->siswa])->filter();
         $namaSiswa = $siswas->pluck('nama')->join(', ');
@@ -28,99 +48,51 @@ class WhatsAppService
         $pembuat = $dispensasi->pembuat?->name ?? 'Guru Piket';
         $waktuStr = $dispensasi->deskripsi_waktu;
 
-        $gatewayUrl = config('services.whatsapp.url');
-        $gatewayApiKey = config('services.whatsapp.api_key');
-        $wakaRecipients = $this->wakaRecipients();
+        $approvalBaseUrl = rtrim((string) config('services.whatsapp.approval_base_url'), '/');
+        $approvalPath = route('waka.dispensasi.show', ['token' => $dispensasi->token_approval], false);
+        $baseUrl = blank($approvalBaseUrl) ? url('/') : $approvalBaseUrl;
+        $approvalUrl = rtrim($baseUrl, '/').$approvalPath;
 
-        $recipients = $wakaRecipients->map(function (array $recipient) use ($approvalBaseUrl, $approvalPath, $namaSiswa, $kelasSiswa, $waktuStr, $pembuat, $dispensasi): array {
-            $approvalUrl = $approvalBaseUrl.$approvalPath.'?'.http_build_query([
-                'waka' => $recipient['username'] ?? '',
+        if ($wakaUsername) {
+            $approvalUrl .= '?'.http_build_query([
+                'waka' => $wakaUsername,
             ]);
-            $message = "🔔 *PERMINTAAN PERSETUJUAN DISPENSASI SISWA*\n\n"
-                ."Nama Siswa: *{$namaSiswa}*\n"
-                ."Kelas: *{$kelasSiswa}*\n"
-                ."Jenis Dispensasi: {$dispensasi->jenis_dispensasi}\n"
-                ."Waktu: {$waktuStr}\n"
-                ."Alasan: {$dispensasi->alasan}\n"
-                ."Diajukan Oleh: {$pembuat}\n\n"
-                ."Mohon Waka dapat memberikan persetujuan melalui tautan berikut:\n"
-                ."👉 {$approvalUrl}\n\n"
-                .'_Pesan otomatis dari Sistem Jurnal Sekolah_';
-
-            return [
-                ...$recipient,
-                'approval_url' => $approvalUrl,
-                'message' => $message,
-            ];
-        })->map(function (array $recipient): array {
-            $recipient['target'] = $this->normalizeIndonesianWhatsAppNumber((string) $recipient['number']);
-
-            return $recipient;
-        })->filter(fn (array $recipient): bool => $recipient['target'] !== null)->values();
-
-        if (blank($gatewayUrl) || blank($gatewayApiKey)) {
-            Log::warning('WhatsAppService: Pengajuan dispensasi tersimpan, tetapi gateway WhatsApp belum dikonfigurasi.', [
-                'dispensasi_id' => $dispensasi->id,
-                'approval_urls' => $recipients->pluck('approval_url')->filter()->all(),
-                'recipients' => $recipients->pluck('number')->all(),
-            ]);
-
-            return [
-                'configured' => false,
-                'recipients' => $recipients->count(),
-                'delivered' => 0,
-            ];
         }
 
-        $senderNumber = $this->getSenderNumber();
-        $delivered = 0;
+        return "🔔 *PERMINTAAN PERSETUJUAN DISPENSASI SISWA*\n\n"
+            ."Nama Siswa: *{$namaSiswa}*\n"
+            ."Kelas: *{$kelasSiswa}*\n"
+            ."Jenis Dispensasi: {$dispensasi->jenis_dispensasi}\n"
+            ."Waktu: {$waktuStr}\n"
+            ."Alasan: {$dispensasi->alasan}\n"
+            ."Diajukan Oleh: {$pembuat}\n\n"
+            ."Mohon Wakasek Kesiswaan dapat memberikan persetujuan melalui tautan berikut:\n"
+            ."👉 {$approvalUrl}\n\n"
+            .'_Pesan otomatis dari Sistem Jurnal Sekolah_';
+    }
 
-        foreach ($recipients as $recipient) {
-            Log::info('=== NOTIFIKASI WHATSAPP DISPENSASI ===', [
-                'sender' => $senderNumber,
-                'to_user' => $recipient['name'],
-                'no_hp' => $recipient['number'],
-                'approval_url' => $recipient['approval_url'] ?? null,
-                'message' => $recipient['message'],
-            ]);
+    /**
+     * Buat data link notifikasi wa.me dispensasi untuk diteruskan ke controller/view.
+     *
+     * @return array{configured: bool, recipients: int, delivered: int, url: ?string}
+     */
+    public function sendDispensasiNotificationToWaka(Dispensasi $dispensasi): array
+    {
+        $waUrl = $this->getDispensasiWhatsAppUrl($dispensasi);
+        $waka = $this->wakaRecipients()->first();
 
-            try {
-                $payload = [
-                    'target' => $recipient['target'],
-                    'message' => $recipient['message'],
-                ];
-
-                if ($senderNumber !== null) {
-                    $payload['sender'] = $senderNumber;
-                }
-
-                $response = Http::asForm()->withHeaders([
-                    'Authorization' => $gatewayApiKey,
-                ])->post($gatewayUrl, $payload);
-
-                if ($this->wasAcceptedByGateway($response)) {
-                    $delivered++;
-                } else {
-                    $responseBody = $response->json() ?? [];
-                    Log::error('WhatsAppService: Gateway menolak notifikasi dispensasi.', [
-                        'dispensasi_id' => $dispensasi->id,
-                        'number' => $recipient['target'],
-                        'status' => $response->status(),
-                        'reason' => $responseBody['reason'] ?? $response->body(),
-                    ]);
-                }
-            } catch (\Throwable $exception) {
-                Log::error('WhatsAppService Error: '.$exception->getMessage(), [
-                    'dispensasi_id' => $dispensasi->id,
-                    'number' => $recipient['target'],
-                ]);
-            }
-        }
+        Log::info('WhatsAppService: Link wa.me dispensasi berhasil dibuat.', [
+            'dispensasi_id' => $dispensasi->id,
+            'to_user' => $waka['name'] ?? 'Wakasek Kesiswaan',
+            'no_hp' => $waka['number'] ?? null,
+            'wa_url' => $waUrl,
+        ]);
 
         return [
-            'configured' => true,
-            'recipients' => $recipients->count(),
-            'delivered' => $delivered,
+            'configured' => filled($waUrl),
+            'recipients' => $this->wakaRecipients()->count(),
+            'delivered' => filled($waUrl) ? 1 : 0,
+            'url' => $waUrl,
         ];
     }
 
