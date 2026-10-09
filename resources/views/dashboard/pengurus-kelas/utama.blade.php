@@ -34,39 +34,6 @@
         </div>
     @endif
 
-    @if(isset($siswaTerlambatHariIni) && $siswaTerlambatHariIni->isNotEmpty())
-        <div class="mb-5 rounded-2xl border border-amber-300 bg-amber-50/90 p-4 text-amber-950 shadow-xs" role="alert">
-            <div class="flex items-start justify-between gap-3 flex-wrap sm:flex-nowrap">
-                <div class="flex items-start gap-3">
-                    <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-500 text-white shadow-xs">
-                        <i class="bi bi-clock-history text-lg"></i>
-                    </span>
-                    <div>
-                        <div class="flex items-center gap-2 flex-wrap">
-                            <p class="text-sm font-bold text-amber-950">Pemberitahuan Siswa Terlambat (Izin Masuk Piket)</p>
-                            <span class="rounded-full bg-amber-200/90 px-2 py-0.5 text-[10px] font-bold text-amber-900">{{ $siswaTerlambatHariIni->count() }} Siswa</span>
-                        </div>
-                        <p class="mt-0.5 text-xs text-amber-800">
-                            Ada anggota kelas yang terlambat hari ini dan telah diizinkan masuk oleh Guru Piket. Harap sampaikan alasan ke guru pengajar saat jam pelajaran:
-                        </p>
-                        <div class="mt-2 flex flex-wrap gap-2 text-xs">
-                            @foreach($siswaTerlambatHariIni as $tItem)
-                                <span class="inline-flex items-center gap-1.5 rounded-lg bg-white border border-amber-200 px-2.5 py-1 text-slate-700 shadow-2xs">
-                                    <strong class="text-amber-950">{{ $tItem->siswa?->nama ?? 'Siswa' }}</strong>
-                                    <span class="text-slate-400">&bull;</span>
-                                    <span class="text-slate-600 italic">"{{ $tItem->catatan ?: 'Terlambat' }}"</span>
-                                </span>
-                            @endforeach
-                        </div>
-                    </div>
-                </div>
-                <a href="{{ route('pengurus-kelas.kehadiran-siswa') }}" class="shrink-0 inline-flex items-center gap-1 rounded-xl bg-amber-600 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-amber-700 shadow-xs mt-2 sm:mt-0">
-                    <span>Lihat Absensi</span>
-                    <i class="bi bi-arrow-right"></i>
-                </a>
-            </div>
-        </div>
-    @endif
 
     {{-- KARTU STATISTIK (3 CARD: KELAS HARI INI, PERLU PERSETUJUAN, KEHADIRAN SISWA) --}}
     <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">

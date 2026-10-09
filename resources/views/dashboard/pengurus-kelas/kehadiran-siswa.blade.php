@@ -52,62 +52,6 @@
         </div>
     </header>
 
-    {{-- Pemberitahuan Siswa Terlambat Hari Ini (Izin Masuk Piket) --}}
-    @if(isset($siswaTerlambatHariIni) && $siswaTerlambatHariIni->isNotEmpty())
-        <div class="mb-4 rounded-2xl border border-amber-300 bg-amber-50/90 p-4 shadow-xs" role="alert">
-            <div class="flex items-start gap-3">
-                <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-500 text-white shadow-xs">
-                    <i class="bi bi-clock-history text-lg"></i>
-                </span>
-                <div class="flex-1 min-w-0">
-                    <div class="flex items-center justify-between gap-2 flex-wrap">
-                        <h3 class="text-sm font-bold text-amber-950">
-                            Pemberitahuan Siswa Terlambat Hari Ini (Izin Masuk Piket)
-                        </h3>
-                        <span class="rounded-full bg-amber-200/90 px-2.5 py-0.5 text-[11px] font-bold text-amber-900">
-                            {{ $siswaTerlambatHariIni->count() }} Siswa
-                        </span>
-                    </div>
-                    <p class="text-xs text-amber-800 mt-0.5">
-                        Guru piket telah menginput siswa berikut yang terlambat dan telah memberikan izin masuk kelas setelah pembinaan/sanksi. <strong>Harap sampaikan alasan keterlambatan ini kepada Guru Pengajar di kelas:</strong>
-                    </p>
-                    <div class="mt-3 grid gap-2.5 sm:grid-cols-2">
-                        @foreach($siswaTerlambatHariIni as $tItem)
-                            @php
-                                $tSiswa = $tItem->siswa;
-                            @endphp
-                            <div class="flex items-start justify-between gap-2.5 rounded-xl border border-amber-200 bg-white p-3 shadow-2xs">
-                                <div class="min-w-0 flex-1">
-                                    <p class="text-xs font-bold text-slate-800">{{ $tSiswa?->nama ?? 'Siswa' }}</p>
-                                    <p class="text-[11px] text-amber-900 font-semibold mt-0.5">
-                                        <i class="bi bi-chat-left-text text-amber-600 mr-1"></i>Alasan: <span class="italic text-slate-700 font-medium">{{ $tItem->catatan ?: 'Terlambat masuk sekolah' }}</span>
-                                    </p>
-                                    <p class="text-[10px] text-slate-400 mt-1">
-                                        Dicatat: {{ $tItem->created_at ? $tItem->created_at->timezone('Asia/Jakarta')->format('H:i') . ' WIB' : '-' }} &bull; {{ $tItem->pencatat?->name ?? 'Guru Piket' }}
-                                    </p>
-                                </div>
-                                <button
-                                    type="button"
-                                    @click="openSuratModal({{ json_encode([
-                                        'nama' => $tSiswa?->nama ?? 'Siswa',
-                                        'nisn' => $tSiswa?->nis ?? $tSiswa?->nisn ?? '-',
-                                        'kelas' => $kelas->nama_kelas ?? 'Kelas',
-                                        'tanggal' => $tanggalFormatted,
-                                        'alasan' => $tItem->catatan ?: 'Terlambat masuk sekolah',
-                                        'waktu' => $tItem->created_at ? $tItem->created_at->timezone('Asia/Jakarta')->format('H:i') . ' WIB' : 'Hari ini',
-                                        'pencatat' => $tItem->pencatat?->name ?? 'Guru Piket',
-                                    ]) }})"
-                                    class="shrink-0 inline-flex items-center gap-1 rounded-lg bg-amber-50 border border-amber-300 px-2.5 py-1 text-[11px] font-bold text-amber-800 hover:bg-amber-100 transition cursor-pointer"
-                                >
-                                    <i class="bi bi-file-earmark-text"></i> Surat
-                                </button>
-                            </div>
-                        @endforeach
-                    </div>
-                </div>
-            </div>
-        </div>
-    @endif
 
     @if(isset($jurnalPertama) && $jurnalPertama)
         <div class="mb-4 flex items-center justify-between flex-wrap gap-2 rounded-xl border border-emerald-200 bg-emerald-50/70 px-4 py-2.5 text-xs">
@@ -182,7 +126,7 @@
                                 'D', 'DISPENSASI' => 'Dispensasi',
                                 default => 'Hadir',
                             };
-                            $catatanAbsen = 'Otomatis dari Guru Piket'.($catatanPiket->catatan ? ': '.$catatanPiket->catatan : '.');
+                            $catatanAbsen = $catatanPiket->catatan ?: null;
                         }
                     }
 
@@ -352,4 +296,3 @@
 
 </div>
 @endsection
-

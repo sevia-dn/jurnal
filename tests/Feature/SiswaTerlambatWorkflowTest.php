@@ -106,16 +106,15 @@ class SiswaTerlambatWorkflowTest extends TestCase
 
         $attendanceResponse = $this->actingAs($pengurus)->get(route('pengurus-kelas.kehadiran-siswa'));
         $attendanceResponse->assertOk()
-            ->assertSee('Pemberitahuan Siswa Terlambat Hari Ini')
             ->assertSee('Bima Prasetya')
             ->assertSee('Terlambat bangun pagi')
             ->assertSee('Surat Izin')
             ->assertSee('SURAT IZIN MASUK KELAS');
 
+        // Banner terlambat telah dihapus dari dashboard; info disampaikan lewat notifikasi
         $dashboardResponse = $this->actingAs($pengurus)->get(route('pengurus-kelas.dashboard'));
         $dashboardResponse->assertOk()
-            ->assertSee('Pemberitahuan Siswa Terlambat')
-            ->assertSee('Bima Prasetya');
+            ->assertDontSee('Pemberitahuan Siswa Terlambat');
     }
 
     public function test_piket_page_displays_tardy_summary_and_student_record(): void

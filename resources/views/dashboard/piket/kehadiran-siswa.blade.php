@@ -186,8 +186,6 @@
                     <!-- Content rendered via JS from real backend data -->
                 </div>
             </form>
-        </section>
-
         <!-- Modal Form Input Ketidakhadiran Multi-Hari -->
         <div id="multi-day-modal" class="fixed inset-0 z-50 hidden items-center justify-center overflow-y-auto bg-slate-900/60 p-4 backdrop-blur-xs">
             <div class="relative w-full max-w-lg rounded-2xl bg-white p-5 shadow-2xl sm:p-6">
@@ -207,15 +205,12 @@
                     @csrf
                     <div>
                         <label class="block font-bold text-slate-700 mb-1">Pilih Siswa (Kelas {{ $selectedKelas?->nama_kelas }})</label>
-                        <input type="hidden" name="siswa_id" id="multi-day-student-id" required>
-                        <div class="relative">
-                            <div class="relative">
-                                <i class="bi bi-search pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
-                                <input id="multi-day-student-search" type="search" autocomplete="off" placeholder="Cari nama atau NIS siswa..." class="w-full rounded-xl border border-slate-300 bg-white py-2 pl-9 pr-3 text-xs sm:text-sm font-semibold text-slate-800 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100">
-                            </div>
-                            <div id="multi-day-student-results" class="absolute z-10 mt-1 hidden w-full overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg"></div>
-                        </div>
-                        <p id="multi-day-student-selection" class="mt-1 text-[11px] text-slate-400">Cari lalu pilih siswa tanpa menggulir daftar.</p>
+                        <select name="siswa_id" required class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs sm:text-sm font-semibold text-slate-800 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100">
+                            <option value="">-- Pilih Siswa --</option>
+                            @foreach($studentsData as $st)
+                                <option value="{{ $st['id'] }}">{{ $st['name'] }} (NIS: {{ $st['nis'] ?? '-' }})</option>
+                            @endforeach
+                        </select>
                     </div>
 
                     <div class="grid grid-cols-2 gap-3">
@@ -234,6 +229,7 @@
                         <select name="status" required class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs sm:text-sm font-semibold text-slate-800 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100">
                             <option value="Sakit">Sakit</option>
                             <option value="Izin">Izin</option>
+                            <option value="Alfa">Alfa</option>
                         </select>
                     </div>
 
@@ -259,6 +255,7 @@
                 </form>
             </div>
         </div>
+        </section>
 
         {{-- MODAL CATAT SISWA TELAT & SURAT IZIN MASUK --}}
         <div
@@ -447,10 +444,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const searchInput = document.getElementById('search-input');
     const statusFilter = document.getElementById('status-filter');
     const attendanceForm = document.getElementById('student-attendance-form');
-    const multiDayStudentSearch = document.getElementById('multi-day-student-search');
-    const multiDayStudentId = document.getElementById('multi-day-student-id');
-    const multiDayStudentResults = document.getElementById('multi-day-student-results');
-    const multiDayStudentSelection = document.getElementById('multi-day-student-selection');
 
     // Status classes map
     const STATUS_MAP = {
@@ -505,40 +498,6 @@ document.addEventListener('DOMContentLoaded', () => {
         return String(value ?? '').replace(/[&<>'"]/g, (c) => ({
             '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#039;', '"': '&quot;',
         })[c]);
-    }
-
-    function resetMultiDayStudentSelection() {
-        multiDayStudentId.value = '';
-        multiDayStudentSelection.textContent = 'Cari lalu pilih siswa tanpa menggulir daftar.';
-    }
-
-    function renderMultiDayStudentResults() {
-        const query = multiDayStudentSearch.value.trim().toLowerCase();
-
-        if (query.length < 2) {
-            multiDayStudentResults.innerHTML = '<p class="px-3 py-2 text-[11px] text-slate-400">Ketik minimal 2 karakter untuk mencari siswa.</p>';
-            multiDayStudentResults.classList.remove('hidden');
-            return;
-        }
-
-        const matches = studentsData.filter((student) => {
-            return String(student.name || '').toLowerCase().includes(query)
-                || String(student.nis || '').toLowerCase().includes(query);
-        }).slice(0, 8);
-
-        if (matches.length === 0) {
-            multiDayStudentResults.innerHTML = '<p class="px-3 py-2 text-[11px] text-slate-400">Siswa tidak ditemukan.</p>';
-            multiDayStudentResults.classList.remove('hidden');
-            return;
-        }
-
-        multiDayStudentResults.innerHTML = matches.map((student) => `
-            <button type="button" data-multi-day-student-id="${student.id}" class="block w-full border-b border-slate-100 px-3 py-2 text-left transition last:border-0 hover:bg-indigo-50">
-                <span class="block text-xs font-bold text-slate-800">${escapeHtml(student.name)}</span>
-                <span class="block text-[11px] text-slate-500">NIS: ${escapeHtml(student.nis || '-')}</span>
-            </button>
-        `).join('');
-        multiDayStudentResults.classList.remove('hidden');
     }
 
     function renderTable() {
@@ -661,34 +620,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     searchInput.addEventListener('input', renderTable);
     statusFilter.addEventListener('change', renderTable);
-
-    multiDayStudentSearch.addEventListener('focus', renderMultiDayStudentResults);
-    multiDayStudentSearch.addEventListener('input', () => {
-        resetMultiDayStudentSelection();
-        renderMultiDayStudentResults();
-    });
-    multiDayStudentResults.addEventListener('click', (event) => {
-        const option = event.target.closest('[data-multi-day-student-id]');
-        if (!option) {
-            return;
-        }
-
-        const student = studentsData.find((item) => String(item.id) === option.dataset.multiDayStudentId);
-        if (!student) {
-            return;
-        }
-
-        multiDayStudentId.value = student.id;
-        multiDayStudentSearch.value = `${student.name} (NIS: ${student.nis || '-'})`;
-        multiDayStudentSelection.textContent = `Siswa dipilih: ${student.name}`;
-        multiDayStudentResults.classList.add('hidden');
-    });
-
-    document.addEventListener('click', (event) => {
-        if (!event.target.closest('#multi-day-student-search') && !event.target.closest('#multi-day-student-results')) {
-            multiDayStudentResults.classList.add('hidden');
-        }
-    });
 
     // Delegated listener: update label styles when any radio changes
     tableBody.addEventListener('change', (event) => {
