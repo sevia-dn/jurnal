@@ -65,7 +65,7 @@
                     </div>
                 @endif
 
-                <form method="POST" action="{{ route('guru.ketidakhadiran.store') }}" enctype="multipart/form-data" class="mt-5 space-y-4" x-data="{ alasan: '{{ old('alasan', $existing?->alasan ?? 'izin') }}' }">
+                <form method="POST" action="{{ route('guru.ketidakhadiran.store') }}" enctype="multipart/form-data" class="mt-5 space-y-4" x-data="{ alasan: '{{ old('alasan', $existing?->alasan ?? 'izin') }}', isSubmitting: false }" @submit="if (isSubmitting) { $event.preventDefault(); return false; } isSubmitting = true;">
                     @csrf
 
                     {{-- INFORMASI GURU (READ ONLY) --}}
@@ -178,8 +178,22 @@
                     </div>
 
                     {{-- TOMBOL KIRIM --}}
-                    <button type="submit" class="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-3 text-sm font-bold text-white transition hover:bg-emerald-700 shadow-sm focus:outline-none focus:ring-4 focus:ring-emerald-200 cursor-pointer">
-                        <i class="bi bi-send-fill"></i> Kirim ke Guru Piket
+                    <button
+                        type="submit"
+                        :disabled="isSubmitting"
+                        :class="isSubmitting ? 'opacity-70 cursor-not-allowed pointer-events-none' : ''"
+                        class="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-3 text-sm font-bold text-white transition hover:bg-emerald-700 shadow-sm focus:outline-none focus:ring-4 focus:ring-emerald-200 cursor-pointer"
+                    >
+                        <span x-show="!isSubmitting" class="inline-flex items-center gap-2">
+                            <i class="bi bi-send-fill"></i> Kirim ke Guru Piket
+                        </span>
+                        <span x-show="isSubmitting" x-cloak class="inline-flex items-center gap-2">
+                            <svg class="h-4 w-4 animate-spin text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            Sedang mengirim...
+                        </span>
                     </button>
                 </form>
             </section>

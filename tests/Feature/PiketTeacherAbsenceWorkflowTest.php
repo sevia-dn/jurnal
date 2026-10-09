@@ -113,6 +113,40 @@ class PiketTeacherAbsenceWorkflowTest extends TestCase
             ->assertSee('0 Hadir · 0 Izin · 1 Sakit');
     }
 
+    public function test_repeated_absence_submission_does_not_create_duplicate_notifications_for_piket(): void
+    {
+        $date = '2026-09-30';
+        $this->travelTo(Carbon::parse("{$date} 08:00:00", 'Asia/Jakarta'));
+        $teacher = User::factory()->create(['role' => 'guru']);
+        $piket = User::factory()->create(['role' => 'guru']);
+        $this->schedulePiket($piket, $date);
+
+        // Submit first time
+        $this->actingAs($teacher)
+            ->post(route('guru.ketidakhadiran.store'), [
+                'tanggal' => $date,
+                'alasan' => 'izin',
+                'keterangan' => 'Ada keperluan keluarga.',
+            ])
+            ->assertRedirect(route('guru.utama'));
+
+        // Submit second time (e.g. double click or update)
+        $this->actingAs($teacher)
+            ->post(route('guru.ketidakhadiran.store'), [
+                'tanggal' => $date,
+                'alasan' => 'izin',
+                'keterangan' => 'Ada keperluan keluarga diperbarui.',
+            ])
+            ->assertRedirect(route('guru.utama'));
+
+        // Assert exactly 1 notification is created for this piket user
+        $piketNotifCount = Notifikasi::where('id_user', $piket->id)
+            ->where('tipe', 'guru_tidak_hadir')
+            ->count();
+
+        $this->assertSame(1, $piketNotifCount);
+    }
+
     private function schedulePiket(User $piket, string $date): void
     {
         JadwalPiket::create([

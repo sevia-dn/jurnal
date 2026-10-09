@@ -438,60 +438,81 @@ class GuruController extends Controller
             $lampiranPath = $request->file('lampiran')->store('ketidakhadiran-guru', 'public');
         }
 
-        $ketidakhadiran = KetidakhadiranGuru::updateOrCreate(
-            ['user_id' => $guru->id, 'tanggal' => $request->tanggal],
-            [
-                'alasan' => $request->alasan,
-                'keterangan' => $request->keterangan,
-                'lampiran' => $lampiranPath,
-                'status' => 'pending',
-                'handled_by' => null,
-                'handled_at' => null,
-                'catatan_piket' => null,
-                'status_konfirmasi_waka' => 'pending',
-                'dikonfirmasi_oleh_waka' => null,
-                'dikonfirmasi_waka_pada' => null,
-                'catatan_waka' => null,
-            ]
-        );
+        $ketidakhadiran = KetidakhadiranGuru::where('user_id', $guru->id)
+            ->whereDate('tanggal', $request->tanggal)
+            ->first();
 
-        // Kirim notifikasi ke Guru Piket bertugas
-        $piketUsers = User::query()
-            ->whereHas('jadwalPikets', fn ($query) => $query->whereDate('tanggal', $request->tanggal))
-            ->get();
+        $dataToSave = [
+            'alasan' => $request->alasan,
+            'keterangan' => $request->keterangan,
+            'lampiran' => $lampiranPath,
+            'status' => 'pending',
+            'handled_by' => null,
+            'handled_at' => null,
+            'catatan_piket' => null,
+            'status_konfirmasi_waka' => 'pending',
+            'dikonfirmasi_oleh_waka' => null,
+            'dikonfirmasi_waka_pada' => null,
+            'catatan_waka' => null,
+        ];
 
-        foreach ($piketUsers as $piketUser) {
-            Notifikasi::create([
-                'id_user' => $piketUser->id,
-                'id_kelas' => null,
-                'id_dispensasi' => null,
-                'id_ketidakhadiran_guru' => $ketidakhadiran->id,
-                'judul' => 'Pengajuan Ketidakhadiran Guru',
-                'pesan' => "Guru {$guru->name} mengajukan ketidakhadiran (".ucfirst($request->alasan).') untuk tanggal '.Carbon::parse($request->tanggal)->translatedFormat('d F Y').'. Silakan diverifikasi.',
-                'tipe' => 'guru_tidak_hadir',
-                'is_read' => false,
+        if ($ketidakhadiran) {
+            $ketidakhadiran->update($dataToSave);
+        } else {
+            $ketidakhadiran = KetidakhadiranGuru::create([
+                'user_id' => $guru->id,
+                'tanggal' => $request->tanggal,
+                ...$dataToSave,
             ]);
         }
 
-        // Kirim notifikasi konfirmasi ke Waka Kesiswaan
+        // Kirim notifikasi ke Guru Piket bertugas (gunakan updateOrCreate agar tidak duplikat)
+        $piketUsers = User::query()
+            ->whereHas('jadwalPikets', fn ($query) => $query->whereDate('tanggal', $request->tanggal))
+            ->get()
+            ->unique('id');
+
+        foreach ($piketUsers as $piketUser) {
+            Notifikasi::updateOrCreate(
+                [
+                    'id_user' => $piketUser->id,
+                    'id_ketidakhadiran_guru' => $ketidakhadiran->id,
+                    'tipe' => 'guru_tidak_hadir',
+                ],
+                [
+                    'id_kelas' => null,
+                    'id_dispensasi' => null,
+                    'judul' => 'Pengajuan Ketidakhadiran Guru',
+                    'pesan' => "Guru {$guru->name} mengajukan ketidakhadiran (".ucfirst($request->alasan).') untuk tanggal '.Carbon::parse($request->tanggal)->translatedFormat('d F Y').'. Silakan diverifikasi.',
+                    'is_read' => false,
+                ]
+            );
+        }
+
+        // Kirim notifikasi konfirmasi ke Waka Kesiswaan (gunakan updateOrCreate agar tidak duplikat)
         $wakaUsers = User::query()
             ->where(function ($q) {
                 $q->where('is_waka', true)
                     ->orWhere('role', 'waka');
             })
-            ->get();
+            ->get()
+            ->unique('id');
 
         foreach ($wakaUsers as $wakaUser) {
-            Notifikasi::create([
-                'id_user' => $wakaUser->id,
-                'id_kelas' => null,
-                'id_dispensasi' => null,
-                'id_ketidakhadiran_guru' => $ketidakhadiran->id,
-                'judul' => 'Konfirmasi Ketidakhadiran Guru',
-                'pesan' => "Guru {$guru->name} mengajukan ketidakhadiran (".ucfirst($request->alasan).') untuk tanggal '.Carbon::parse($request->tanggal)->translatedFormat('d F Y').'. Menunggu konfirmasi Waka.',
-                'tipe' => 'waka_konfirmasi_guru_absen',
-                'is_read' => false,
-            ]);
+            Notifikasi::updateOrCreate(
+                [
+                    'id_user' => $wakaUser->id,
+                    'id_ketidakhadiran_guru' => $ketidakhadiran->id,
+                    'tipe' => 'waka_konfirmasi_guru_absen',
+                ],
+                [
+                    'id_kelas' => null,
+                    'id_dispensasi' => null,
+                    'judul' => 'Konfirmasi Ketidakhadiran Guru',
+                    'pesan' => "Guru {$guru->name} mengajukan ketidakhadiran (".ucfirst($request->alasan).') untuk tanggal '.Carbon::parse($request->tanggal)->translatedFormat('d F Y').'. Menunggu konfirmasi Waka.',
+                    'is_read' => false,
+                ]
+            );
         }
 
         return redirect()->route('guru.utama')
