@@ -42,10 +42,7 @@ return [
         'piket_confirmation_number' => env('WHATSAPP_PIKET_CONFIRMATION_NUMBER', '083838606396'),
         'admin_number' => env('WHATSAPP_ADMIN_NUMBER', env('WHATSAPP_PIKET_CONFIRMATION_NUMBER', '083838606396')),
         'waka_recipients' => [
-            ['username' => 'hardiniindahingbudisempd', 'name' => 'Hardini Indahing Budi', 'number' => env('WHATSAPP_WAKA_HARDINI_NUMBER', '081515694249')],
-            ['username' => 'fajarluthfiantospd', 'name' => 'Fajar Luthfianto', 'number' => env('WHATSAPP_WAKA_FAJAR_NUMBER', '082332283967')],
-            ['username' => 'nikenharipratiwispsimpd', 'name' => 'Niken Hari Pratiwi', 'number' => env('WHATSAPP_WAKA_NIKEN_NUMBER', '085784053853')],
-            ['username' => 'hendrosuwignyost', 'name' => 'Hendro Suwignyo', 'number' => env('WHATSAPP_WAKA_HENDRO_NUMBER', '085706101917')],
+            ['username' => 'fajarluthfiantospd', 'name' => 'Fajar Luthfianto', 'number' => env('WHATSAPP_WAKA_FAJAR_NUMBER', '083157785970')],
         ],
     ],
 

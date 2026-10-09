@@ -101,11 +101,12 @@ class WhatsAppService
                 if ($this->wasAcceptedByGateway($response)) {
                     $delivered++;
                 } else {
+                    $responseBody = $response->json() ?? [];
                     Log::error('WhatsAppService: Gateway menolak notifikasi dispensasi.', [
                         'dispensasi_id' => $dispensasi->id,
                         'number' => $recipient['target'],
                         'status' => $response->status(),
-                        'body' => $response->body(),
+                        'reason' => $responseBody['reason'] ?? $response->body(),
                     ]);
                 }
             } catch (\Throwable $exception) {
@@ -296,7 +297,7 @@ class WhatsAppService
     }
 
     /**
-     * Ambil empat Waka tujuan dari konfigurasi, dengan nomor terbaru diambil
+     * Ambil daftar Waka tujuan dari konfigurasi, dengan nomor terbaru diambil
      * dari data pengguna apabila tersedia.
      *
      * @return Collection<int, array{username: string, name: string, number: string}>
